@@ -62,6 +62,11 @@ class Face:
         self.data = dict(zip(variables, values))
         self.nodes = []
 
+        # Data that we'll use in calculations.
+        self.hi = 0.0
+        self.area = 0.0
+        self.target_ice = 0.0
+
     def __getitem__(self, item):
         """
         Get face data element.
@@ -92,6 +97,15 @@ class Face:
         """
 
         self.data[key] = value
+
+    def calculate_area(self):
+        """
+        Calculate area.
+        """
+
+        a, b, c = self.nodes[0].p, self.nodes[1].p, self.nodes[2].p
+
+        self.area = 0.5 * np.linalg.norm(np.cross(b - a, c - b))
 
 
 class Zone:
@@ -407,6 +421,19 @@ class Mesh:
 
             f.close()
 
+    def define_target_ice(self):
+        """
+        Define target ice.
+        Target ice - ice to be accreted.
+
+        While defining target ice first we extract "Hi" field and calculate areas.
+        """
+
+        for f in self.faces:
+            f.hi = f['Hi']
+            f.calculate_area()
+            f.target_ice = f.area * f.hi
+
     def remesh(self):
         """
         Remesh.
@@ -414,15 +441,18 @@ class Mesh:
         sources:
             [1] X. Tong, D. Thompson, Q. Arnoldus, E. Collins, E. Luke.
                 Three-Dimensional Surface Evolution and Mesh Deformation for Aircraft Icing Applications. //
-                Journal of Aircraft, DOI: 10.2514/1.C033949
+                Journal of Aircraft, 2016, DOI: 10.2514/1.C033949
+            [2] D. Thompson, X. Tong, Q. Arnoldus, E. Collins, D. McLaurin, E. Luke.
+                Discrete Surface Evolution and Mesh Deformation for Aircraft Icing Applications. //
+                5th AIAA Atmospheric and Space Environments Conference, 2013, DOI: 10.2514/6.2013-2544
         """
 
-        pass
+        self.define_target_ice()
 
 
 if __name__ == '__main__':
     print('surface-evolution')
     g = Mesh()
-    g.load('../cases/naca/naca_mz.dat')
+    g.load('../cases/naca/naca_t12.dat')
     g.remesh()
     g.store('../garbage.dat')
