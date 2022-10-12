@@ -24,7 +24,6 @@ class Node:
         """
 
         self.p = p
-        self.edges = []
         self.faces = []
 
     def rounded_coordinates(self):
@@ -38,30 +37,6 @@ class Node:
         """
 
         return tuple(map(lambda x: round(x, NODE_COORDINATES_VALUABLE_DIGITS_COUNT), self.p))
-
-
-class Edge:
-    """
-    Edge - object, that connects two nodes.
-    """
-
-    def __init__(self, a, b):
-        """
-        Initialization.
-        Edge can not be created without setting its ends.
-
-        Parameters
-        ----------
-        a : Node
-            First node.
-        b : Node.
-            Second node.
-        """
-
-        self.nodes = [a, b]
-        a.edges.append(self)
-        b.edges.append(self)
-        self.faces = []
 
 
 class Face:
@@ -83,7 +58,6 @@ class Face:
 
         self.data = dict(zip(variables, values))
         self.nodes = []
-        self.edges = []
 
     def __getitem__(self, item):
         """
@@ -338,48 +312,6 @@ class Grid:
 
     # ----------------------------------------------------------------------------------------------
 
-    @staticmethod
-    def find_edge(node_a, node_b):
-        """
-        Find edge with given nodes.
-
-        :param node_a: the first node
-        :param node_b: the second node
-        :return: edge - if it is found, None - otherwise
-        """
-
-        for edge in node_a.edges:
-            if node_b in edge.nodes:
-                return edge
-
-        return None
-
-    # ----------------------------------------------------------------------------------------------
-
-    def complex_link_face_node_node_edge(self, face, node_a, node_b):
-        """
-        Complex link nodes with edge, and edge with face.
-
-        :param face: face
-        :param node_a: the first node
-        :param node_b: th second node
-        """
-
-        # First we need to find edge.
-        edge = Grid.find_edge(node_a, node_b)
-
-        if edge is None:
-            # New edge and link it.
-            edge = Edge(node_a, node_b)
-            self.add_edge(edge)
-            Grid.link_edge_face(edge, face)
-        else:
-            # Edge is already linked with nodes.
-            # Link only with the face.
-            Grid.link_edge_face(edge, face)
-
-    # ----------------------------------------------------------------------------------------------
-
     def load(self, filename,
              is_merge_same_nodes=True):
         """
@@ -488,9 +420,6 @@ class Grid:
                 node_a = face.nodes[0]
                 node_b = face.nodes[1]
                 node_c = face.nodes[2]
-                self.complex_link_face_node_node_edge(face, node_a, node_b)
-                self.complex_link_face_node_node_edge(face, node_a, node_c)
-                self.complex_link_face_node_node_edge(face, node_b, node_c)
 
             # Relink.
             self.link_nodes_and_edges_to_zones()
@@ -738,10 +667,6 @@ class Zone:
         self.Faces.append(f)
 
         return f
-
-
-# ==================================================================================================
-
 
 
 if __name__ == '__main__':
