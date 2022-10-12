@@ -40,6 +40,30 @@ class Node:
         return tuple(map(lambda x: round(x, NODE_COORDINATES_VALUABLE_DIGITS_COUNT), self.p))
 
 
+class Edge:
+    """
+    Edge - object, that connects two nodes.
+    """
+
+    def __init__(self, a, b):
+        """
+        Initialization.
+        Edge can not be created without setting its ends.
+
+        Parameters
+        ----------
+        a : Node
+            First node.
+        b : Node.
+            Second node.
+        """
+
+        self.nodes = [a, b]
+        a.edges.append(self)
+        b.edges.append(self)
+        self.faces = []
+
+
 class Grid:
     """
     Grid (Surface Unstructured).
@@ -228,28 +252,6 @@ class Grid:
     # ----------------------------------------------------------------------------------------------
 
     @staticmethod
-    def link_node_edge(node, edge):
-        """
-        Link node with edge.
-
-        :param node: node
-        :param edge: edge
-        """
-
-        # проверка на правьность передаваемых типов объектов
-        assert (type(node) is Node)
-        assert (type(edge) is Edge)
-
-        # проверка на добавление дублей
-        assert not edge in node.edges
-        assert not node in edge.Nodes
-
-        node.edges.append(edge)
-        edge.Nodes.append(node)
-
-    # ----------------------------------------------------------------------------------------------
-
-    @staticmethod
     def link_node_face(node, face):
         """
         Link face with node.
@@ -278,7 +280,7 @@ class Grid:
         assert (type(edge) is Edge)
         assert (type(face) is Face)
 
-        edge.Faces.append(face)
+        edge.faces.append(face)
         face.Edges.append(edge)
 
     # ----------------------------------------------------------------------------------------------
@@ -294,7 +296,7 @@ class Grid:
         """
 
         for edge in node_a.edges:
-            if node_b in edge.Nodes:
+            if node_b in edge.nodes:
                 return edge
 
         return None
@@ -315,10 +317,8 @@ class Grid:
 
         if edge is None:
             # New edge and link it.
-            edge = Edge()
+            edge = Edge(node_a, node_b)
             self.add_edge(edge)
-            Grid.link_node_edge(node_a, edge)
-            Grid.link_node_edge(node_b, edge)
             Grid.link_edge_face(edge, face)
         else:
             # Edge is already linked with nodes.
@@ -513,7 +513,7 @@ class Grid:
 
         # Add edges.
         for e in self.Edges:
-            zids = list(set([f.Zone.Id for f in e.Faces]))
+            zids = list(set([f.Zone.Id for f in e.faces]))
             for zid in zids:
                 self.Zones[zid].add_edge(e)
 
@@ -894,25 +894,6 @@ class Face:
                 return edge
 
         return None
-
-# ==================================================================================================
-
-
-class Edge:
-    """
-    Edge of the grid.
-    """
-
-    # ----------------------------------------------------------------------------------------------
-
-    def __init__(self):
-        """
-        Constructor.
-        """
-
-        # Links to nodes and faces.
-        self.Nodes = []
-        self.Faces = []
 
 
 if __name__ == '__main__':
