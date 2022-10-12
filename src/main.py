@@ -407,10 +407,22 @@ class Mesh:
 
             f.close()
 
+    def remesh(self):
+        """
+        Remesh.
+
+        sources:
+            [1] X. Tong, D. Thompson, Q. Arnoldus, E. Collins, E. Luke.
+                Three-Dimensional Surface Evolution and Mesh Deformation for Aircraft Icing Applications. //
+                Journal of Aircraft, DOI: 10.2514/1.C033949
+        """
+
+        pass
+
 
 if __name__ == '__main__':
     print('surface-evolution')
     g = Mesh()
     g.load('../cases/naca/naca_mz.dat')
+    g.remesh()
     g.store('../garbage.dat')
-    pass
