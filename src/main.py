@@ -6,6 +6,9 @@ import numpy as np
 # If coordinates of nodes doesn't differ in valuable digits we consider them equal.
 NODE_COORDINATES_VALUABLE_DIGITS_COUNT = 10
 
+# String of export.
+EXPORT_FORMAT_STRING = '{0:.18e}'
+
 
 class Node:
     """
@@ -110,6 +113,27 @@ class Zone:
         self.nodes = []
         self.faces = []
 
+    @staticmethod
+    def objects_slice_str(fun, obs):
+        """
+        String, that contains data slice for some objects.
+        Formatting is defined here.
+
+        Parameters
+        ----------
+        fun
+            Function for data extracting.
+        obs
+            Objects list.
+
+        Returns
+        -------
+        str
+            String with data slice.
+        """
+
+        return ' '.join(map(lambda ob: EXPORT_FORMAT_STRING.format(fun(ob)), obs))
+
     def nodes_coordinate_slice_str(self, i):
         """
         String, that contains i-th coordinate of all nodes.
@@ -123,9 +147,10 @@ class Zone:
         -------
         str
             String with coordinate slice.
+
         """
 
-        return ' '.join(map(lambda n: '{0:.18e}'.format(n.p[i]), self.nodes))
+        return Zone.objects_slice_str(lambda n: n.p[i], self.nodes)
 
     def faces_data_element_slice_str(self, e):
         """
@@ -142,7 +167,7 @@ class Zone:
             String with data element slice.
         """
 
-        return ' '.join(map(lambda f: '{0:.18e}'.format(f[e]), self.faces))
+        return Zone.objects_slice_str(lambda f: f[e], self.faces)
 
 
 class Mesh:
