@@ -179,25 +179,33 @@ class Mesh:
         self.zones.clear()
         self.rounded_coordinates_bag.clear()
 
-    # ----------------------------------------------------------------------------------------------
-
-    def find_near_node(self, n):
+    def find_near_node(self, node):
         """
-        Find in grid nodes collection node that is near to a given node.
+        Try to find node near to given node.
 
-        :param n: node to check
-        :return: near node from grid nodes collection
+        Parameters
+        ----------
+        node : Node
+            Given node.
+
+        Returns
+        -------
+        Node or None
+            If node is found, return it, otherwise return None.
         """
 
-        # First try to find  in bag.
-        if n.rounded_coordinates() in self.rounded_coordinates_bag:
-            for node in self.nodes:
-                if n.rounded_coordinates() == node.rounded_coordinates():
-                    return node
-            raise Exception('We expect to find node ' \
-                            'with coordinates {0} in the grid'.format(n.rounded_coordinates()))
+        rc = node.rounded_coordinates()
 
-        return None
+        # Try to find in bag.
+        if rc not in self.rounded_coordinates_bag:
+            return None
+
+        # Node rounded coordinates is in bag, find it.
+        for n in self.nodes:
+            if rc == n.rounded_coordinates():
+                return n
+
+        raise Exception('Internal error')
 
     # ----------------------------------------------------------------------------------------------
 
