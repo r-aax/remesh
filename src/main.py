@@ -9,7 +9,7 @@ NODE_COORDINATES_VALUABLE_DIGITS_COUNT = 10
 
 class Node:
     """
-    Node.
+    Node - container for coordinates.
     """
 
     def __init__(self, p):
@@ -91,99 +91,39 @@ class Face:
         self.data[key] = value
 
 
-class Grid:
+class Mesh:
     """
-    Grid (Surface Unstructured).
+    Mesh - consists of surface triangle faces.
     """
-
-    # ----------------------------------------------------------------------------------------------
 
     def __init__(self):
         """
-        Constructor.
+        Initialization.
         """
 
-        # Empty name.
-        self.Name = ''
+        # Comment and title - save for store.
+        self.comment = ''
+        self.title = ''
 
         # Set empty sets of nodes, faces, zones.
-        self.Nodes = []
-        self.Edges = []
-        self.Faces = []
-        self.Zones = []
+        self.zones = []
+        self.nodes = []
+        self.faces = []
 
-        # Rounded coordinates
-        self.RoundedCoordsBag = set()
-
-        self.number_of_border_nodes = 0
-
-    # ----------------------------------------------------------------------------------------------
+        # Rounded coordinates bag.
+        self.rounded_coordinates_bag = set()
 
     def clear(self):
         """
-        Clear grid.
+        Clear all.
         """
 
-        self.Nodes.clear()
-        self.Edges.clear()
-        self.Faces.clear()
-        self.Zones.clear()
-        self.RoundedCoordsBag.clear()
-
-    # ----------------------------------------------------------------------------------------------
-
-    def zones_count(self):
-        """
-        Get zones count.
-
-        :return: zones count
-        """
-
-        return len(self.Zones)
-
-    # ----------------------------------------------------------------------------------------------
-
-    def nodes_count(self):
-        """
-        Get count of nodes.
-
-        :return: nodes count
-        """
-
-        return len(self.Nodes)
-
-    # ----------------------------------------------------------------------------------------------
-
-    def edges_count(self):
-        """
-        Get count of edges.
-
-        :return: edges count
-        """
-
-        return len(self.Edges)
-
-    # ----------------------------------------------------------------------------------------------
-
-    def faces_count(self):
-        """
-        Get count of faces.
-
-        :return: faces count.
-        """
-
-        return len(self.Faces)
-
-    # ----------------------------------------------------------------------------------------------
-
-    def faces_count_in_zones(self):
-        """
-        Count of faces that are placed in zones.
-
-        :return: total faces count in zones
-        """
-
-        return sum([z.faces_count() for z in self.Zones])
+        self.comment = ''
+        self.title = ''
+        self.nodes.clear()
+        self.faces.clear()
+        self.zones.clear()
+        self.rounded_coordinates_bag.clear()
 
     # ----------------------------------------------------------------------------------------------
 
@@ -196,8 +136,8 @@ class Grid:
         """
 
         # First try to find  in bag.
-        if n.rounded_coordinates() in self.RoundedCoordsBag:
-            for node in self.Nodes:
+        if n.rounded_coordinates() in self.rounded_coordinates_bag:
+            for node in self.nodes:
                 if n.rounded_coordinates() == node.rounded_coordinates():
                     return node
             raise Exception('We expect to find node ' \
@@ -222,8 +162,8 @@ class Grid:
         if (found_node is None) or (not is_merge_same_nodes):
             # There is no such node in the grid.
             # We have to add it.
-            self.Nodes.append(n)
-            self.RoundedCoordsBag.add(n.rounded_coordinates())
+            self.nodes.append(n)
+            self.rounded_coordinates_bag.add(n.rounded_coordinates())
             if zone:
                 zone.add_node(n)
             return n
@@ -231,14 +171,6 @@ class Grid:
             # There is already such a node in the grid.
             # Just return it.
             return found_node
-
-    # ----------------------------------------------------------------------------------------------
-
-    def add_edge(self, e):
-
-        self.Edges.append(e)
-
-        return e
 
     # ----------------------------------------------------------------------------------------------
 
@@ -252,29 +184,9 @@ class Grid:
         """
 
 
-        self.Faces.append(f)
+        self.faces.append(f)
 
         return f
-
-    # ----------------------------------------------------------------------------------------------
-
-    def set_zones_ids(self):
-        """
-        Set zones identifiers.
-        """
-
-        for (i, z) in enumerate(self.Zones):
-            z.Id = i
-
-    # ----------------------------------------------------------------------------------------------
-
-    def reset_zones_ids(self):
-        """
-        Reset zones identifiers.
-        """
-
-        for z in self.Zones:
-            z.Id = -1
 
     # ----------------------------------------------------------------------------------------------
 
@@ -349,7 +261,7 @@ class Grid:
                     # Create new zone.
                     zone_name = line.split('=')[-1][1:-2]
                     zone = Zone(zone_name)
-                    self.Zones.append(zone)
+                    self.zones.append(zone)
 
                     # Read count of nodes and faces to read.
                     nodes_line = f.readline()
@@ -405,9 +317,9 @@ class Grid:
                         if len(nodes) != 3:
                             raise Exception('Wrong count of ' \
                                             'face linked nodes ({0}).'.format(len(nodes)))
-                        Grid.link_node_face(nodes[0], face)
-                        Grid.link_node_face(nodes[1], face)
-                        Grid.link_node_face(nodes[2], face)
+                        Mesh.link_node_face(nodes[0], face)
+                        Mesh.link_node_face(nodes[1], face)
+                        Mesh.link_node_face(nodes[2], face)
 
                 else:
                     raise Exception('Unexpected line : {0}.'.format(line))
@@ -416,13 +328,10 @@ class Grid:
             f.close()
 
             # Now we need to fix rest objects links.
-            for face in self.Faces:
+            for face in self.faces:
                 node_a = face.nodes[0]
                 node_b = face.nodes[1]
                 node_c = face.nodes[2]
-
-            # Relink.
-            self.link_nodes_and_edges_to_zones()
 
     # ----------------------------------------------------------------------------------------------
 
@@ -435,7 +344,7 @@ class Grid:
 
         # Если не подан параметр с перечислением полей ячеек для экспорта, то экспортируем все поля.
         if face_variables is None:
-            face_variables = list(self.Faces[0].data.keys())
+            face_variables = list(self.faces[0].data.keys())
         variables = ['X', 'Y', 'Z'] + face_variables
 
         with open(filename, 'w', newline='\n') as f:
@@ -449,7 +358,7 @@ class Grid:
 
 
             # Store zones.
-            for zone in self.Zones:
+            for zone in self.zones:
 
                 # Store zone head.
                 f.write('ZONE T="{0}"\n'.format(zone.Name))
@@ -473,55 +382,7 @@ class Grid:
 
             f.close()
 
-    # ----------------------------------------------------------------------------------------------
 
-    def link_nodes_and_edges_to_zones(self):
-        """
-        Link nodes and edges to zones.
-        """
-
-        # Clear old information.
-        for z in self.Zones:
-            z.Nodes.clear()
-            z.Edges.clear()
-
-        self.set_zones_ids()
-
-        # Add nodes.
-        for n in self.Nodes:
-            zids = list(set([f.Zone.Id for f in n.faces]))
-            for zid in zids:
-                self.Zones[zid].add_node(n)
-
-        # Add edges.
-        for e in self.Edges:
-            zids = list(set([f.Zone.Id for f in e.faces]))
-            for zid in zids:
-                self.Zones[zid].add_edge(e)
-
-        self.reset_zones_ids()
-
-    # ----------------------------------------------------------------------------------------------
-
-    def unlink_faces_from_zones(self):
-        """
-        Unlink faces from zones.
-        """
-
-        for face in self.Faces:
-            if not face.Zone.IsFixed:
-                face.Zone = None
-
-    # ----------------------------------------------------------------------------------------------
-
-    def check_faces_are_linked_to_zones(self):
-        """
-        Check if all faces are linked to zones.
-        """
-
-        for face in self.Faces:
-            if face.Zone is None:
-                raise Exception('Unlinked face detected.')
 
 # ==================================================================================================
 
@@ -671,7 +532,7 @@ class Zone:
 
 if __name__ == '__main__':
     print('surface-evolution')
-    g = Grid()
+    g = Mesh()
     g.load('../cases/naca/naca_mz.dat')
     g.store('../garbage.dat')
     pass
