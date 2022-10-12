@@ -64,6 +64,59 @@ class Edge:
         self.faces = []
 
 
+class Face:
+    """
+    Face - container for physical data.
+    """
+
+    def __init__(self, variables, values):
+        """
+        Initialization.
+
+        Parameters
+        ----------
+        variables : list(str)
+            List of variables names.
+        values : list
+            List of values.
+        """
+
+        self.data = dict(zip(variables, values))
+        self.nodes = []
+        self.edges = []
+
+    def __getitem__(self, item):
+        """
+        Get face data element.
+
+        Parameters
+        ----------
+        item : str
+            Name of data element.
+
+        Returns
+        -------
+        value
+            Value of data element.
+        """
+
+        return self.data.get(item, 0.0)
+
+    def __setitem__(self, key, value):
+        """
+        Set data element.
+
+        Parameters
+        ----------
+        key : str
+            Name of data element.
+        value
+            Value of data element.
+        """
+
+        self.data[key] = value
+
+
 class Grid:
     """
     Grid (Surface Unstructured).
@@ -264,7 +317,7 @@ class Grid:
         assert (type(face) is Face)
 
         node.faces.append(face)
-        face.Nodes.append(node)
+        face.nodes.append(node)
 
     # ----------------------------------------------------------------------------------------------
 
@@ -281,7 +334,7 @@ class Grid:
         assert (type(face) is Face)
 
         edge.faces.append(face)
-        face.Edges.append(edge)
+        face.edges.append(edge)
 
     # ----------------------------------------------------------------------------------------------
 
@@ -432,9 +485,9 @@ class Grid:
 
             # Now we need to fix rest objects links.
             for face in self.Faces:
-                node_a = face.Nodes[0]
-                node_b = face.Nodes[1]
-                node_c = face.Nodes[2]
+                node_a = face.nodes[0]
+                node_b = face.nodes[1]
+                node_c = face.nodes[2]
                 self.complex_link_face_node_node_edge(face, node_a, node_b)
                 self.complex_link_face_node_node_edge(face, node_a, node_c)
                 self.complex_link_face_node_node_edge(face, node_b, node_c)
@@ -453,7 +506,7 @@ class Grid:
 
         # Если не подан параметр с перечислением полей ячеек для экспорта, то экспортируем все поля.
         if face_variables is None:
-            face_variables = list(self.Faces[0].Data.keys())
+            face_variables = list(self.Faces[0].data.keys())
         variables = ['X', 'Y', 'Z'] + face_variables
 
         with open(filename, 'w', newline='\n') as f:
@@ -487,7 +540,7 @@ class Grid:
 
                 # Write connectivity lists.
                 for face in zone.Faces:
-                    f.write(' '.join([str(zone.Nodes.index(n) + 1) for n in face.Nodes]) + '\n')
+                    f.write(' '.join([str(zone.Nodes.index(n) + 1) for n in face.nodes]) + '\n')
 
             f.close()
 
@@ -689,68 +742,6 @@ class Zone:
 
 # ==================================================================================================
 
-class Face:
-    """
-    Face of the grid.
-    """
-
-    # ----------------------------------------------------------------------------------------------
-
-    def __init__(self, variables, values):
-        """
-        Constructor face.
-
-        :param variables: Variables list.
-        :param values:    Values list.
-        """
-
-        # Create face data as a dictionary.
-        self.Data = dict(zip(variables, values))
-
-        # Links with nodes and edges.
-        self.Nodes = []
-        self.Edges = []
-
-    # ----------------------------------------------------------------------------------------------
-
-    def __getitem__(self, item):
-        """
-        Get data field.
-
-        :param item: Variable name.
-        :return:     Value.
-        """
-
-        return self.Data.get(item, 0.0)
-
-    # ----------------------------------------------------------------------------------------------
-
-    def __setitem__(self, key, value):
-        """
-        Set data field.
-
-        :param key:   Key value.
-        :param value: Value.
-        """
-
-        self.Data[key] = value
-
-    # ----------------------------------------------------------------------------------------------
-
-    def find_edge(self, p1, p2):
-        """
-        Find edge with given nodes.
-
-        :param p1: the first node
-        :param p2: the second node
-        :return: edge - if it is found, None - otherwise
-        """
-
-        for edge in self.Edges:
-            if p1 in edge.Nodes and p2 in edge.Nodes:
-                return edge
-
-        return None
 
 
 if __name__ == '__main__':
