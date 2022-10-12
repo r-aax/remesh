@@ -232,92 +232,38 @@ class Mesh:
 
         raise Exception('Internal error')
 
-    # ----------------------------------------------------------------------------------------------
-
-    def add_node(self, n, is_merge_same_nodes=True, zone=None):
+    def add_node(self, node):
         """
-        Add node.
+        Add node to mesh.
 
-        :param n: node
-        :param is_merge_same_nodes: flag merge same nodes
-        :param zone: zone
-        :return: node registered in self.Nodes
+        Parameters
+        ----------
+        node : Node
+            Node to add.
+
+        Returns
+        -------
+            If new node is added - return this node,
+            otherwise - return existed node.
         """
 
-        found_node = self.find_near_node(n)
+        found_node = self.find_near_node(node)
 
-        if (found_node is None) or (not is_merge_same_nodes):
-            # There is no such node in the grid.
-            # We have to add it.
-            self.nodes.append(n)
-            self.rounded_coordinates_bag.add(n.rounded_coordinates())
-            if zone:
-                zone.add_node(n)
-            return n
+        if found_node is None:
+            self.nodes.append(node)
+            self.rounded_coordinates_bag.add(node.rounded_coordinates())
+            return node
         else:
-            # There is already such a node in the grid.
-            # Just return it.
             return found_node
 
-    # ----------------------------------------------------------------------------------------------
-
-    def add_face(self, f):
+    def load(self, filename):
         """
-        Add face.
+        Load mesh.
 
-        :param f: face
-        :param global_id: int - global id from face in grid
-        :return: added face
-        """
-
-
-        self.faces.append(f)
-
-        return f
-
-    # ----------------------------------------------------------------------------------------------
-
-    @staticmethod
-    def link_node_face(node, face):
-        """
-        Link face with node.
-
-        :param node: node
-        :param face: face
-        """
-
-        assert (type(node) is Node)
-        assert (type(face) is Face)
-
-        node.faces.append(face)
-        face.nodes.append(node)
-
-    # ----------------------------------------------------------------------------------------------
-
-    @staticmethod
-    def link_edge_face(edge, face):
-        """
-        Link edge with face.
-
-        :param edge: edge
-        :param face: face
-        """
-
-        assert (type(edge) is Edge)
-        assert (type(face) is Face)
-
-        edge.faces.append(face)
-        face.edges.append(edge)
-
-    # ----------------------------------------------------------------------------------------------
-
-    def load(self, filename,
-             is_merge_same_nodes=True):
-        """
-        Load grid from file.
-
-        :param filename: file name
-        :param is_merge_same_nodes: merge same nodes
+        Parameters
+        ----------
+        filename : str
+            Name of file.
         """
 
         variables = []
@@ -333,20 +279,27 @@ class Mesh:
             while line:
 
                 if line[0] == '#':
-                    # Comment.
-                    pass
+
+                    # Comment, save it.
+                    self.comment = line[1:-1]
+
                 elif 'TITLE=' in line:
-                    self.Name = line.split('=')[1][1:-2]
+
+                    # Title, save it.
+                    self.title = line.split('=')[1][1:-2]
+
                 elif 'VARIABLES=' in line:
-                    variables_str = line.split('=')[-1][:-1]
+
+                    # Variables.
+                    variables_str = line.split('=')[1][:-1]
                     variables = variables_str.replace('"', '').replace(',', '').split()
                     face_variables = variables[3:]
                     face_variables_count = len(face_variables)
 
                 elif 'ZONE T=' in line:
 
-                    # Create new zone.
-                    zone_name = line.split('=')[-1][1:-2]
+                    # New zone.
+                    zone_name = line.split('=')[1][1:-2]
                     zone = Zone(zone_name)
                     self.zones.append(zone)
 
@@ -370,9 +323,8 @@ class Mesh:
                         raise Exception('Wrong varlocation line ({0}). '
                                         'Right value is {1}'.format(varlocation_line,
                                                                     right_varlocation_line))
-                    nodes_to_read = int(nodes_line.split('=')[-1][:-1])
-                    # print('LOAD: zone {0}, nodes_to_read = {1}'.format(zone_name, nodes_to_read))
-                    faces_to_read = int(faces_line.split('=')[-1][:-1])
+                    nodes_to_read = int(nodes_line.split('=')[1][:-1])
+                    faces_to_read = int(faces_line.split('=')[1][:-1])
 
                     # Read data for nodes.
                     c = []
@@ -380,9 +332,8 @@ class Mesh:
                         line = f.readline()
                         c.append([float(xi) for xi in line.split()])
                     for i in range(nodes_to_read):
-                        p = np.array([c[0][i], c[1][i], c[2][i]])
-                        node = Node(p)
-                        node = self.add_node(node, is_merge_same_nodes)
+                        node = Node(np.array([c[0][i], c[1][i], c[2][i]]))
+                        node = self.add_node(node)
                         zone.nodes.append(node)
 
                     # Read data for faces.
@@ -393,7 +344,7 @@ class Mesh:
                     for i in range(faces_to_read):
                         face = Face(face_variables,
                                     [d[j][i] for j in range(face_variables_count)])
-                        self.add_face(face)
+                        self.faces.append(face)
                         zone.faces.append(face)
 
                     # Read connectivity lists.
@@ -402,58 +353,45 @@ class Mesh:
                         face = zone.faces[i]
                         nodes = [zone.nodes[int(ss) - 1] for ss in line.split()]
                         if len(nodes) != 3:
-                            raise Exception('Wrong count of ' \
-                                            'face linked nodes ({0}).'.format(len(nodes)))
-                        Mesh.link_node_face(nodes[0], face)
-                        Mesh.link_node_face(nodes[1], face)
-                        Mesh.link_node_face(nodes[2], face)
-
+                            raise Exception('Internal error')
+                        face.nodes = nodes
+                        for n in nodes:
+                            n.faces.append(face)
                 else:
                     raise Exception('Unexpected line : {0}.'.format(line))
 
                 line = f.readline()
             f.close()
 
-            # Now we need to fix rest objects links.
-            for face in self.faces:
-                node_a = face.nodes[0]
-                node_b = face.nodes[1]
-                node_c = face.nodes[2]
-
-    # ----------------------------------------------------------------------------------------------
-
-    def store(self, filename, face_variables=None):
+    def store(self, filename):
         """
-        Store grid to file.
+        Store mesh.
 
-        :param filename: file name
+        Parameters
+        ----------
+        filename : str
+            Name of file.
         """
 
-        # Если не подан параметр с перечислением полей ячеек для экспорта, то экспортируем все поля.
-        if face_variables is None:
-            face_variables = list(self.faces[0].data.keys())
-        variables = ['X', 'Y', 'Z'] + face_variables
+        variables = ['X', 'Y', 'Z'] + list(self.faces[0].data.keys())
 
         with open(filename, 'w', newline='\n') as f:
 
             # Store head.
-            f.write('# crys-gsu\n')
-            # if self.Name != '':
-            # TITLE is not needed if empty, nut remesher craches if there is no title.
-            f.write('TITLE="{0}"\n'.format(self.Name))
+            f.write(f'#{self.comment}\n')
+            f.write(f'TITLE="{self.title}"\n')
             f.write('VARIABLES={0}\n'.format(', '.join(['"{0}"'.format(k) for k in variables])))
-
 
             # Store zones.
             for zone in self.zones:
 
                 # Store zone head.
-                f.write('ZONE T="{0}"\n'.format(zone.name))
-                f.write('NODES={0}\n'.format(len(zone.nodes)))
-                f.write('ELEMENTS={0}\n'.format(len(zone.faces)))
+                f.write(f'ZONE T="{zone.name}"\n')
+                f.write(f'NODES={len(zone.nodes)}\n')
+                f.write(f'ELEMENTS={len(zone.faces)}\n')
                 f.write('DATAPACKING=BLOCK\n')
                 f.write('ZONETYPE=FETRIANGLE\n')
-                f.write('VARLOCATION=([4-{0}]=CELLCENTERED)\n'.format(len(variables)))
+                f.write(f'VARLOCATION=([4-{len(variables)}]=CELLCENTERED)\n')
 
                 # Write first 3 data items (X, Y, Z coordinates).
                 for i in range(3):
