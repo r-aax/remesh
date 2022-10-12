@@ -1,6 +1,43 @@
-# Реализация эволюции поверхности.
+# Surface evolution.
 
 import numpy as np
+
+# Count of valuable digits (after dot) in node coordinates.
+# If coordinates of nodes doesn't differ in valuable digits we consider them equal.
+NODE_COORDINATES_VALUABLE_DIGITS_COUNT = 10
+
+
+class Node:
+    """
+    Node.
+    """
+
+    def __init__(self, p):
+        """
+        Initialization.
+        Node may appear only as point holder.
+
+        Parameters
+        ----------
+        p : np.array
+            Point coordinates.
+        """
+
+        self.p = p
+        self.edges = []
+        self.faces = []
+
+    def rounded_coordinates(self):
+        """
+        Tuple with rounded coordinates.
+
+        Returns
+        -------
+        tuple
+            Rounded coordinates.
+        """
+
+        return tuple(map(lambda x: round(x, NODE_COORDINATES_VALUABLE_DIGITS_COUNT), self.p))
 
 
 class Grid:
@@ -108,12 +145,12 @@ class Grid:
         """
 
         # First try to find  in bag.
-        if n.RoundedCoords in self.RoundedCoordsBag:
+        if n.rounded_coordinates() in self.RoundedCoordsBag:
             for node in self.Nodes:
-                if n.RoundedCoords == node.RoundedCoords:
+                if n.rounded_coordinates() == node.rounded_coordinates():
                     return node
             raise Exception('We expect to find node ' \
-                            'with coordinates {0} in the grid'.format(n.RoundedCoords))
+                            'with coordinates {0} in the grid'.format(n.rounded_coordinates()))
 
         return None
 
@@ -135,7 +172,7 @@ class Grid:
             # There is no such node in the grid.
             # We have to add it.
             self.Nodes.append(n)
-            self.RoundedCoordsBag.add(n.RoundedCoords)
+            self.RoundedCoordsBag.add(n.rounded_coordinates())
             if zone:
                 zone.add_node(n)
             return n
@@ -204,10 +241,10 @@ class Grid:
         assert (type(edge) is Edge)
 
         # проверка на добавление дублей
-        assert not edge in node.Edges
+        assert not edge in node.edges
         assert not node in edge.Nodes
 
-        node.Edges.append(edge)
+        node.edges.append(edge)
         edge.Nodes.append(node)
 
     # ----------------------------------------------------------------------------------------------
@@ -224,7 +261,7 @@ class Grid:
         assert (type(node) is Node)
         assert (type(face) is Face)
 
-        node.Faces.append(face)
+        node.faces.append(face)
         face.Nodes.append(node)
 
     # ----------------------------------------------------------------------------------------------
@@ -256,7 +293,7 @@ class Grid:
         :return: edge - if it is found, None - otherwise
         """
 
-        for edge in node_a.Edges:
+        for edge in node_a.edges:
             if node_b in edge.Nodes:
                 return edge
 
@@ -470,7 +507,7 @@ class Grid:
 
         # Add nodes.
         for n in self.Nodes:
-            zids = list(set([f.Zone.Id for f in n.Faces]))
+            zids = list(set([f.Zone.Id for f in n.faces]))
             for zid in zids:
                 self.Zones[zid].add_node(n)
 
@@ -583,7 +620,7 @@ class Zone:
         :return:  Composed string.
         """
 
-        i_list = ['{0:.18e}'.format(node.P[i]) for node in self.Nodes]
+        i_list = ['{0:.18e}'.format(node.p[i]) for node in self.Nodes]
         i_str = ' '.join(i_list)
 
         return i_str
@@ -857,34 +894,6 @@ class Face:
                 return edge
 
         return None
-
-
-# ==================================================================================================
-
-
-class Node:
-    """
-    Node of the grid.
-    """
-
-    # ----------------------------------------------------------------------------------------------
-
-    def __init__(self, p):
-        """Constructor node.
-
-        :param p: Node point (Vector).
-        """
-
-        self.P = p
-
-        # Rounded coordinates for registration in set.
-        self.RoundedCoords = round(self.P[0], 10), round(self.P[1], 10), round(self.P[2], 10)
-
-        # Links with edges and faces.
-        self.Edges = []
-        self.Faces = []
-
-        self.border = False
 
 # ==================================================================================================
 
