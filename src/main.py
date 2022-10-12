@@ -680,62 +680,11 @@ class Zone:
         :return:  Added face.
         """
 
-        # If face is already link to some zone,
-        # we have to unlink it first.
-        if f.Zone is not None:
-            f.unlink_from_zone()
-
         # Just add and set link to the zone.
         f.Zone = self
         self.Faces.append(f)
 
         return f
-
-    # ----------------------------------------------------------------------------------------------
-
-    def get_real_face(self, e):
-        """Get real faces connected to the edge.
-
-        Parameters
-        ----------
-          e : Edge
-            Edge.
-
-        Returns
-        -------
-          f : [Face]
-            incident face that belongs to the zone
-        """
-        assert len(e.Faces) == 2
-        if e.Faces[0].Zone == self:
-            return e.Faces[0]
-        elif e.Faces[1].Zone == self:
-            return e.Faces[1]
-        else:
-            raise RuntimeError()
-
-    # ---------------------------------------------------------------------------------------------
-
-    def get_ghost_face(self, e):
-        """Get ghost faces connected to the edge.
-
-        Parameters
-        ----------
-          e : Edge
-            Edge.
-
-        Returns
-        -------
-          f : [Face]
-            incident faces that belongs to the zone
-        """
-        assert len(e.Faces) == 2
-        if e.Faces[0].Zone != self:
-            return e.Faces[0]
-        elif e.Faces[1].Zone != self:
-            return e.Faces[1]
-        else:
-            raise RuntimeError()
 
 
 # ==================================================================================================
@@ -762,9 +711,6 @@ class Face:
         self.Nodes = []
         self.Edges = []
 
-        # Link to zone (each face belongs only to one single zone).
-        self.Zone = None
-
     # ----------------------------------------------------------------------------------------------
 
     def __getitem__(self, item):
@@ -788,95 +734,6 @@ class Face:
         """
 
         self.Data[key] = value
-
-    # ----------------------------------------------------------------------------------------------
-
-    def get_neighbour(self, edge):
-        """
-        Get neighbour through edge.
-
-        :param edge: Edge.
-        :return:     Neighbour.
-        """
-
-        incident_faces = len(edge.Faces)
-
-        if incident_faces == 1:
-            if edge.Faces[0] != self:
-                raise Exception('Error while getting face neighbour.')
-            return None
-        elif incident_faces == 2:
-            if edge.Faces[0] == self:
-                return edge.Faces[1]
-            elif edge.Faces[1] == self:
-                return edge.Faces[0]
-            else:
-                raise Exception('Error while getting face neighbour.')
-        else:
-            raise Exception('Wrong edge incident faces ({0}).'.format(incident_faces))
-
-    # ----------------------------------------------------------------------------------------------
-
-    def get_all_neighbours_by_nodes(self):
-        """Получение списка всех соседей через узлы.
-
-        Returns
-        -------
-        [Face]
-            Список ячеек.
-        """
-
-        li = []
-        for n in self.Nodes:
-            for f in n.Faces:
-                if f != self:
-                    if not f in li:
-                        li.append(f)
-
-        return li
-
-    # ----------------------------------------------------------------------------------------------
-
-    def unlink_from_zone(self):
-        """
-        Unlink face from zone.
-        """
-
-        if self.Zone is None:
-            return
-
-        # Face is linked.
-        # Unlink it.
-        self.Zone.Faces.remove(self)
-        self.Zone = None
-
-    # ----------------------------------------------------------------------------------------------
-
-    def link_face_with_nodes_and_edges(self, *args):
-        """Link face with nodes and edges.
-
-        Parameters
-        ----------
-            args: List of Edges or Nodes
-
-        Returns
-        -------
-            Link this Face with Args
-
-        """
-
-        if args:
-            for arg in args:
-                if type(arg) is Edge:
-                    arg.Faces.append(self)
-                    self.Edges.append(arg)
-                elif type(arg) is Node:
-                    arg.Faces.append(self)
-                    self.Nodes.append(arg)
-                else:
-                    raise Exception(f'Error: the type of arg must be Node or Edge, but not your type - {type(arg)}')
-            return True
-        return False
 
     # ----------------------------------------------------------------------------------------------
 
