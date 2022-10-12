@@ -91,6 +91,60 @@ class Face:
         self.data[key] = value
 
 
+class Zone:
+    """
+    Zone - set of faces.
+    """
+
+    def __init__(self, name):
+        """
+        Initialization.
+
+        Parameters
+        ----------
+        name : str
+            Name of zone.
+        """
+
+        self.name = name
+        self.nodes = []
+        self.faces = []
+
+    def nodes_coordinate_slice_str(self, i):
+        """
+        String, that contains i-th coordinate of all nodes.
+
+        Parameters
+        ----------
+        i : int
+            Coordinate index.
+
+        Returns
+        -------
+        str
+            String with coordinate slice.
+        """
+
+        return ' '.join(map(lambda n: '{0:.18e}'.format(n.p[i]), self.nodes))
+
+    def faces_data_element_slice_str(self, e):
+        """
+        String, that contains data element for all faces.
+
+        Parameters
+        ----------
+        e : str
+            Name of data element.
+
+        Returns
+        -------
+        str
+            String with data element slice.
+        """
+
+        return ' '.join(map(lambda f: '{0:.18e}'.format(f[e]), self.faces))
+
+
 class Mesh:
     """
     Mesh - consists of surface triangle faces.
@@ -296,7 +350,7 @@ class Mesh:
                         p = np.array([c[0][i], c[1][i], c[2][i]])
                         node = Node(p)
                         node = self.add_node(node, is_merge_same_nodes)
-                        zone.add_node(node)
+                        zone.nodes.append(node)
 
                     # Read data for faces.
                     d = []
@@ -307,13 +361,13 @@ class Mesh:
                         face = Face(face_variables,
                                     [d[j][i] for j in range(face_variables_count)])
                         self.add_face(face)
-                        zone.add_face(face)
+                        zone.faces.append(face)
 
                     # Read connectivity lists.
                     for i in range(faces_to_read):
                         line = f.readline()
-                        face = zone.Faces[i]
-                        nodes = [zone.Nodes[int(ss) - 1] for ss in line.split()]
+                        face = zone.faces[i]
+                        nodes = [zone.nodes[int(ss) - 1] for ss in line.split()]
                         if len(nodes) != 3:
                             raise Exception('Wrong count of ' \
                                             'face linked nodes ({0}).'.format(len(nodes)))
@@ -361,173 +415,26 @@ class Mesh:
             for zone in self.zones:
 
                 # Store zone head.
-                f.write('ZONE T="{0}"\n'.format(zone.Name))
-                f.write('NODES={0}\n'.format(len(zone.Nodes)))
-                f.write('ELEMENTS={0}\n'.format(len(zone.Faces)))
+                f.write('ZONE T="{0}"\n'.format(zone.name))
+                f.write('NODES={0}\n'.format(len(zone.nodes)))
+                f.write('ELEMENTS={0}\n'.format(len(zone.faces)))
                 f.write('DATAPACKING=BLOCK\n')
                 f.write('ZONETYPE=FETRIANGLE\n')
                 f.write('VARLOCATION=([4-{0}]=CELLCENTERED)\n'.format(len(variables)))
 
                 # Write first 3 data items (X, Y, Z coordinates).
                 for i in range(3):
-                    f.write(zone.get_nodes_coord_slice_str(i) + ' \n')
+                    f.write(zone.nodes_coordinate_slice_str(i) + ' \n')
 
                 # Write rest faces data items.
                 for e in variables[3:]:
-                    f.write(zone.get_faces_data_slice_str(e) + ' \n')
+                    f.write(zone.faces_data_element_slice_str(e) + ' \n')
 
                 # Write connectivity lists.
-                for face in zone.Faces:
-                    f.write(' '.join([str(zone.Nodes.index(n) + 1) for n in face.nodes]) + '\n')
+                for face in zone.faces:
+                    f.write(' '.join([str(zone.nodes.index(n) + 1) for n in face.nodes]) + '\n')
 
             f.close()
-
-
-
-# ==================================================================================================
-
-class Zone:
-    """
-    Zone of the grid.
-    """
-
-    # ----------------------------------------------------------------------------------------------
-
-    def __init__(self, name):
-        """
-        Constructor.
-
-        :param name: Name of zone.
-        """
-
-        self.Id = -1
-
-        self.Name = name
-
-        # No nodes or faces in the zone yet.
-        self.Nodes = []
-        self.Edges = []
-        self.Faces = []
-
-    # ----------------------------------------------------------------------------------------------
-
-    def nodes_count(self):
-        """
-        Get count of nodes.
-
-        :return: Nodes count.
-        """
-
-        return len(self.Nodes)
-
-    # ----------------------------------------------------------------------------------------------
-
-    def edges_count(self):
-        """
-        Get count of edges.
-
-        :return: Edges count.
-        """
-
-        return len(self.Edges)
-
-    # ----------------------------------------------------------------------------------------------
-
-    def outer_edges_count(self):
-        """
-        Get count of outer edges.
-
-        :return: Outer edges count.
-        """
-
-        return len([e for e in self.Edges if e.is_outer()])
-
-    # ----------------------------------------------------------------------------------------------
-
-    def faces_count(self):
-        """
-        Get count of faces.
-
-        :return: Faces count.
-        """
-
-        return len(self.Faces)
-
-    # ----------------------------------------------------------------------------------------------
-
-    def get_nodes_coord_slice_str(self, i):
-        """
-        Get string composed from i-th coord of all nodes.
-
-        :param i: Index of nodes coord.
-        :return:  Composed string.
-        """
-
-        i_list = ['{0:.18e}'.format(node.p[i]) for node in self.Nodes]
-        i_str = ' '.join(i_list)
-
-        return i_str
-
-    # ----------------------------------------------------------------------------------------------
-
-    def get_faces_data_slice_str(self, e):
-        """
-        Get string composed from elements of data of all faces.
-
-        :param e: Data element.
-        :return:  Composed string.
-        """
-
-        e_list = ['{0:.18e}'.format(face[e]) for face in self.Faces]
-        e_str = ' '.join(e_list)
-
-        return e_str
-
-    # ----------------------------------------------------------------------------------------------
-
-    def add_node(self, n):
-        """
-        Add node to zone.
-
-        :param n: Node.
-        :return:  Added node.
-        """
-
-        # Just add node.
-        self.Nodes.append(n)
-
-        return n
-
-    # ----------------------------------------------------------------------------------------------
-
-    def add_edge(self, e):
-        """
-        Add edge to zone.
-
-        :param e: Edge.
-        :return:  Added edge.
-        """
-
-        # Just add egde.
-        self.Edges.append(e)
-
-        return e
-
-    # ----------------------------------------------------------------------------------------------
-
-    def add_face(self, f):
-        """
-        Add face to zone (with link).
-
-        :param f: Face.
-        :return:  Added face.
-        """
-
-        # Just add and set link to the zone.
-        f.Zone = self
-        self.Faces.append(f)
-
-        return f
 
 
 if __name__ == '__main__':
