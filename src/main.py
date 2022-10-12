@@ -134,7 +134,6 @@ class Grid:
         if (found_node is None) or (not is_merge_same_nodes):
             # There is no such node in the grid.
             # We have to add it.
-            n.GloId = len(self.Nodes)
             self.Nodes.append(n)
             self.RoundedCoordsBag.add(n.RoundedCoords)
             if zone:
@@ -147,27 +146,15 @@ class Grid:
 
     # ----------------------------------------------------------------------------------------------
 
-    def add_edge(self, e, global_id=None):
-        """
-        Add edge to grid.
+    def add_edge(self, e):
 
-        :param e: edge
-        :param global_id: int - global id from edge in grid
-        :return: added edge
-        """
-
-        # Just add edge with global id correction.
-        if global_id is None:
-            e.GloId = len(self.Edges)
-        else:
-            e.GloId = global_id
         self.Edges.append(e)
 
         return e
 
     # ----------------------------------------------------------------------------------------------
 
-    def add_face(self, f, global_id=None):
+    def add_face(self, f):
         """
         Add face.
 
@@ -176,13 +163,8 @@ class Grid:
         :return: added face
         """
 
-        # Just correct global id.
-        if global_id is None:
-            f.GloId = len(self.Faces)
-            self.Faces.append(f)
-        else:
-            f.GloId = global_id
-            self.Faces[global_id] = f
+
+        self.Faces.append(f)
 
         return f
 
@@ -258,13 +240,6 @@ class Grid:
 
         assert (type(edge) is Edge)
         assert (type(face) is Face)
-
-        # Check if it is enable to link the face with the edge.
-        if len(edge.Faces) == 2:
-            raise Exception('Too many faces linking with this edge ({0} - {1},'
-                            'GloId = {2})'.format(edge.Nodes[0].P,
-                                                  edge.Nodes[1].P,
-                                                  edge.GloId))
 
         edge.Faces.append(face)
         face.Edges.append(edge)
@@ -453,9 +428,6 @@ class Grid:
             f.write('TITLE="{0}"\n'.format(self.Name))
             f.write('VARIABLES={0}\n'.format(', '.join(['"{0}"'.format(k) for k in variables])))
 
-            # Additional structure for calculating local identifiers
-            # of the nodes for connectivity lists storing.
-            loc_ids = [-1] * len(self.Nodes)
 
             # Store zones.
             for zone in self.Zones:
@@ -477,10 +449,8 @@ class Grid:
                     f.write(zone.get_faces_data_slice_str(e) + ' \n')
 
                 # Write connectivity lists.
-                for i, node in enumerate(zone.Nodes):
-                    loc_ids[node.GloId] = i
                 for face in zone.Faces:
-                    f.write(' '.join([str(loc_ids[n.GloId] + 1) for n in face.Nodes]) + '\n')
+                    f.write(' '.join([str(zone.Nodes.index(n) + 1) for n in face.Nodes]) + '\n')
 
             f.close()
 
@@ -748,9 +718,6 @@ class Face:
         :param values:    Values list.
         """
 
-        # Global identifier (in grid numeration).
-        self.GloId = -1
-
         # Create face data as a dictionary.
         self.Data = dict(zip(variables, values))
 
@@ -908,9 +875,6 @@ class Node:
         :param p: Node point (Vector).
         """
 
-        # Global identifier (in grid numeration).
-        self.GloId = -1
-
         self.P = p
 
         # Rounded coordinates for registration in set.
@@ -936,9 +900,6 @@ class Edge:
         """
         Constructor.
         """
-
-        # Global identifier (in grid numeration).
-        self.GloId = -1
 
         # Links to nodes and faces.
         self.Nodes = []
