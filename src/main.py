@@ -1,5 +1,7 @@
 # Surface evolution.
 
+import math
+import time
 import numpy as np
 
 # Count of valuable digits (after dot) in node coordinates.
@@ -8,6 +10,9 @@ NODE_COORDINATES_VALUABLE_DIGITS_COUNT = 10
 
 # String of export.
 EXPORT_FORMAT_STRING = '{0:.18e}'
+
+# Small eps.
+EPS = 1.0e-10
 
 
 class Node:
@@ -28,6 +33,9 @@ class Node:
 
         self.p = p
         self.faces = []
+
+        # Direction for node moving (we call it normal).
+        self.normal = None
 
     def rounded_coordinates(self):
         """
@@ -62,10 +70,20 @@ class Face:
         self.data = dict(zip(variables, values))
         self.nodes = []
 
-        # Data that we'll use in calculations.
-        self.hi = 0.0
+        # Area of the face.
         self.area = 0.0
+
+        # Direction for face surface moving (normal by default).
+        self.normal = None
+
+        # Total ice volume to be accreted for this face.
         self.target_ice = 0.0
+
+        # Ice chunk to be accreted on current iteration.
+        self.ice_chunk = 0.0
+
+        # H field.
+        self.h = 0.0
 
     def __getitem__(self, item):
         """
@@ -98,14 +116,48 @@ class Face:
 
         self.data[key] = value
 
+    def points(self):
+        """
+        Get points.
+
+        Returns
+        -------
+        tuple
+            Points.
+        """
+
+        return self.nodes[0].p, self.nodes[1].p, self.nodes[2].p
+
+    def normals(self):
+        """
+        Get normals.
+
+        Returns
+        -------
+        tuple
+            Normals.
+        """
+
+        return self.nodes[0].normal, self.nodes[1].normal, self.nodes[2].normal
+
     def calculate_area(self):
         """
         Calculate area.
         """
 
-        a, b, c = self.nodes[0].p, self.nodes[1].p, self.nodes[2].p
+        a, b, c = self.points()
 
         self.area = 0.5 * np.linalg.norm(np.cross(b - a, c - b))
+
+    def calculate_normal(self):
+        """
+        Calculate normal.
+        """
+
+        a, b, c = self.points()
+
+        self.normal = np.cross(b - a, c - b)
+        self.normal = self.normal / np.linalg.norm(self.normal)
 
 
 class Zone:
@@ -421,18 +473,80 @@ class Mesh:
 
             f.close()
 
-    def define_target_ice(self):
+    def remesh_init(self):
         """
-        Define target ice.
-        Target ice - ice to be accreted.
-
-        While defining target ice first we extract "Hi" field and calculate areas.
+        Init for remesh.
         """
 
         for f in self.faces:
-            f.hi = f['Hi']
             f.calculate_area()
-            f.target_ice = f.area * f.hi
+            f.calculate_normal()
+            f.target_ice = f.area * f['Hi']
+            f.ice_chunk = f.target_ice
+
+    def define_nodal_offset_direction(self):
+        """
+        Define nodal offset direction.
+
+        TODO: from [1] IV.A.2
+        """
+
+        for n in self.nodes:
+            normal = np.array([0.0, 0.0, 0.0])
+            for f in n.faces:
+                normal = normal + f.normal
+            n.normal = normal / np.linalg.norm(normal)
+
+    def define_height_field(self):
+        """
+        Define height field.
+
+        Solve quadratic equation:
+        V(h) = ah + bh^2 = target_ice
+
+        TODO: from [1] IV.A.5
+        """
+
+        for f in self.faces:
+
+            # Prepare coefficients.
+            p1, p2, p3 = f.points()
+            n1, n2, n3 = f.normals()
+            p21, p31 = p2 - p1, p3 - p1
+            u1 = n1 / np.dot(f.normal, n1)
+            u2 = n2 / np.dot(f.normal, n2)
+            u3 = n3 / np.dot(f.normal, n3)
+            u21, u31 = u2 - u1, u3 - u1
+            a = 0.5 * np.linalg.norm(np.cross(p21, p31))
+            b = 0.25 * np.dot(np.cross(p21, u31) + np.cross(u21, p31), f.normal)
+
+            # Prismas method.
+            f.h = f.ice_chunk / f.area
+
+            # Try to solve more accurately (pyramides method).
+            if abs(b) > EPS:
+                # bh^2 + ah - V = 0
+                d = a * a + 4.0 * b * f.ice_chunk
+                if d >= 0.0:
+                    d = math.sqrt(d)
+                    h1, h2 = (-a + d) / (2.0 * b), (-a - d) / (2.0 * b)
+                    if (h1 >= 0.0) and (h2 >= 0.0):
+                        f.h = min(h1, h2)
+                    elif h1 >= 0.0:
+                        f.h = h1
+                    elif h2 >= 0.0:
+                        f.h = h2
+
+    def update_surface_nodal_positions(self):
+        """
+        Update surface nodal positions.
+
+        TODO: from [1] IV.A.7
+        """
+
+        for n in self.nodes:
+            h = sum(map(lambda f: f.h, n.faces)) / len(n.faces)
+            n.p = n.p + h * n.normal
 
     def remesh(self):
         """
@@ -447,12 +561,35 @@ class Mesh:
                 5th AIAA Atmospheric and Space Environments Conference, 2013, DOI: 10.2514/6.2013-2544
         """
 
-        self.define_target_ice()
+        self.remesh_init()
+        self.define_nodal_offset_direction()
+        self.define_height_field()
+        self.update_surface_nodal_positions()
+
+
+def lrs(name_in, name_out):
+    """
+    Load, remesh, store.
+
+    Parameters
+    ----------
+    name_in : str
+        Name of input mesh file.
+    name_out : str
+        Name of output mesh file.
+    """
+
+    print(f'surface-evolution : {name_in} -> {name_out}')
+    g = Mesh()
+    g.load(name_in)
+    t0 = time.time()
+    g.remesh()
+    t = time.time() - t0
+    g.store(name_out)
+    print(f'\ttime = {t:.5f} s')
 
 
 if __name__ == '__main__':
-    print('surface-evolution')
-    g = Mesh()
-    g.load('../cases/naca/naca_t12.dat')
-    g.remesh()
-    g.store('../garbage.dat')
+    lrs('../cases/naca/naca_t05.dat', '../res_naca_t05.dat')
+    lrs('../cases/naca/naca_t12.dat', '../res_naca_t12.dat')
+    lrs('../cases/naca/naca_t25.dat', '../res_naca_t25.dat')
