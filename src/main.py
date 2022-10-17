@@ -15,6 +15,86 @@ EXPORT_FORMAT_STRING = '{0:.18e}'
 EPS = 1.0e-10
 
 
+def quadratic_equation_smallest_positive_root(a, b, c):
+    """
+    Smallest positive root of equation ax^2 + bx + c = 0.
+
+    Parameters
+    ----------
+    a : float
+        Coefficient with x^2.
+    b : float
+        Coefficient with x.
+    c : float
+        Free coefficient.
+
+    Returns
+    -------
+        Smallest positive root or None.
+    """
+
+    if a != 0.0:
+        d = b * b - 4.0 * a * c
+        if d >= 0.0:
+            d = math.sqrt(d)
+            x1, x2 = (-b - d) / (2.0 * a), (-b + d) / (2.0 * a)
+            if (x1 > 0.0) and (x2 > 0.0):
+                return min(x1, x2)
+            elif x1 > 0.0:
+                return x1
+            elif x2 > 0.0:
+                return x2
+    elif b != 0.0:
+        x = -c / b
+        if x > 0.0:
+            return x
+
+    return None
+
+
+def coefficients_for_face_accreted_ice_volume(p1, p2, p3, n1, n2, n3, n):
+    """
+    Ice accreted on face with p1, p2, p3 points and n1, n2, n3 normal directions and n - normal of the face.
+
+    V(h) = ah + bh^2 + ch^3
+
+    Function returns a, b, c coefficients.
+
+    Parameters
+    ----------
+    p1 : np.array
+        First point.
+    p2 : np.array
+        Second point.
+    p3 :np.array
+        Third point.
+    n1 : np.array
+        First point move direction.
+    n2 : np.array
+        Second point move direction.
+    n3 : np.array
+        Third point move direction.
+    n : np.array
+        Face normal.
+
+    Returns
+    -------
+    tuple
+        Coefficients.
+    """
+
+    p21, p31 = p2 - p1, p3 - p1
+    u1 = n1 / np.dot(n, n1)
+    u2 = n2 / np.dot(n, n2)
+    u3 = n3 / np.dot(n, n3)
+    u21, u31 = u2 - u1, u3 - u1
+    a = 0.5 * np.linalg.norm(np.cross(p21, p31))
+    b = 0.25 * np.dot(np.cross(p21, u31) + np.cross(u21, p31), n)
+    c = 0.25 * np.dot(np.cross(u21, u31), n)
+
+    return a, b, c
+
+
 class Node:
     """
     Node - container for coordinates.
@@ -162,6 +242,51 @@ class Face:
         self.normal = np.cross(b - a, c - b)
         self.normal = self.normal / np.linalg.norm(self.normal)
         self.smoothed_normal = self.normal.copy()
+
+    def time_step_fraction_jiao(self):
+        """
+        Calculate time-step fraction jiao.
+
+        TODO: from [3]
+
+        Returns
+        -------
+        float
+            Time step fraction Jiao [0.0 <= alpha <= 1.0]
+        """
+
+        # No restriction.
+        return 1.0
+
+    def time_step_fraction(self, time_step_fraction_k):
+        """
+        Time-step fraction.
+
+        Source: [1] IV.A.4
+
+        Parameters
+        ----------
+        time_step_fraction_k : float
+            Coefficient for define time-step fraction.
+
+        Returns
+        -------
+        float
+            Time-step fraction.
+        """
+
+        # Coefficients for V(h) from [1].
+        p1, p2, p3 = self.points()
+        n1, n2, n3 = self.normals()
+        a, b, c = coefficients_for_face_accreted_ice_volume(p1, p2, p3, n1, n2, n3, self.normal)
+
+        # Equation 3ch^2 + 2bh + a = 0.
+        h = quadratic_equation_smallest_positive_root(3.0 * c, 2.0 * b, a)
+        if h is not None:
+            tsf = time_step_fraction_k * (a * h + b * h * h + c * h * h * h) / self.target_ice
+            return min(tsf, self.time_step_fraction_jiao(), 1.0)
+        else:
+            return self.time_step_fraction_jiao()
 
 
 class Zone:
@@ -544,20 +669,28 @@ class Mesh:
                     sum_ws += w
                 n.normal /= sum_ws
 
-    def time_step_fraction_jiao(self):
+    def time_step_fraction(self, time_step_fraction_k):
         """
-        Calculate time-step fraction jiao.
+        Time-step fraction.
 
-        TODO: from [3]
+        Source: [1] IV.A.4
+
+        Parameters
+        ----------
+        time_step_fraction_k : float
+            Coefficient for define time-step fraction.
 
         Returns
         -------
         float
-            Time step fraction Jiao [0.0 <= alpha <= 1.0]
+            Time-step fraction.
         """
 
-        # No restriction.
-        return 1.0
+        tsf = min(map(lambda f: f.time_step_fraction(time_step_fraction_k), self.faces))
+
+        # Chunks initilization.
+        for f in self.faces:
+            f.ice_chunk = tsf * f.target_ice
 
     def define_height_field(self):
         """
@@ -571,16 +704,9 @@ class Mesh:
 
         for f in self.faces:
 
-            # Prepare coefficients.
             p1, p2, p3 = f.points()
             n1, n2, n3 = f.normals()
-            p21, p31 = p2 - p1, p3 - p1
-            u1 = n1 / np.dot(f.normal, n1)
-            u2 = n2 / np.dot(f.normal, n2)
-            u3 = n3 / np.dot(f.normal, n3)
-            u21, u31 = u2 - u1, u3 - u1
-            a = 0.5 * np.linalg.norm(np.cross(p21, p31))
-            b = 0.25 * np.dot(np.cross(p21, u31) + np.cross(u21, p31), f.normal)
+            a, b, _ = coefficients_for_face_accreted_ice_volume(p1, p2, p3, n1, n2, n3, f.normal)
 
             # Prismas method.
             f.h = f.ice_chunk / f.area
@@ -610,8 +736,26 @@ class Mesh:
             h = sum(map(lambda f: f.h, n.faces)) / len(n.faces)
             n.p += h * n.normal
 
+        # Update target ice.
+        for f in self.faces:
+            f.target_ice -= f.ice_chunk
+            f.ice_chunk = 0.0
+
+    def target_ice(self):
+        """
+        Get sum targe ice.
+
+        Returns
+        -------
+        float
+            Targte ice.
+        """
+
+        return sum(map(lambda f: f.target_ice, self.faces))
+
     def remesh(self,
-               normal_smoothing_steps=10, normal_smoothing_s=10.0, normal_smoothing_k=0.15):
+               normal_smoothing_steps=10, normal_smoothing_s=10.0, normal_smoothing_k=0.15,
+               time_step_fraction_k=0.25):
         """
         Remesh.
 
@@ -634,11 +778,14 @@ class Mesh:
             Parameter for local normal smoothing.
         normal_smoothing_k : float
             Parameter for local normal smoothing.
+        time_step_fraction_k : float
+            Coefficient for define time-step fraction.
         """
 
         self.remesh_init()
         self.define_nodal_offset_direction()
         self.local_normal_smoothing(normal_smoothing_steps, normal_smoothing_s, normal_smoothing_k)
+        self.time_step_fraction(time_step_fraction_k)
         self.define_height_field()
         self.update_surface_nodal_positions()
 
@@ -661,8 +808,9 @@ def lrs(name_in, name_out):
     t0 = time.time()
     g.remesh()
     t = time.time() - t0
+    target_ice = g.target_ice()
     g.store(name_out)
-    print(f'\ttime = {t:.5f} s')
+    print(f'\ttime = {t:.5f} s, target_ice = {target_ice:.8f}')
 
 
 if __name__ == '__main__':
