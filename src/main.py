@@ -72,9 +72,11 @@ class Face:
 
         # Area of the face.
         self.area = 0.0
+        self.inversed_area = 0.0
 
-        # Direction for face surface moving (normal by default).
+        # Face normal and smoothed normal.
         self.normal = None
+        self.smoothed_normal = None
 
         # Total ice volume to be accreted for this face.
         self.target_ice = 0.0
@@ -148,6 +150,7 @@ class Face:
         a, b, c = self.points()
 
         self.area = 0.5 * np.linalg.norm(np.cross(b - a, c - b))
+        self.inversed_area = 1.0 / self.area
 
     def calculate_normal(self):
         """
@@ -158,6 +161,7 @@ class Face:
 
         self.normal = np.cross(b - a, c - b)
         self.normal = self.normal / np.linalg.norm(self.normal)
+        self.smoothed_normal = self.normal.copy()
 
 
 class Zone:
@@ -494,8 +498,51 @@ class Mesh:
         for n in self.nodes:
             normal = np.array([0.0, 0.0, 0.0])
             for f in n.faces:
-                normal = normal + f.normal
+                normal += f.normal
             n.normal = normal / np.linalg.norm(normal)
+
+    def local_normal_smoothing(self, normal_smoothing_steps, normal_smoothing_s, normal_smoothing_k):
+        """
+        Reduce surface noise by local normal smoothing.
+
+        Function does not change faces normals.
+        Faces normal stay faces normals.
+        Nodes normals are smoothed after applying the function.
+
+        Source: [1] IV.A.3
+
+        Parameters
+        ----------
+        normal_smoothing_steps : int
+            Steps of normal smoothing.
+        normal_smoothing_s : float
+            Parameter for local normal smoothing.
+        normal_smoothing_k : float
+            Parameter for local normal smoothing.
+        """
+
+        # Weight for face normal and node normal.
+        def fun_w(fn, nn):
+            return max(normal_smoothing_s * (1.0 - np.dot(fn, nn)), normal_smoothing_k)
+
+        # Smoothing.
+        for _ in range(normal_smoothing_steps):
+            for f in self.faces:
+                smoothed_normal = np.array([0.0, 0.0, 0.0])
+                sum_ws = 0.0
+                for n in f.nodes:
+                    w = fun_w(f.smoothed_normal, n.normal)
+                    smoothed_normal += w * n.normal
+                    sum_ws += w
+                f.smoothed_normal = smoothed_normal / sum_ws
+            for n in self.nodes:
+                n.normal = np.array([0.0, 0.0, 0.0])
+                sum_ws = 0.0
+                for f in n.faces:
+                    w = f.inversed_area
+                    n.normal += w * f.smoothed_normal
+                    sum_ws += w
+                n.normal /= sum_ws
 
     def define_height_field(self):
         """
@@ -546,9 +593,10 @@ class Mesh:
 
         for n in self.nodes:
             h = sum(map(lambda f: f.h, n.faces)) / len(n.faces)
-            n.p = n.p + h * n.normal
+            n.p += h * n.normal
 
-    def remesh(self):
+    def remesh(self,
+               normal_smoothing_steps=10, normal_smoothing_s=10.0, normal_smoothing_k=0.15):
         """
         Remesh.
 
@@ -559,10 +607,20 @@ class Mesh:
             [2] D. Thompson, X. Tong, Q. Arnoldus, E. Collins, D. McLaurin, E. Luke.
                 Discrete Surface Evolution and Mesh Deformation for Aircraft Icing Applications. //
                 5th AIAA Atmospheric and Space Environments Conference, 2013, DOI: 10.2514/6.2013-2544
+
+        Parameters
+        ----------
+        normal_smoothing_steps : int
+            Steps of normal smoothing.
+        normal_smoothing_s : float
+            Parameter for local normal smoothing.
+        normal_smoothing_k : float
+            Parameter for local normal smoothing.
         """
 
         self.remesh_init()
         self.define_nodal_offset_direction()
+        self.local_normal_smoothing(normal_smoothing_steps, normal_smoothing_s, normal_smoothing_k)
         self.define_height_field()
         self.update_surface_nodal_positions()
 
