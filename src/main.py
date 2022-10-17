@@ -544,6 +544,21 @@ class Mesh:
                     sum_ws += w
                 n.normal /= sum_ws
 
+    def time_step_fraction_jiao(self):
+        """
+        Calculate time-step fraction jiao.
+
+        TODO: from [3]
+
+        Returns
+        -------
+        float
+            Time step fraction Jiao [0.0 <= alpha <= 1.0]
+        """
+
+        # No restriction.
+        return 1.0
+
     def define_height_field(self):
         """
         Define height field.
@@ -607,6 +622,9 @@ class Mesh:
             [2] D. Thompson, X. Tong, Q. Arnoldus, E. Collins, D. McLaurin, E. Luke.
                 Discrete Surface Evolution and Mesh Deformation for Aircraft Icing Applications. //
                 5th AIAA Atmospheric and Space Environments Conference, 2013, DOI: 10.2514/6.2013-2544
+            [3] X. Jiao.
+                Face Offsetting: A Unified Approach for Explicit Moving Interfaces. //
+                Journal of Computational Physics, 2007, pp. 612-625, DOI: 10.1016/j.jcp.2006.05.021
 
         Parameters
         ----------
