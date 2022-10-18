@@ -341,9 +341,6 @@ class Face:
             Time-step fraction.
         """
 
-        # Coefficients for V(h) from [1].
-        self.calculate_v_coefs()
-
         # Equation 3ch^2 + 2bh + a = 0.
         h = quadratic_equation_smallest_positive_root(3.0 * self.v_coef_c,
                                                       2.0 * self.v_coef_b,
@@ -749,6 +746,10 @@ class Mesh:
                     sum_ws += w
                 n.normal /= sum_ws
 
+        # After nodes normals stay unchanged we can calculate V(h) cubic coefficients.
+        for f in self.faces:
+            f.calculate_v_coefs()
+
     def time_step_fraction(self, time_step_fraction_k):
         """
         Time-step fraction.
@@ -786,7 +787,6 @@ class Mesh:
 
         for f in self.faces:
 
-            f.calculate_v_coefs()
             a, b = f.v_coef_a, f.v_coef_b
 
             # Prismas method.
