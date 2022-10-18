@@ -680,7 +680,7 @@ class Mesh:
         Generate accretion rate.
         Calculate target ice to accrete in each face.
 
-        Source: [1] IV.1
+        Source: [1] IV.A.1
         """
 
         for f in self.faces:
@@ -806,6 +806,15 @@ class Mesh:
                     elif h2 >= 0.0:
                         f.h = h2
 
+    def height_smoothing(self):
+        """
+        Height smoothing.
+
+        TODO: [1] IV.A.6
+        """
+
+        pass
+
     def update_surface_nodal_positions(self):
         """
         Update surface nodal positions.
@@ -847,8 +856,32 @@ class Mesh:
             f.target_ice -= pseudoprism_volume(f.nodes[0].old_p, f.nodes[1].old_p, f.nodes[2].old_p,
                                                f.nodes[0].p, f.nodes[1].p, f.nodes[2].p)
 
-            # Forget chunk.
-            f.ice_chunk = 0.0
+    def null_space_smoothing(self):
+        """
+        Null-space smoothing.
+
+        TODO: [1] IV.A.9
+        """
+
+        pass
+
+    def null_space_smoothing_accretion_volume_interpolation(self):
+        """
+        Null-space smoothing accretiion volume interpolation.
+
+        TODO: [1] IV.A.10
+        """
+
+        pass
+
+    def final_volume_correction_step(self):
+        """
+        Final volume correction step.
+
+        TODO: [1] IV.A.11
+        """
+
+        pass
 
     def target_ice(self):
         """
@@ -908,14 +941,20 @@ class Mesh:
             tsf = self.time_step_fraction(time_step_fraction_k)
 
             self.define_height_field()
+            self.height_smoothing()
             self.update_surface_nodal_positions()
             self.redistribute_remaining_volume()
+            self.null_space_smoothing()
+            self.null_space_smoothing_accretion_volume_interpolation()
 
             if tsf == 1.0:
                 break
 
             # Recalculate areas and normals for next iteration.
             self.calculate_faces_geometrical_properties()
+
+        self.final_volume_correction_step()
+
 
 def lrs(name_in, name_out):
     """
