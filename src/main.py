@@ -261,6 +261,7 @@ class Face:
         ns = list(filter(lambda ni: ni != n, self.nodes))
         v1, v2 = ns[0].p - n.p, ns[1].p - n.p
 
+        # (a, b) = |a| * |b| * cos(alpha)
         return np.arccos(np.dot(v1, v2) / (np.linalg.norm(v1) * np.linalg.norm(v2)))
 
     def time_step_fraction_jiao(self):
@@ -672,6 +673,8 @@ class Mesh:
 
         # Smoothing.
         for _ in range(normal_smoothing_steps):
+
+            # [1] IV.A.3 formula (4)
             for f in self.faces:
                 smoothed_normal = np.array([0.0, 0.0, 0.0])
                 sum_ws = 0.0
@@ -680,6 +683,8 @@ class Mesh:
                     smoothed_normal += w * n.normal
                     sum_ws += w
                 f.smoothed_normal = smoothed_normal / sum_ws
+
+            # [1] IV.A.3 formula (5)
             for n in self.nodes:
                 n.normal = np.array([0.0, 0.0, 0.0])
                 sum_ws = 0.0
@@ -748,6 +753,8 @@ class Mesh:
     def update_surface_nodal_positions(self):
         """
         Update surface nodal positions.
+
+        Source: [1] IV.A.7
         """
 
         for n in self.nodes:
