@@ -669,16 +669,25 @@ class Mesh:
 
             f.close()
 
-    def remesh_init(self):
+    def calculate_faces_geometrical_properties(self):
         """
-        Init for remesh.
+        Geometry properties for faces.
         """
 
         for f in self.faces:
             f.calculate_area()
             f.calculate_normal()
+
+    def generate_accretion_rate(self):
+        """
+        Generate accretion rate.
+        Calculate target ice to accrete in each face.
+
+        Source: [1] IV.1
+        """
+
+        for f in self.faces:
             f.target_ice = f.area * f['Hi']
-            f.ice_chunk = f.target_ice
 
     def define_nodal_offset_direction(self):
         """
@@ -693,7 +702,7 @@ class Mesh:
                 normal += f.normal
             n.normal = normal / np.linalg.norm(normal)
 
-    def local_normal_smoothing(self, normal_smoothing_steps, normal_smoothing_s, normal_smoothing_k):
+    def normal_smoothing(self, normal_smoothing_steps, normal_smoothing_s, normal_smoothing_k):
         """
         Reduce surface noise by local normal smoothing.
 
@@ -762,6 +771,8 @@ class Mesh:
         # Chunks initilization.
         for f in self.faces:
             f.ice_chunk = tsf * f.target_ice
+
+        return tsf
 
     def define_height_field(self):
         """
@@ -883,14 +894,28 @@ class Mesh:
             Coefficient for define time-step fraction.
         """
 
-        self.remesh_init()
-        self.define_nodal_offset_direction()
-        self.local_normal_smoothing(normal_smoothing_steps, normal_smoothing_s, normal_smoothing_k)
-        self.time_step_fraction(time_step_fraction_k)
-        self.define_height_field()
-        self.update_surface_nodal_positions()
-        self.redistribute_remaining_volume()
+        self.calculate_faces_geometrical_properties()
+        self.generate_accretion_rate()
 
+        while True:
+
+            self.define_nodal_offset_direction()
+            self.normal_smoothing(normal_smoothing_steps,
+                                  normal_smoothing_s,
+                                  normal_smoothing_k)
+
+            # When we define time-step fraction, we also set ice_chunks.
+            tsf = self.time_step_fraction(time_step_fraction_k)
+
+            self.define_height_field()
+            self.update_surface_nodal_positions()
+            self.redistribute_remaining_volume()
+
+            if tsf == 1.0:
+                break
+
+            # Recalculate areas and normals for next iteration.
+            self.calculate_faces_geometrical_properties()
 
 def lrs(name_in, name_out):
     """
