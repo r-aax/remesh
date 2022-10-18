@@ -128,7 +128,7 @@ class Face:
         self.v_coef_a = 0.0
         self.v_coef_b = 0.0
         self.v_coef_c = 0.0
-        self.is_diverging = False
+        self.is_contracting = False
 
     def __getitem__(self, item):
         """
@@ -229,7 +229,7 @@ class Face:
 
         # V'(h) = a + h * (...)
         # If a > 0 then the face is contracting, otherwise diverging.
-        self.is_diverging = self.v_coef_a <= 0.0
+        self.is_contracting = self.v_coef_a > 0.0
 
     def inner_angle(self, n):
         """
@@ -752,8 +752,8 @@ class Mesh:
             wl_sum = 0.0
             w_sum = 0.0
             for f in n.faces:
-                # TODO : [1] IV.A.7 formula (12)
-                ci = 1.0
+                # [1] IV.A.7 formula (12)
+                ci = abs(np.dot(f.normal, n.normal)) if f.is_contracting else 1.0
                 phi = f.inner_angle(n)
                 li = f.h / ci
                 wi = phi * ci * ci
