@@ -52,6 +52,62 @@ def quadratic_equation_smallest_positive_root(a, b, c):
     return None
 
 
+def tetrahedra_volume(a, b, c, d):
+    """
+    Tetrahedra volume.
+
+    Parameters
+    ----------
+    a : np.array
+        First point
+    b : np.array
+        Second point
+    c : np.array
+        Third point
+    d : np.array
+        4-th point
+
+    Returns
+    -------
+    float
+        Volume
+    """
+
+    return abs(np.dot((a - d), np.cross(b - d, c - d))) / 6.0
+
+
+def pseudoprism_volume(a, b, c, na, nb, nc):
+    """
+    Pseudoprism volume.
+
+    Source: [4] Fig. 1.
+
+    Parameters
+    ----------
+    a : Vector
+        First vector
+    b : Vector
+        Second vector
+    c : Vector
+        Third vector
+    na : Vector
+        New position of the first vector
+    nb : Vector
+        New position of the second vector
+    nc : Vector
+        New position of the third vector
+
+    Returns
+    -------
+    float
+        Volume
+    """
+
+    return tetrahedra_volume(a, b, c, nc) \
+           + tetrahedra_volume(a, b, nb, nc) \
+           + tetrahedra_volume(a, na, nb, nc)
+
+
 class Node:
     """
     Node - container for coordinates.
@@ -69,6 +125,7 @@ class Node:
         """
 
         self.p = p
+        self.old_p = None
         self.faces = []
 
         # Direction for node moving (we call it normal).
@@ -763,11 +820,23 @@ class Mesh:
 
             # Move p along normal direction with magnituge l.
             # [1] IV.A.7 formula (13)
+            n.old_p = n.p.copy()
             n.p += l * n.normal
 
-        # Update target ice.
+    def redistribute_remaining_volume(self):
+        """
+        Redistribute remaining volume.
+
+        Source: [1] IV.A.8
+        """
+
         for f in self.faces:
-            f.target_ice -= f.ice_chunk
+
+            # [1] IV.A.8 formula (14)
+            f.target_ice -= pseudoprism_volume(f.nodes[0].old_p, f.nodes[1].old_p, f.nodes[2].old_p,
+                                               f.nodes[0].p, f.nodes[1].p, f.nodes[2].p)
+
+            # Forget chunk.
             f.ice_chunk = 0.0
 
     def target_ice(self):
@@ -798,6 +867,9 @@ class Mesh:
             [3] X. Jiao.
                 Face Offsetting: A Unified Approach for Explicit Moving Interfaces. //
                 Journal of Computational Physics, 2007, pp. 612-625, DOI: 10.1016/j.jcp.2006.05.021
+            [4] X. Jiao.
+                Volume and Feature Preservation in Surface Mesh Optimization. //
+                College of Computing, Georgia Institute of Technology.
 
         Parameters
         ----------
@@ -817,6 +889,7 @@ class Mesh:
         self.time_step_fraction(time_step_fraction_k)
         self.define_height_field()
         self.update_surface_nodal_positions()
+        self.redistribute_remaining_volume()
 
 
 def lrs(name_in, name_out):
