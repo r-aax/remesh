@@ -52,49 +52,6 @@ def quadratic_equation_smallest_positive_root(a, b, c):
     return None
 
 
-def coefficients_for_face_accreted_ice_volume(p1, p2, p3, n1, n2, n3, n):
-    """
-    Ice accreted on face with p1, p2, p3 points and n1, n2, n3 normal directions and n - normal of the face.
-
-    V(h) = ah + bh^2 + ch^3
-
-    Function returns a, b, c coefficients.
-
-    Parameters
-    ----------
-    p1 : np.array
-        First point.
-    p2 : np.array
-        Second point.
-    p3 :np.array
-        Third point.
-    n1 : np.array
-        First point move direction.
-    n2 : np.array
-        Second point move direction.
-    n3 : np.array
-        Third point move direction.
-    n : np.array
-        Face normal.
-
-    Returns
-    -------
-    tuple
-        Coefficients.
-    """
-
-    p21, p31 = p2 - p1, p3 - p1
-    u1 = n1 / np.dot(n, n1)
-    u2 = n2 / np.dot(n, n2)
-    u3 = n3 / np.dot(n, n3)
-    u21, u31 = u2 - u1, u3 - u1
-    a = 0.5 * np.linalg.norm(np.cross(p21, p31))
-    b = 0.25 * np.dot(np.cross(p21, u31) + np.cross(u21, p31), n)
-    c = 0.25 * np.dot(np.cross(u21, u31), n)
-
-    return a, b, c
-
-
 class Node:
     """
     Node - container for coordinates.
@@ -166,6 +123,12 @@ class Face:
 
         # H field.
         self.h = 0.0
+
+        # Data about view of cubic function V(h) = ah + bh^2 + ch^3
+        self.v_coef_a = 0.0
+        self.v_coef_b = 0.0
+        self.v_coef_c = 0.0
+        self.is_diverging = False
 
     def __getitem__(self, item):
         """
@@ -243,6 +206,31 @@ class Face:
         self.normal = self.normal / np.linalg.norm(self.normal)
         self.smoothed_normal = self.normal.copy()
 
+    def calculate_v_coefs(self):
+        """
+        Ice accreted on face with p1, p2, p3 points and n1, n2, n3 normal directions and n - normal of the face.
+
+        V(h) = ah + bh^2 + ch^3
+
+        Function returns a, b, c coefficients.
+        And we inspect fact is the face contracting or diverging.
+        """
+
+        p1, p2, p3 = self.nodes[0].p, self.nodes[1].p, self.nodes[2].p
+        n1, n2, n3 = self.nodes[0].normal, self.nodes[1].normal, self.nodes[2].normal
+        p21, p31 = p2 - p1, p3 - p1
+        u1 = n1 / np.dot(self.normal, n1)
+        u2 = n2 / np.dot(self.normal, n2)
+        u3 = n3 / np.dot(self.normal, n3)
+        u21, u31 = u2 - u1, u3 - u1
+        self.v_coef_a = 0.5 * np.linalg.norm(np.cross(p21, p31))
+        self.v_coef_b = 0.25 * np.dot(np.cross(p21, u31) + np.cross(u21, p31), self.normal)
+        self.v_coef_c = 0.25 * np.dot(np.cross(u21, u31), self.normal)
+
+        # V'(h) = a + h * (...)
+        # If a > 0 then the face is contracting, otherwise diverging.
+        self.is_diverging = self.v_coef_a <= 0.0
+
     def inner_angle(self, n):
         """
         Get inner angle of the node.
@@ -297,14 +285,15 @@ class Face:
         """
 
         # Coefficients for V(h) from [1].
-        p1, p2, p3 = self.points()
-        n1, n2, n3 = self.normals()
-        a, b, c = coefficients_for_face_accreted_ice_volume(p1, p2, p3, n1, n2, n3, self.normal)
+        self.calculate_v_coefs()
 
         # Equation 3ch^2 + 2bh + a = 0.
-        h = quadratic_equation_smallest_positive_root(3.0 * c, 2.0 * b, a)
+        h = quadratic_equation_smallest_positive_root(3.0 * self.v_coef_c,
+                                                      2.0 * self.v_coef_b,
+                                                      self.v_coef_a)
         if h is not None:
-            tsf = time_step_fraction_k * (a * h + b * h * h + c * h * h * h) / self.target_ice
+            tsf = time_step_fraction_k \
+                  * (self.v_coef_a * h + self.v_coef_b * h * h + self.v_coef_c * h * h * h) / self.target_ice
             return min(tsf, self.time_step_fraction_jiao(), 1.0)
         else:
             return self.time_step_fraction_jiao()
@@ -729,9 +718,8 @@ class Mesh:
 
         for f in self.faces:
 
-            p1, p2, p3 = f.points()
-            n1, n2, n3 = f.normals()
-            a, b, _ = coefficients_for_face_accreted_ice_volume(p1, p2, p3, n1, n2, n3, f.normal)
+            f.calculate_v_coefs()
+            a, b = f.v_coef_a, f.v_coef_b
 
             # Prismas method.
             f.h = f.ice_chunk / f.area
