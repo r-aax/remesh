@@ -897,6 +897,7 @@ class Mesh:
 
     def remesh(self,
                normal_smoothing_steps=10, normal_smoothing_s=10.0, normal_smoothing_k=0.15,
+               height_smoothing_steps=20,
                time_step_fraction_k=0.25):
         """
         Remesh.
@@ -941,7 +942,10 @@ class Mesh:
             tsf = self.time_step_fraction(time_step_fraction_k)
 
             self.define_height_field()
-            self.height_smoothing()
+            for _ in range(height_smoothing_steps):
+                self.height_smoothing()
+                self.define_height_field()
+
             self.update_surface_nodal_positions()
             self.redistribute_remaining_volume()
             self.null_space_smoothing()
