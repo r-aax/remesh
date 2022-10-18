@@ -243,6 +243,26 @@ class Face:
         self.normal = self.normal / np.linalg.norm(self.normal)
         self.smoothed_normal = self.normal.copy()
 
+    def inner_angle(self, n):
+        """
+        Get inner angle of the node.
+
+        Parameters
+        ----------
+        n : Node
+            Node.
+
+        Returns
+        -------
+        float
+            Angle in radians.
+        """
+
+        ns = list(filter(lambda ni: ni != n, self.nodes))
+        v1, v2 = ns[0].p - n.p, ns[1].p - n.p
+
+        return np.arccos(np.dot(v1, v2) / (np.linalg.norm(v1) * np.linalg.norm(v2)))
+
     def time_step_fraction_jiao(self):
         """
         Calculate time-step fraction jiao.
@@ -728,13 +748,27 @@ class Mesh:
     def update_surface_nodal_positions(self):
         """
         Update surface nodal positions.
-
-        TODO: from [1] IV.A.7
         """
 
         for n in self.nodes:
-            h = sum(map(lambda f: f.h, n.faces)) / len(n.faces)
-            n.p += h * n.normal
+
+            # Magnitude for node point displacement.
+            # [1] IV.A.7 formula (11)
+            wl_sum = 0.0
+            w_sum = 0.0
+            for f in n.faces:
+                # TODO : [1] IV.A.7 formula (12)
+                ci = 1.0
+                phi = f.inner_angle(n)
+                li = f.h / ci
+                wi = phi * ci * ci
+                wl_sum += wi * li
+                w_sum += wi
+            l = wl_sum / w_sum
+
+            # Move p along normal direction with magnituge l.
+            # [1] IV.A.7 formula (13)
+            n.p += l * n.normal
 
         # Update target ice.
         for f in self.faces:
