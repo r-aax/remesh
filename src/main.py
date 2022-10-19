@@ -3,6 +3,7 @@
 import math
 import time
 import numpy as np
+import logging
 
 # Count of valuable digits (after dot) in node coordinates.
 # If coordinates of nodes doesn't differ in valuable digits we consider them equal.
@@ -13,6 +14,10 @@ EXPORT_FORMAT_STRING = '{0:.18e}'
 
 # Small eps.
 EPS = 1.0e-10
+
+def init_logging(log_path):
+    logging.basicConfig(filename=log_path+'log.txt', encoding='utf-8', level=logging.DEBUG)
+
 
 
 def quadratic_equation_smallest_positive_root(a, b, c):
@@ -950,7 +955,7 @@ class Mesh:
             self.redistribute_remaining_volume()
             self.null_space_smoothing()
             self.null_space_smoothing_accretion_volume_interpolation()
-
+            logging.debug(f'tsf = {tsf}')
             if tsf == 1.0:
                 break
 
@@ -976,6 +981,7 @@ def lrs(name_in, name_out):
     g = Mesh()
     g.load(name_in)
     t0 = time.time()
+    logging.debug(f'{name_in} remesh started')
     g.remesh()
     t = time.time() - t0
     target_ice = g.target_ice()
@@ -984,6 +990,8 @@ def lrs(name_in, name_out):
 
 
 if __name__ == '__main__':
+    init_logging('../')
     lrs('../cases/naca/naca_t05.dat', '../res_naca_t05.dat')
     lrs('../cases/naca/naca_t12.dat', '../res_naca_t12.dat')
     lrs('../cases/naca/naca_t25.dat', '../res_naca_t25.dat')
+    #lrs('../cases/naca/bunny.dat', '../res_bunny.dat')
