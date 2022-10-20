@@ -269,23 +269,43 @@ class Face:
         self.normal = self.normal / np.linalg.norm(self.normal)
         self.smoothed_normal = self.normal.copy()
 
-    def calculate_v_coefs(self):
+    def calculate_p_u_vectors(self):
         """
         Ice accreted on face with p1, p2, p3 points and n1, n2, n3 normal directions and n - normal of the face.
+        Returns
+        -------
+        float
+            vectors for stable time-step coefficients
+        """
 
+        p1, p2, p3 = self.nodes[0].p, self.nodes[1].p, self.nodes[2].p
+        n1, n2, n3 = self.nodes[0].normal, self.nodes[1].normal, self.nodes[2].normal
+        u1 = n1 / np.dot(self.normal, n1)
+        u2 = n2 / np.dot(self.normal, n2)
+        u3 = n3 / np.dot(self.normal, n3)
+        u21, u31 = u2 - u1, u3 - u1
+        p21, p31 = p2 - p1, p3 - p1
+        return p21, p31, u21, u31
+
+    def calculate_jiao_coefs(self):
+        """
+        Function returns a, b, c coefficients for Jiao stability limit.
+        """
+        p21, p31, u21, u31 = self.calculate_p_u_vectors()
+        c0 = np.cross(p21, p31)
+        self.jiao_coef_a = c0 @ c0
+        self.jiao_coef_b = c0 @ (np.cross(p21, u31) - np.cross(p31,u21))
+        self.jiao_coef_c = c0 @ np.cross(u21, u31)
+
+    def calculate_v_coefs(self):
+        """
         V(h) = ah + bh^2 + ch^3
 
         Function returns a, b, c coefficients.
         And we inspect fact is the face contracting or diverging.
         """
 
-        p1, p2, p3 = self.nodes[0].p, self.nodes[1].p, self.nodes[2].p
-        n1, n2, n3 = self.nodes[0].normal, self.nodes[1].normal, self.nodes[2].normal
-        p21, p31 = p2 - p1, p3 - p1
-        u1 = n1 / np.dot(self.normal, n1)
-        u2 = n2 / np.dot(self.normal, n2)
-        u3 = n3 / np.dot(self.normal, n3)
-        u21, u31 = u2 - u1, u3 - u1
+        p21, p31, u21, u31 = self.calculate_p_u_vectors()
         self.v_coef_a = 0.5 * np.linalg.norm(np.cross(p21, p31))
         self.v_coef_b = 0.25 * np.dot(np.cross(p21, u31) + np.cross(u21, p31), self.normal)
         self.v_coef_c = 0.25 * np.dot(np.cross(u21, u31), self.normal)
@@ -324,13 +344,18 @@ class Face:
         Returns
         -------
         float
-            Time step fraction Jiao [0.0 <= alpha <= 1.0]
+            Time step fraction Jiao
         """
 
-        # No restriction.
-        return 1.0
+        h = quadratic_equation_smallest_positive_root(self.jiao_coef_c,
+                                                      self.jiao_coef_b,
+                                                      self.jiao_coef_a)
+        if h is not None:
+            return h
+        else:
+            return 1.0
 
-    def time_step_fraction(self, time_step_fraction_k):
+    def time_step_fraction(self, time_step_fraction_k, time_step_fraction_jiao):
         """
         Time-step fraction.
 
@@ -340,7 +365,8 @@ class Face:
         ----------
         time_step_fraction_k : float
             Coefficient for define time-step fraction.
-
+        time_step_fraction_jiao : float
+            global Jiao time step
         Returns
         -------
         float
@@ -354,9 +380,9 @@ class Face:
         if h is not None:
             tsf = time_step_fraction_k \
                   * (self.v_coef_a * h + self.v_coef_b * h * h + self.v_coef_c * h * h * h) / self.target_ice
-            return min(tsf, self.time_step_fraction_jiao(), 1.0)
+            return min(tsf, time_step_fraction_jiao, 1.0)
         else:
-            return self.time_step_fraction_jiao()
+            return time_step_fraction_jiao
 
 
 class Zone:
@@ -696,7 +722,6 @@ class Mesh:
         """
         Define nodal offset direction.
 
-        TODO: from [1] IV.A.2
         """
 
         for n in self.nodes:
@@ -769,6 +794,7 @@ class Mesh:
         # After nodes normals stay unchanged we can calculate V(h) cubic coefficients.
         for f in self.faces:
             f.calculate_v_coefs()
+            f.calculate_jiao_coefs()
 
     def time_step_fraction(self, time_step_fraction_k):
         """
@@ -787,7 +813,8 @@ class Mesh:
             Time-step fraction.
         """
 
-        tsf = min(map(lambda f: f.time_step_fraction(time_step_fraction_k), self.faces))
+        time_step_fraction_jiao = min(1, min(map(lambda f: f.time_step_fraction_jiao(), self.faces)))
+        tsf = min(map(lambda f: f.time_step_fraction(time_step_fraction_k,time_step_fraction_jiao), self.faces))
 
         # Chunks initilization.
         for f in self.faces:
