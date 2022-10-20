@@ -3,6 +3,7 @@
 import math
 import time
 import numpy as np
+from numpy import linalg as LA
 import logging
 
 # Count of valuable digits (after dot) in node coordinates.
@@ -691,7 +692,7 @@ class Mesh:
         for f in self.faces:
             f.target_ice = f.area * f['Hi']
 
-    def define_nodal_offset_direction(self):
+    def define_nodal_offset_direction(self, threshold=0.003):
         """
         Define nodal offset direction.
 
@@ -699,10 +700,24 @@ class Mesh:
         """
 
         for n in self.nodes:
-            normal = np.array([0.0, 0.0, 0.0])
-            for f in n.faces:
-                normal += f.normal
-            n.normal = normal / np.linalg.norm(normal)
+            N = np.array([f.normal for f in n.faces])
+            a = N @ n.p
+            m = len(n.faces)
+            W = np.zeros((m,m))
+            for i in range(m):
+                W[i,i] = n.faces[i].inner_angle(n)
+            b = N.T @ W @ a
+            A = N.T @ W @ N
+            eigenValues_original, eigenVectors_original = LA.eig(A)
+            idx = eigenValues_original.argsort()[::-1]
+            eigenValues = eigenValues_original[idx]
+            eigenVectors = eigenVectors_original[:, idx]
+            k = sum((eigenValues > threshold * eigenValues[0]))
+            primary_space = eigenVectors[:, :k]
+            n.normal = 0
+            for i in range(k):
+                n.normal += (primary_space[:, i] @ b) * primary_space[:, i] / eigenValues[i]
+
 
     def normal_smoothing(self, normal_smoothing_steps, normal_smoothing_s, normal_smoothing_k):
         """
