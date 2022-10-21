@@ -113,6 +113,30 @@ def pseudoprism_volume(a, b, c, na, nb, nc):
            + tetrahedra_volume(a, b, nb, nc) \
            + tetrahedra_volume(a, na, nb, nc)
 
+def primary_and_null_space(A, threshold):
+    """
+    Calculation of primary and null space of point
+
+    Parameters
+    ----------
+    A : float matrix
+        Matrix A = N.T @ W @ N, N consist of normals to faces connected with point, W is diagonal matrix of weights
+    threshold : float
+        threshold to separate primary and null space
+
+    Returns
+    -------
+    float matrix, float matrix, float vector, int
+        primary space, null space, eigen values of A, rank of primary space
+    """
+    eigen_values_original, eigen_vectors_original = LA.eig(A)
+    idx = eigen_values_original.argsort()[::-1]
+    eigen_values = eigen_values_original[idx]
+    eigen_vectors = eigen_vectors_original[:, idx]
+    k = sum((eigen_values > threshold * eigen_values[0]))
+    primary_space = eigen_vectors[:, :k]
+    null_space = eigen_vectors[:, k:]
+    return primary_space, null_space, eigen_values, k
 
 class Node:
     """
@@ -133,7 +157,8 @@ class Node:
         self.p = p
         self.old_p = None
         self.faces = []
-
+        self.A = None
+        self.b = None
         # Direction for node moving (we call it normal).
         self.normal = None
 
@@ -149,6 +174,18 @@ class Node:
 
         return tuple(map(lambda x: round(x, NODE_COORDINATES_VALUABLE_DIGITS_COUNT), self.p))
 
+    def calculate_A_and_b(self):
+        """
+        Calculate martrices for equation Ax=b for primary and null space calculation
+        """
+        N = np.array([f.normal for f in self.faces])
+        a = N @ self.p
+        m = len(self.faces)
+        W = np.zeros((m, m))
+        for i in range(m):
+            W[i, i] = self.faces[i].inner_angle(self)
+        self.b = N.T @ W @ a
+        self.A = N.T @ W @ N
 
 class Face:
     """
@@ -339,8 +376,6 @@ class Face:
         """
         Calculate time-step fraction jiao.
 
-        TODO: from [3]
-
         Returns
         -------
         float
@@ -482,6 +517,9 @@ class Mesh:
 
         # Rounded coordinates bag.
         self.rounded_coordinates_bag = set()
+
+        # threshold to separate primary and null space
+        self.threshold = 0.003
 
     def clear(self):
         """
@@ -718,30 +756,18 @@ class Mesh:
         for f in self.faces:
             f.target_ice = f.area * f['Hi']
 
-    def define_nodal_offset_direction(self, threshold=0.003):
+    def define_nodal_offset_direction(self):
         """
         Define nodal offset direction.
 
         """
 
         for n in self.nodes:
-            N = np.array([f.normal for f in n.faces])
-            a = N @ n.p
-            m = len(n.faces)
-            W = np.zeros((m,m))
-            for i in range(m):
-                W[i,i] = n.faces[i].inner_angle(n)
-            b = N.T @ W @ a
-            A = N.T @ W @ N
-            eigenValues_original, eigenVectors_original = LA.eig(A)
-            idx = eigenValues_original.argsort()[::-1]
-            eigenValues = eigenValues_original[idx]
-            eigenVectors = eigenVectors_original[:, idx]
-            k = sum((eigenValues > threshold * eigenValues[0]))
-            primary_space = eigenVectors[:, :k]
+            n.calculate_A_and_b()
+            primary_space, _, eigen_values, k = primary_and_null_space(n.A, self.threshold)
             n.normal = 0
             for i in range(k):
-                n.normal += (primary_space[:, i] @ b) * primary_space[:, i] / eigenValues[i]
+                n.normal += (primary_space[:, i] @ n.b) * primary_space[:, i] / eigen_values[i]
 
 
     def normal_smoothing(self, normal_smoothing_steps, normal_smoothing_s, normal_smoothing_k):
@@ -903,14 +929,29 @@ class Mesh:
             f.target_ice -= pseudoprism_volume(f.nodes[0].old_p, f.nodes[1].old_p, f.nodes[2].old_p,
                                                f.nodes[0].p, f.nodes[1].p, f.nodes[2].p)
 
-    def null_space_smoothing(self):
+    def null_space_smoothing(self, safety_factor=0.2):
         """
         Null-space smoothing.
 
-        TODO: [1] IV.A.9
-        """
+        Parameters
+        __________
+        safety_factor: float
+            0 < safety_factor < 1
 
-        pass
+        """
+        for n in self.nodes:
+            n.calculate_A_and_b()
+            _, null_space, eigen_values, k = primary_and_null_space(n.A, self.threshold)
+            if k != 3:
+                wi = np.array([])
+                for f in n.faces:
+                    C = abs(np.dot(f.normal, n.normal)) if f.is_contracting else 1.0
+                    wi = np.append(wi, f.inner_angle(n) * C * C)
+                ci = np.array([n.p - np.mean(f.points(), axis=0) for f in n.faces])
+                dv = np.sum([wi[i] * ci[i] for i in range(len(n.faces))], axis=0)/np.sum(wi)
+                t = safety_factor * np.sum([np.dot(dv, e)*e for e in null_space.T], axis=0)
+                n.p += t
+                #logging.debug(f'dv =  {dv}; t = {t}')
 
     def null_space_smoothing_accretion_volume_interpolation(self):
         """
@@ -1033,7 +1074,7 @@ def lrs(name_in, name_out):
 
 if __name__ == '__main__':
     init_logging('../')
-    lrs('../cases/naca/naca_t05.dat', '../res_naca_t05.dat')
-    lrs('../cases/naca/naca_t12.dat', '../res_naca_t12.dat')
-    lrs('../cases/naca/naca_t25.dat', '../res_naca_t25.dat')
+    lrs('../cases/naca/naca_t05.dat', '../res_naca_t05_new.dat')
+    lrs('../cases/naca/naca_t12.dat', '../res_naca_t12_new.dat')
+    lrs('../cases/naca/naca_t25.dat', '../res_naca_t25_new.dat')
     #lrs('../cases/naca/bunny.dat', '../res_bunny.dat')
