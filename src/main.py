@@ -5,6 +5,7 @@ import time
 import numpy as np
 from numpy import linalg as LA
 import logging
+from dataclasses import dataclass
 
 # Count of valuable digits (after dot) in node coordinates.
 # If coordinates of nodes doesn't differ in valuable digits we consider them equal.
@@ -16,9 +17,12 @@ EXPORT_FORMAT_STRING = '{0:.18e}'
 # Small eps.
 EPS = 1.0e-10
 
+# Log.
+log = logging.getLogger(__name__)
+
+
 def init_logging(log_path):
     logging.basicConfig(filename=log_path+'log.txt', encoding='utf-8', level=logging.DEBUG)
-
 
 
 def quadratic_equation_smallest_positive_root(a, b, c):
@@ -113,6 +117,7 @@ def pseudoprism_volume(a, b, c, na, nb, nc):
            + tetrahedra_volume(a, b, nb, nc) \
            + tetrahedra_volume(a, na, nb, nc)
 
+
 def primary_and_null_space(A, threshold):
     """
     Calculation of primary and null space of point
@@ -137,6 +142,7 @@ def primary_and_null_space(A, threshold):
     primary_space = eigen_vectors[:, :k]
     null_space = eigen_vectors[:, k:]
     return primary_space, null_space, eigen_values, k
+
 
 class Node:
     """
@@ -186,6 +192,7 @@ class Node:
             W[i, i] = self.faces[i].inner_angle(self)
         self.b = N.T @ W @ a
         self.A = N.T @ W @ N
+
 
 class Face:
     """
@@ -769,7 +776,6 @@ class Mesh:
             for i in range(k):
                 n.normal += (primary_space[:, i] @ n.b) * primary_space[:, i] / eigen_values[i]
 
-
     def normal_smoothing(self, normal_smoothing_steps, normal_smoothing_s, normal_smoothing_k):
         """
         Reduce surface noise by local normal smoothing.
@@ -1071,6 +1077,10 @@ def lrs(name_in, name_out):
     g.store(name_out)
     print(f'\ttime = {t:.5f} s, target_ice = {target_ice:.8f}')
 
+
+# For svarog.
+if __name__ != '__main__':
+    from src import Solver
 
 if __name__ == '__main__':
     init_logging('../')
