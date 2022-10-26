@@ -543,6 +543,9 @@ class Mesh:
         # Rounded coordinates bag.
         self.rounded_coordinates_bag = set()
 
+        # Target ice in the beginning of remeshing.
+        self.initial_target_ice = 0.0
+
         # threshold to separate primary and null space
         self.threshold = 0.003
 
@@ -785,6 +788,8 @@ class Mesh:
         for f in self.faces:
             f.target_ice = f.area * f['Hi']
 
+        self.initial_target_ice = self.target_ice()
+
     def define_nodal_offset_direction(self):
         """
         Define nodal offset direction.
@@ -1021,7 +1026,7 @@ class Mesh:
         return sum(map(lambda f: f.target_ice, self.faces))
 
     def remesh(self,
-               max_steps=1,
+               max_steps=10,
                normal_smoothing_steps=10, normal_smoothing_s=10.0, normal_smoothing_k=0.15,
                height_smoothing_steps=20,
                time_step_fraction_k=0.25):
@@ -1073,6 +1078,7 @@ class Mesh:
 
             # When we define time-step fraction, we also set ice_chunks.
             tsf = self.time_step_fraction(time_step_fraction_k)
+            log.info(f'step_i = {step_i}, tsf = {tsf}')
 
             self.define_height_field()
             for _ in range(height_smoothing_steps):
@@ -1119,8 +1125,9 @@ def lrs(name_in, name_out):
     g.remesh()
     t = time.time() - t0
     target_ice = g.target_ice()
+    target_ice_perc = 100.0 * (target_ice / g.initial_target_ice)
     g.store(name_out)
-    log.info(f'remesh end : time = {t:.5f} s, target_ice = {target_ice:.8f}')
+    log.info(f'remesh end : time = {t:.5f} s, target_ice = {target_ice} ({target_ice_perc}%)')
 
 
 if __name__ != '__main__':
@@ -1186,4 +1193,4 @@ if __name__ == '__main__':
     # lrs('../cases/naca/naca_t05.dat', '../res_naca_t05.dat')
     lrs('../cases/naca/naca_t12.dat', '../res_naca_t12.dat')
     # lrs('../cases/naca/naca_t25.dat', '../res_naca_t25.dat')
-    lrs('../cases/naca/bunny.dat', '../res_bunny.dat')
+    lrs('../cases/bunny.dat', '../res_bunny.dat')
