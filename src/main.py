@@ -249,6 +249,9 @@ class Face:
         self.jiao_coef_a = 0.0
         self.jiao_coef_b = 0.0
         self.jiao_coef_c = 0.0
+
+        # Time step fraction.
+        self.tsf = 0.0
         self.tsf_jiao = 0.0
 
         # Diverging or contracting face.
@@ -346,6 +349,7 @@ class Face:
         u3 = n3 / np.dot(self.normal, n3)
         u21, u31 = u2 - u1, u3 - u1
         p21, p31 = p2 - p1, p3 - p1
+
         return p21, p31, u21, u31
 
     def calculate_jiao_coefs(self):
@@ -399,11 +403,6 @@ class Face:
     def calculate_time_step_fraction_jiao(self):
         """
         Calculate time-step fraction jiao.
-
-        Returns
-        -------
-        float
-            Time step fraction Jiao
         """
 
         h = quadratic_equation_smallest_positive_root(self.jiao_coef_c,
@@ -417,7 +416,7 @@ class Face:
         # This is is to be exported.
         self['TsfJiao'] = self.tsf_jiao
 
-    def time_step_fraction(self, time_step_fraction_k, time_step_fraction_jiao):
+    def calculate_time_step_fraction(self, time_step_fraction_k, time_step_fraction_jiao):
         """
         Time-step fraction.
 
@@ -429,10 +428,6 @@ class Face:
             Coefficient for define time-step fraction.
         time_step_fraction_jiao : float
             global Jiao time step
-        Returns
-        -------
-        float
-            Time-step fraction.
         """
 
         # Equation 3ch^2 + 2bh + a = 0.
@@ -442,9 +437,12 @@ class Face:
         if h is not None:
             tsf = time_step_fraction_k \
                   * (self.v_coef_a * h + self.v_coef_b * h * h + self.v_coef_c * h * h * h) / self.target_ice
-            return min(tsf, time_step_fraction_jiao, 1.0)
+            self.tsf = min(tsf, time_step_fraction_jiao, 1.0)
         else:
-            return time_step_fraction_jiao
+            self.tsf = time_step_fraction_jiao
+
+        # This is is to be exported.
+        self['Tsf'] = self.tsf
 
 
 class Zone:
@@ -719,6 +717,10 @@ class Mesh:
                 line = f.readline()
             f.close()
 
+        # Set identifiers.
+        for i, f in enumerate(self.faces):
+            f['Id'] = i
+
     def store(self, filename):
         """
         Store mesh.
@@ -870,7 +872,12 @@ class Mesh:
             f.calculate_time_step_fraction_jiao()
 
         time_step_fraction_jiao = min(1, min(map(lambda f: f.tsf_jiao, self.faces)))
-        tsf = min(map(lambda f: f.time_step_fraction(time_step_fraction_k,time_step_fraction_jiao), self.faces))
+
+        # Calculate time step fraction.
+        for f in self.faces:
+            f.calculate_time_step_fraction(time_step_fraction_k, time_step_fraction_jiao)
+
+        tsf = min(map(lambda f: f.tsf, self.faces))
 
         # Chunks initilization.
         for f in self.faces:
