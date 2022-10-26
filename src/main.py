@@ -803,6 +803,12 @@ class Mesh:
             for i in range(k):
                 n.normal += (primary_space[:, i] @ n.b) * primary_space[:, i] / eigen_values[i]
 
+        for n in self.nodes:
+            normal = np.array([0.0, 0.0, 0.0])
+            for f in n.faces:
+                normal += f.normal
+            n.normal = normal / np.linalg.norm(normal)
+
     def normal_smoothing(self, normal_smoothing_steps, normal_smoothing_s, normal_smoothing_k):
         """
         Reduce surface noise by local normal smoothing.
@@ -1026,7 +1032,7 @@ class Mesh:
         return sum(map(lambda f: f.target_ice, self.faces))
 
     def remesh(self,
-               max_steps=10,
+               max_steps=5,
                normal_smoothing_steps=10, normal_smoothing_s=10.0, normal_smoothing_k=0.15,
                height_smoothing_steps=20,
                time_step_fraction_k=0.25):
@@ -1105,6 +1111,28 @@ class Mesh:
 
         self.final_volume_correction_step()
 
+        # Additional data for analyzis.
+        for f in self.faces:
+            v = f.normal
+            f['NX'] = v[0]
+            f['NY'] = v[1]
+            f['NZ'] = v[2]
+            f['NMod'] = np.linalg.norm(v)
+            v = f.nodes[0].normal
+            f['N1X'] = v[0]
+            f['N1Y'] = v[1]
+            f['N1Z'] = v[2]
+            f['N1Mod'] = np.linalg.norm(v)
+            v = f.nodes[1].normal
+            f['N2X'] = v[0]
+            f['N2Y'] = v[1]
+            f['N2Z'] = v[2]
+            f['N2Mod'] = np.linalg.norm(v)
+            v = f.nodes[2].normal
+            f['N3X'] = v[0]
+            f['N3Y'] = v[1]
+            f['N3Z'] = v[2]
+            f['N3Mod'] = np.linalg.norm(v)
 
 def lrs(name_in, name_out):
     """
