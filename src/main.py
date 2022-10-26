@@ -29,6 +29,7 @@ handler = StreamHandler(stream=sys.stdout)
 handler.setFormatter(Formatter(fmt='[%(asctime)s: %(levelname)s] %(message)s'))
 log.addHandler(handler)
 
+
 def init_logging(log_path):
     logging.basicConfig(filename=log_path+'log.txt', encoding='utf-8', level=logging.DEBUG)
 
@@ -248,6 +249,7 @@ class Face:
         self.jiao_coef_a = 0.0
         self.jiao_coef_b = 0.0
         self.jiao_coef_c = 0.0
+        self.tsf_jiao = 0.0
 
         # Diverging or contracting face.
         self.is_contracting = False
@@ -394,7 +396,7 @@ class Face:
         # (a, b) = |a| * |b| * cos(alpha)
         return np.arccos(np.dot(v1, v2) / (np.linalg.norm(v1) * np.linalg.norm(v2)))
 
-    def time_step_fraction_jiao(self):
+    def calculate_time_step_fraction_jiao(self):
         """
         Calculate time-step fraction jiao.
 
@@ -408,9 +410,12 @@ class Face:
                                                       self.jiao_coef_b,
                                                       self.jiao_coef_a)
         if h is not None:
-            return h
+            self.tsf_jiao = h
         else:
-            return 1.0
+            self.tsf_jiao = 1.0
+
+        # This is is to be exported.
+        self['TsfJiao'] = self.tsf_jiao
 
     def time_step_fraction(self, time_step_fraction_k, time_step_fraction_jiao):
         """
@@ -860,7 +865,11 @@ class Mesh:
             Time-step fraction.
         """
 
-        time_step_fraction_jiao = min(1, min(map(lambda f: f.time_step_fraction_jiao(), self.faces)))
+        # Calculate tsf_jiao for all faces.
+        for f in self.faces:
+            f.calculate_time_step_fraction_jiao()
+
+        time_step_fraction_jiao = min(1, min(map(lambda f: f.tsf_jiao, self.faces)))
         tsf = min(map(lambda f: f.time_step_fraction(time_step_fraction_k,time_step_fraction_jiao), self.faces))
 
         # Chunks initilization.
