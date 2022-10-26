@@ -1,10 +1,12 @@
 # Remesher.
 
+import sys
 import math
 import time
 import numpy as np
 from numpy import linalg as LA
 import logging
+from logging import StreamHandler, Formatter
 from dataclasses import dataclass
 
 if __name__ != '__main__':
@@ -22,7 +24,10 @@ EPS = 1.0e-10
 
 # Log.
 log = logging.getLogger(__name__)
-
+log.setLevel(logging.DEBUG)
+handler = StreamHandler(stream=sys.stdout)
+handler.setFormatter(Formatter(fmt='[%(asctime)s: %(levelname)s] %(message)s'))
+log.addHandler(handler)
 
 def init_logging(log_path):
     logging.basicConfig(filename=log_path+'log.txt', encoding='utf-8', level=logging.DEBUG)
@@ -238,6 +243,13 @@ class Face:
         self.v_coef_a = 0.0
         self.v_coef_b = 0.0
         self.v_coef_c = 0.0
+
+        # Jiao coeffs.
+        self.jiao_coef_a = 0.0
+        self.jiao_coef_b = 0.0
+        self.jiao_coef_c = 0.0
+
+        # Diverging or contracting face.
         self.is_contracting = False
 
     def __getitem__(self, item):
@@ -993,6 +1005,7 @@ class Mesh:
         return sum(map(lambda f: f.target_ice, self.faces))
 
     def remesh(self,
+               max_steps=1,
                normal_smoothing_steps=10, normal_smoothing_s=10.0, normal_smoothing_k=0.15,
                height_smoothing_steps=20,
                time_step_fraction_k=0.25):
@@ -1015,12 +1028,16 @@ class Mesh:
 
         Parameters
         ----------
+        max_steps : int
+            Maximum number of steps.
         normal_smoothing_steps : int
             Steps of normal smoothing.
         normal_smoothing_s : float
             Parameter for local normal smoothing.
         normal_smoothing_k : float
             Parameter for local normal smoothing.
+        height_smoothing_steps : int
+            Steps of height smoothing.
         time_step_fraction_k : float
             Coefficient for define time-step fraction.
         """
@@ -1028,8 +1045,11 @@ class Mesh:
         self.calculate_faces_geometrical_properties()
         self.generate_accretion_rate()
 
+        step_i = 0
+
         while True:
 
+            step_i += 1
             self.define_nodal_offset_direction()
             self.normal_smoothing(normal_smoothing_steps,
                                   normal_smoothing_s,
@@ -1047,8 +1067,15 @@ class Mesh:
             self.redistribute_remaining_volume()
             self.null_space_smoothing()
             self.null_space_smoothing_accretion_volume_interpolation()
-            logging.debug(f'tsf = {tsf}')
+
+            # Break on total successfull remesh.
             if tsf == 1.0:
+                log.info(f'break on tsf = 1.0')
+                break
+
+            # Break on maximum steps number.
+            if step_i == max_steps:
+                log.info(f'break on max_steps ({max_steps})')
                 break
 
             # Recalculate areas and normals for next iteration.
@@ -1069,16 +1096,15 @@ def lrs(name_in, name_out):
         Name of output mesh file.
     """
 
-    print(f'surface-evolution : {name_in} -> {name_out}')
+    log.info(f'remesh start : {name_in} -> {name_out}')
     g = Mesh()
     g.load(name_in)
     t0 = time.time()
-    logging.debug(f'{name_in} remesh started')
     g.remesh()
     t = time.time() - t0
     target_ice = g.target_ice()
     g.store(name_out)
-    print(f'\ttime = {t:.5f} s, target_ice = {target_ice:.8f}')
+    log.info(f'remesh end : time = {t:.5f} s, target_ice = {target_ice:.8f}')
 
 
 if __name__ != '__main__':
@@ -1141,8 +1167,7 @@ if __name__ != '__main__':
 
 
 if __name__ == '__main__':
-    init_logging('../')
-    lrs('../cases/naca/naca_t05.dat', '../res_naca_t05_new.dat')
-    lrs('../cases/naca/naca_t12.dat', '../res_naca_t12_new.dat')
-    lrs('../cases/naca/naca_t25.dat', '../res_naca_t25_new.dat')
-    #lrs('../cases/naca/bunny.dat', '../res_bunny.dat')
+    # lrs('../cases/naca/naca_t05.dat', '../res_naca_t05.dat')
+    lrs('../cases/naca/naca_t12.dat', '../res_naca_t12.dat')
+    # lrs('../cases/naca/naca_t25.dat', '../res_naca_t25.dat')
+    lrs('../cases/naca/bunny.dat', '../res_bunny.dat')
