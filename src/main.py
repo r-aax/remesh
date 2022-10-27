@@ -401,16 +401,18 @@ class Face:
     def calculate_time_step_fraction_jiao(self):
         """
         Calculate time-step fraction jiao.
+        Jiao step time fraction is in [0.0, 1.0].
         """
 
         h = quadratic_equation_smallest_positive_root(self.jiao_coef_c,
                                                       self.jiao_coef_b,
                                                       self.jiao_coef_a)
         if h is not None:
-            self.tsf_jiao = h
+            self.tsf_jiao = min(h, 1.0)
         else:
             self.tsf_jiao = 1.0
 
+        # Stub.
         self.tsf_jiao = 1.0
 
         # This is is to be exported.
@@ -861,11 +863,11 @@ class Mesh:
         for f in self.faces:
             f.calculate_time_step_fraction_jiao()
 
-        time_step_fraction_jiao = min(1, min(map(lambda f: f.tsf_jiao, self.faces)))
+        tsf_jiao = min(map(lambda f: f.tsf_jiao, self.faces))
 
         # Calculate time step fraction.
         for f in self.faces:
-            f.calculate_time_step_fraction(time_step_fraction_k, time_step_fraction_jiao)
+            f.calculate_time_step_fraction(time_step_fraction_k, tsf_jiao)
 
         tsf = min(map(lambda f: f.tsf, self.faces))
 
@@ -1011,7 +1013,7 @@ class Mesh:
         return sum(map(lambda f: f.target_ice, self.faces))
 
     def remesh(self,
-               max_steps=5,
+               steps=5,
                normal_smoothing_steps=10, normal_smoothing_s=10.0, normal_smoothing_k=0.15,
                height_smoothing_steps=20,
                time_step_fraction_k=0.25):
@@ -1034,7 +1036,7 @@ class Mesh:
 
         Parameters
         ----------
-        max_steps : int
+        steps : int
             Maximum number of steps.
         normal_smoothing_steps : int
             Steps of normal smoothing.
@@ -1081,8 +1083,8 @@ class Mesh:
                 break
 
             # Break on maximum steps number.
-            if step_i == max_steps:
-                log.info(f'break on max_steps ({max_steps})')
+            if step_i == steps:
+                log.info(f'break on max_steps ({steps})')
                 break
 
             # Recalculate areas and normals for next iteration.
