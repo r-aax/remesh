@@ -194,8 +194,8 @@ class Node:
         Calculate martrices for equation Ax=b for primary and null space calculation
         """
         N = np.array([f.normal for f in self.faces])
-        a = N @ self.p
         m = len(self.faces)
+        a = np.ones(m)
         W = np.zeros((m, m))
         for i in range(m):
             W[i, i] = self.faces[i].inner_angle(self)
@@ -546,8 +546,6 @@ class Mesh:
         # Target ice in the beginning of remeshing.
         self.initial_target_ice = 0.0
 
-        # threshold to separate primary and null space
-        self.threshold = 0.003
 
     def clear(self):
         """
@@ -790,24 +788,25 @@ class Mesh:
 
         self.initial_target_ice = self.target_ice()
 
-    def define_nodal_offset_direction(self):
+    def define_nodal_offset_direction(self, threshold):
         """
         Define nodal offset direction.
 
+        Parameters
+        ----------
+        threshold : float
+            threshold to separate primary and null space
         """
 
         for n in self.nodes:
             n.calculate_A_and_b()
-            primary_space, _, eigen_values, k = primary_and_null_space(n.A, self.threshold)
-            n.normal = 0
-            for i in range(k):
-                n.normal += (primary_space[:, i] @ n.b) * primary_space[:, i] / eigen_values[i]
-
-        for n in self.nodes:
+            primary_space, _, eigen_values, k = primary_and_null_space(n.A, threshold)
             normal = np.array([0.0, 0.0, 0.0])
-            for f in n.faces:
-                normal += f.normal
+            for i in range(k):
+                normal += (primary_space[:, i] @ n.b) * primary_space[:, i] / eigen_values[i]
             n.normal = normal / np.linalg.norm(normal)
+
+
 
     def normal_smoothing(self, normal_smoothing_steps, normal_smoothing_s, normal_smoothing_k):
         """
@@ -839,22 +838,18 @@ class Mesh:
             # [1] IV.A.3 formula (4)
             for f in self.faces:
                 smoothed_normal = np.array([0.0, 0.0, 0.0])
-                sum_ws = 0.0
                 for n in f.nodes:
                     w = fun_w(f.smoothed_normal, n.normal)
                     smoothed_normal += w * n.normal
-                    sum_ws += w
-                f.smoothed_normal = smoothed_normal / sum_ws
+                f.smoothed_normal = smoothed_normal / np.linalg.norm(smoothed_normal)
 
             # [1] IV.A.3 formula (5)
             for n in self.nodes:
                 n.normal = np.array([0.0, 0.0, 0.0])
-                sum_ws = 0.0
                 for f in n.faces:
                     w = f.inversed_area
                     n.normal += w * f.smoothed_normal
-                    sum_ws += w
-                n.normal /= sum_ws
+                n.normal /= np.linalg.norm(n.normal)
 
         # After nodes normals stay unchanged we can calculate V(h) cubic coefficients.
         for f in self.faces:
@@ -977,19 +972,21 @@ class Mesh:
             f.target_ice -= pseudoprism_volume(f.nodes[0].old_p, f.nodes[1].old_p, f.nodes[2].old_p,
                                                f.nodes[0].p, f.nodes[1].p, f.nodes[2].p)
 
-    def null_space_smoothing(self, safety_factor=0.2):
+    def null_space_smoothing(self, threshold, safety_factor=0.2):
         """
         Null-space smoothing.
 
         Parameters
         __________
+        threshold : float
+            threshold to separate primary and null space
         safety_factor: float
             0 < safety_factor < 1
 
         """
         for n in self.nodes:
             n.calculate_A_and_b()
-            _, null_space, eigen_values, k = primary_and_null_space(n.A, self.threshold)
+            _, null_space, eigen_values, k = primary_and_null_space(n.A, threshold)
             if k != 3:
                 wi = np.array([])
                 for f in n.faces:
@@ -1032,10 +1029,10 @@ class Mesh:
         return sum(map(lambda f: f.target_ice, self.faces))
 
     def remesh(self,
-               max_steps=5,
+               max_steps=1,
                normal_smoothing_steps=10, normal_smoothing_s=10.0, normal_smoothing_k=0.15,
-               height_smoothing_steps=20,
-               time_step_fraction_k=0.25):
+               height_smoothing_steps=20, time_step_fraction_k=0.25,
+               threshold_for_null_space = 0.003):
         """
         Remesh.
 
@@ -1067,6 +1064,8 @@ class Mesh:
             Steps of height smoothing.
         time_step_fraction_k : float
             Coefficient for define time-step fraction.
+        threshold_for_null_space : float
+            threshold to separate primary and null space
         """
 
         self.calculate_faces_geometrical_properties()
@@ -1077,7 +1076,7 @@ class Mesh:
         while True:
 
             step_i += 1
-            self.define_nodal_offset_direction()
+            self.define_nodal_offset_direction(threshold_for_null_space)
             self.normal_smoothing(normal_smoothing_steps,
                                   normal_smoothing_s,
                                   normal_smoothing_k)
@@ -1093,7 +1092,7 @@ class Mesh:
 
             self.update_surface_nodal_positions()
             self.redistribute_remaining_volume()
-            self.null_space_smoothing()
+            self.null_space_smoothing(threshold_for_null_space)
             self.null_space_smoothing_accretion_volume_interpolation()
 
             # Break on total successfull remesh.
