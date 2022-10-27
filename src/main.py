@@ -225,7 +225,6 @@ class Face:
 
         # Area of the face.
         self.area = 0.0
-        self.inversed_area = 0.0
 
         # Face normal and smoothed normal.
         self.normal = None
@@ -319,8 +318,7 @@ class Face:
 
         a, b, c = self.points()
 
-        self.area = 0.5 * np.linalg.norm(np.cross(b - a, c - b))
-        self.inversed_area = 1.0 / self.area
+        self.area = 0.5 * LA.norm(np.cross(b - a, c - b))
 
     def calculate_normal(self):
         """
@@ -330,7 +328,7 @@ class Face:
         a, b, c = self.points()
 
         self.normal = np.cross(b - a, c - b)
-        self.normal = self.normal / np.linalg.norm(self.normal)
+        self.normal = self.normal / LA.norm(self.normal)
         self.smoothed_normal = self.normal.copy()
 
     def calculate_p_u_vectors(self):
@@ -371,7 +369,7 @@ class Face:
         """
 
         p21, p31, u21, u31 = self.calculate_p_u_vectors()
-        self.v_coef_a = 0.5 * np.linalg.norm(np.cross(p21, p31))
+        self.v_coef_a = 0.5 * LA.norm(np.cross(p21, p31))
         self.v_coef_b = 0.25 * np.dot(np.cross(p21, u31) + np.cross(u21, p31), self.normal)
         self.v_coef_c = 0.25 * np.dot(np.cross(u21, u31), self.normal)
 
@@ -398,20 +396,24 @@ class Face:
         v1, v2 = ns[0].p - n.p, ns[1].p - n.p
 
         # (a, b) = |a| * |b| * cos(alpha)
-        return np.arccos(np.dot(v1, v2) / (np.linalg.norm(v1) * np.linalg.norm(v2)))
+        return np.arccos(np.dot(v1, v2) / (LA.norm(v1) * LA.norm(v2)))
 
     def calculate_time_step_fraction_jiao(self):
         """
         Calculate time-step fraction jiao.
+        Jiao step time fraction is in [0.0, 1.0].
         """
 
         h = quadratic_equation_smallest_positive_root(self.jiao_coef_c,
                                                       self.jiao_coef_b,
                                                       self.jiao_coef_a)
         if h is not None:
-            self.tsf_jiao = h
+            self.tsf_jiao = min(h, 1.0)
         else:
             self.tsf_jiao = 1.0
+
+        # Stub.
+        self.tsf_jiao = 1.0
 
         # This is is to be exported.
         self['TsfJiao'] = self.tsf_jiao
@@ -808,6 +810,7 @@ class Mesh:
 
 
 
+
     def normal_smoothing(self, normal_smoothing_steps, normal_smoothing_s, normal_smoothing_k):
         """
         Reduce surface noise by local normal smoothing.
@@ -828,35 +831,28 @@ class Mesh:
             Parameter for local normal smoothing.
         """
 
-        # Weight for face normal and node normal.
-        def fun_w(fn, nn):
-            return max(normal_smoothing_s * (1.0 - np.dot(fn, nn)), normal_smoothing_k)
-
         # Smoothing.
         for _ in range(normal_smoothing_steps):
 
             # [1] IV.A.3 formula (4)
             for f in self.faces:
-                smoothed_normal = np.array([0.0, 0.0, 0.0])
-                for n in f.nodes:
-                    w = fun_w(f.smoothed_normal, n.normal)
-                    smoothed_normal += w * n.normal
-                f.smoothed_normal = smoothed_normal / np.linalg.norm(smoothed_normal)
+                f.smoothed_normal = \
+                    sum(map(lambda ln: ln.normal * max(normal_smoothing_s * (1.0 - f.smoothed_normal @ ln.normal),
+                                                       normal_smoothing_k),
+                            f.nodes))
+                f.smoothed_normal = f.smoothed_normal / LA.norm(f.smoothed_normal)
 
             # [1] IV.A.3 formula (5)
             for n in self.nodes:
-                n.normal = np.array([0.0, 0.0, 0.0])
-                for f in n.faces:
-                    w = f.inversed_area
-                    n.normal += w * f.smoothed_normal
-                n.normal /= np.linalg.norm(n.normal)
+                n.normal = sum(map(lambda lf: lf.smoothed_normal / lf.area, n.faces))
+                n.normal = n.normal / LA.norm(n.normal)
 
         # After nodes normals stay unchanged we can calculate V(h) cubic coefficients.
         for f in self.faces:
             f.calculate_v_coefs()
             f.calculate_jiao_coefs()
 
-    def time_step_fraction(self, time_step_fraction_k):
+    def time_step_fraction(self, is_simple_tsf, steps_left, time_step_fraction_k):
         """
         Time-step fraction.
 
@@ -864,6 +860,11 @@ class Mesh:
 
         Parameters
         ----------
+        is_simple_tsf : bool
+            If True - we accrete target_ice / steps ice on each iteration (ignoring mesh problems).
+            If False - exact Tong's algorithm.
+        steps_left : int
+            Left steps count.
         time_step_fraction_k : float
             Coefficient for define time-step fraction.
 
@@ -873,17 +874,27 @@ class Mesh:
             Time-step fraction.
         """
 
-        # Calculate tsf_jiao for all faces.
-        for f in self.faces:
-            f.calculate_time_step_fraction_jiao()
+        if is_simple_tsf:
 
-        time_step_fraction_jiao = min(1, min(map(lambda f: f.tsf_jiao, self.faces)))
+            tsf = 1.0 / steps_left;
 
-        # Calculate time step fraction.
-        for f in self.faces:
-            f.calculate_time_step_fraction(time_step_fraction_k, time_step_fraction_jiao)
+            for f in self.faces:
+                f.tsf_jiao = 1.0
+                f.tsf = tsf
 
-        tsf = min(map(lambda f: f.tsf, self.faces))
+        else:
+
+            # Calculate tsf_jiao for all faces.
+            for f in self.faces:
+                f.calculate_time_step_fraction_jiao()
+
+            tsf_jiao = min(map(lambda lf: lf.tsf_jiao, self.faces))
+
+            # Calculate time step fraction.
+            for f in self.faces:
+                f.calculate_time_step_fraction(time_step_fraction_k, tsf_jiao)
+
+                tsf = min(map(lambda lf: lf.tsf, self.faces))
 
         # Chunks initilization.
         for f in self.faces:
@@ -1029,7 +1040,8 @@ class Mesh:
         return sum(map(lambda f: f.target_ice, self.faces))
 
     def remesh(self,
-               max_steps=1,
+               steps=5,
+               is_simple_tsf=False,
                normal_smoothing_steps=10, normal_smoothing_s=10.0, normal_smoothing_k=0.15,
                height_smoothing_steps=20, time_step_fraction_k=0.25,
                threshold_for_null_space = 0.003):
@@ -1052,8 +1064,11 @@ class Mesh:
 
         Parameters
         ----------
-        max_steps : int
+        steps : int
             Maximum number of steps.
+        is_simple_tsf : bool
+            If True - we accrete target_ice / steps ice on each iteration (ignoring mesh problems).
+            If False - exact Tong's algorithm.
         normal_smoothing_steps : int
             Steps of normal smoothing.
         normal_smoothing_s : float
@@ -1082,7 +1097,7 @@ class Mesh:
                                   normal_smoothing_k)
 
             # When we define time-step fraction, we also set ice_chunks.
-            tsf = self.time_step_fraction(time_step_fraction_k)
+            tsf = self.time_step_fraction(is_simple_tsf, steps - step_i + 1, time_step_fraction_k)
             log.info(f'step_i = {step_i}, tsf = {tsf}')
 
             self.define_height_field()
@@ -1101,8 +1116,8 @@ class Mesh:
                 break
 
             # Break on maximum steps number.
-            if step_i == max_steps:
-                log.info(f'break on max_steps ({max_steps})')
+            if step_i == steps:
+                log.info(f'break on max_steps ({steps})')
                 break
 
             # Recalculate areas and normals for next iteration.
@@ -1116,22 +1131,23 @@ class Mesh:
             f['NX'] = v[0]
             f['NY'] = v[1]
             f['NZ'] = v[2]
-            f['NMod'] = np.linalg.norm(v)
+            f['NMod'] = LA.norm(v)
             v = f.nodes[0].normal
             f['N1X'] = v[0]
             f['N1Y'] = v[1]
             f['N1Z'] = v[2]
-            f['N1Mod'] = np.linalg.norm(v)
+            f['N1Mod'] = LA.norm(v)
             v = f.nodes[1].normal
             f['N2X'] = v[0]
             f['N2Y'] = v[1]
             f['N2Z'] = v[2]
-            f['N2Mod'] = np.linalg.norm(v)
+            f['N2Mod'] = LA.norm(v)
             v = f.nodes[2].normal
             f['N3X'] = v[0]
             f['N3Y'] = v[1]
             f['N3Z'] = v[2]
-            f['N3Mod'] = np.linalg.norm(v)
+            f['N3Mod'] = LA.norm(v)
+
 
 def lrs(name_in, name_out):
     """
