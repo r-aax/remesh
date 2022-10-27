@@ -225,7 +225,6 @@ class Face:
 
         # Area of the face.
         self.area = 0.0
-        self.inversed_area = 0.0
 
         # Face normal and smoothed normal.
         self.normal = None
@@ -320,7 +319,6 @@ class Face:
         a, b, c = self.points()
 
         self.area = 0.5 * LA.norm(np.cross(b - a, c - b))
-        self.inversed_area = 1.0 / self.area
 
     def calculate_normal(self):
         """
@@ -412,6 +410,8 @@ class Face:
             self.tsf_jiao = h
         else:
             self.tsf_jiao = 1.0
+
+        self.tsf_jiao = 1.0
 
         # This is is to be exported.
         self['TsfJiao'] = self.tsf_jiao
@@ -793,14 +793,11 @@ class Mesh:
     def define_nodal_offset_direction(self):
         """
         Define nodal offset direction.
-
         """
 
         for n in self.nodes:
-            normal = np.array([0.0, 0.0, 0.0])
-            for f in n.faces:
-                normal += f.normal
-            n.normal = normal / LA.norm(normal)
+            n.normal = sum(map(lambda f: f.normal, n.faces))
+            n.normal = n.normal / LA.norm(n.normal)
 
     def normal_smoothing(self, normal_smoothing_steps, normal_smoothing_s, normal_smoothing_k):
         """
@@ -822,33 +819,20 @@ class Mesh:
             Parameter for local normal smoothing.
         """
 
-        # Weight for face normal and node normal.
-        def fun_w(fn, nn):
-            return max(normal_smoothing_s * (1.0 - np.dot(fn, nn)), normal_smoothing_k)
-
         # Smoothing.
         for _ in range(normal_smoothing_steps):
 
             # [1] IV.A.3 formula (4)
             for f in self.faces:
-                smoothed_normal = np.array([0.0, 0.0, 0.0])
-                sum_ws = 0.0
-                for n in f.nodes:
-                    w = fun_w(f.smoothed_normal, n.normal)
-                    smoothed_normal += w * n.normal
-                    sum_ws += w
-                f.smoothed_normal = smoothed_normal / sum_ws
+                f.smoothed_normal = \
+                    sum(map(lambda ln: ln.normal * max(normal_smoothing_s * (1.0 - f.smoothed_normal @ ln.normal),
+                                                       normal_smoothing_k),
+                            f.nodes))
                 f.smoothed_normal = f.smoothed_normal / LA.norm(f.smoothed_normal)
 
             # [1] IV.A.3 formula (5)
             for n in self.nodes:
-                n.normal = np.array([0.0, 0.0, 0.0])
-                sum_ws = 0.0
-                for f in n.faces:
-                    w = f.inversed_area
-                    n.normal += w * f.smoothed_normal
-                    sum_ws += w
-                n.normal /= sum_ws
+                n.normal = sum(map(lambda lf: lf.smoothed_normal / lf.area, n.faces))
                 n.normal = n.normal / LA.norm(n.normal)
 
         # After nodes normals stay unchanged we can calculate V(h) cubic coefficients.
