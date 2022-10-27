@@ -319,7 +319,7 @@ class Face:
 
         a, b, c = self.points()
 
-        self.area = 0.5 * np.linalg.norm(np.cross(b - a, c - b))
+        self.area = 0.5 * LA.norm(np.cross(b - a, c - b))
         self.inversed_area = 1.0 / self.area
 
     def calculate_normal(self):
@@ -330,7 +330,7 @@ class Face:
         a, b, c = self.points()
 
         self.normal = np.cross(b - a, c - b)
-        self.normal = self.normal / np.linalg.norm(self.normal)
+        self.normal = self.normal / LA.norm(self.normal)
         self.smoothed_normal = self.normal.copy()
 
     def calculate_p_u_vectors(self):
@@ -371,7 +371,7 @@ class Face:
         """
 
         p21, p31, u21, u31 = self.calculate_p_u_vectors()
-        self.v_coef_a = 0.5 * np.linalg.norm(np.cross(p21, p31))
+        self.v_coef_a = 0.5 * LA.norm(np.cross(p21, p31))
         self.v_coef_b = 0.25 * np.dot(np.cross(p21, u31) + np.cross(u21, p31), self.normal)
         self.v_coef_c = 0.25 * np.dot(np.cross(u21, u31), self.normal)
 
@@ -398,7 +398,7 @@ class Face:
         v1, v2 = ns[0].p - n.p, ns[1].p - n.p
 
         # (a, b) = |a| * |b| * cos(alpha)
-        return np.arccos(np.dot(v1, v2) / (np.linalg.norm(v1) * np.linalg.norm(v2)))
+        return np.arccos(np.dot(v1, v2) / (LA.norm(v1) * LA.norm(v2)))
 
     def calculate_time_step_fraction_jiao(self):
         """
@@ -797,17 +797,10 @@ class Mesh:
         """
 
         for n in self.nodes:
-            n.calculate_A_and_b()
-            primary_space, _, eigen_values, k = primary_and_null_space(n.A, self.threshold)
-            n.normal = 0
-            for i in range(k):
-                n.normal += (primary_space[:, i] @ n.b) * primary_space[:, i] / eigen_values[i]
-
-        for n in self.nodes:
             normal = np.array([0.0, 0.0, 0.0])
             for f in n.faces:
                 normal += f.normal
-            n.normal = normal / np.linalg.norm(normal)
+            n.normal = normal / LA.norm(normal)
 
     def normal_smoothing(self, normal_smoothing_steps, normal_smoothing_s, normal_smoothing_k):
         """
@@ -845,6 +838,7 @@ class Mesh:
                     smoothed_normal += w * n.normal
                     sum_ws += w
                 f.smoothed_normal = smoothed_normal / sum_ws
+                f.smoothed_normal = f.smoothed_normal / LA.norm(f.smoothed_normal)
 
             # [1] IV.A.3 formula (5)
             for n in self.nodes:
@@ -855,6 +849,7 @@ class Mesh:
                     n.normal += w * f.smoothed_normal
                     sum_ws += w
                 n.normal /= sum_ws
+                n.normal = n.normal / LA.norm(n.normal)
 
         # After nodes normals stay unchanged we can calculate V(h) cubic coefficients.
         for f in self.faces:
@@ -1117,22 +1112,23 @@ class Mesh:
             f['NX'] = v[0]
             f['NY'] = v[1]
             f['NZ'] = v[2]
-            f['NMod'] = np.linalg.norm(v)
+            f['NMod'] = LA.norm(v)
             v = f.nodes[0].normal
             f['N1X'] = v[0]
             f['N1Y'] = v[1]
             f['N1Z'] = v[2]
-            f['N1Mod'] = np.linalg.norm(v)
+            f['N1Mod'] = LA.norm(v)
             v = f.nodes[1].normal
             f['N2X'] = v[0]
             f['N2Y'] = v[1]
             f['N2Z'] = v[2]
-            f['N2Mod'] = np.linalg.norm(v)
+            f['N2Mod'] = LA.norm(v)
             v = f.nodes[2].normal
             f['N3X'] = v[0]
             f['N3Y'] = v[1]
             f['N3Z'] = v[2]
-            f['N3Mod'] = np.linalg.norm(v)
+            f['N3Mod'] = LA.norm(v)
+
 
 def lrs(name_in, name_out):
     """
