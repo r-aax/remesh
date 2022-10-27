@@ -842,7 +842,7 @@ class Mesh:
             f.calculate_v_coefs()
             f.calculate_jiao_coefs()
 
-    def time_step_fraction(self, time_step_fraction_k):
+    def time_step_fraction(self, is_simple_tsf, steps_left, time_step_fraction_k):
         """
         Time-step fraction.
 
@@ -850,6 +850,11 @@ class Mesh:
 
         Parameters
         ----------
+        is_simple_tsf : bool
+            If True - we accrete target_ice / steps ice on each iteration (ignoring mesh problems).
+            If False - exact Tong's algorithm.
+        steps_left : int
+            Left steps count.
         time_step_fraction_k : float
             Coefficient for define time-step fraction.
 
@@ -859,17 +864,27 @@ class Mesh:
             Time-step fraction.
         """
 
-        # Calculate tsf_jiao for all faces.
-        for f in self.faces:
-            f.calculate_time_step_fraction_jiao()
+        if is_simple_tsf:
 
-        tsf_jiao = min(map(lambda f: f.tsf_jiao, self.faces))
+            tsf = 1.0 / steps_left;
 
-        # Calculate time step fraction.
-        for f in self.faces:
-            f.calculate_time_step_fraction(time_step_fraction_k, tsf_jiao)
+            for f in self.faces:
+                f.tsf_jiao = 1.0
+                f.tsf = tsf
 
-        tsf = min(map(lambda f: f.tsf, self.faces))
+        else:
+
+            # Calculate tsf_jiao for all faces.
+            for f in self.faces:
+                f.calculate_time_step_fraction_jiao()
+
+            tsf_jiao = min(map(lambda lf: lf.tsf_jiao, self.faces))
+
+            # Calculate time step fraction.
+            for f in self.faces:
+                f.calculate_time_step_fraction(time_step_fraction_k, tsf_jiao)
+
+                tsf = min(map(lambda lf: lf.tsf, self.faces))
 
         # Chunks initilization.
         for f in self.faces:
@@ -1014,6 +1029,7 @@ class Mesh:
 
     def remesh(self,
                steps=5,
+               is_simple_tsf=False,
                normal_smoothing_steps=10, normal_smoothing_s=10.0, normal_smoothing_k=0.15,
                height_smoothing_steps=20,
                time_step_fraction_k=0.25):
@@ -1038,6 +1054,9 @@ class Mesh:
         ----------
         steps : int
             Maximum number of steps.
+        is_simple_tsf : bool
+            If True - we accrete target_ice / steps ice on each iteration (ignoring mesh problems).
+            If False - exact Tong's algorithm.
         normal_smoothing_steps : int
             Steps of normal smoothing.
         normal_smoothing_s : float
@@ -1064,7 +1083,7 @@ class Mesh:
                                   normal_smoothing_k)
 
             # When we define time-step fraction, we also set ice_chunks.
-            tsf = self.time_step_fraction(time_step_fraction_k)
+            tsf = self.time_step_fraction(is_simple_tsf, steps - step_i + 1, time_step_fraction_k)
             log.info(f'step_i = {step_i}, tsf = {tsf}')
 
             self.define_height_field()
