@@ -222,7 +222,7 @@ class Face:
 
         self.data = dict(zip(variables, values))
         self.nodes = []
-
+        self.neighbour_faces = []
         # Area of the face.
         self.area = 0.0
 
@@ -377,6 +377,19 @@ class Face:
         # If a > 0 then the face is contracting, otherwise diverging.
         self.is_contracting = self.v_coef_a > 0.0
 
+    def calculate_neighbour_faces(self):
+        """
+        calculate neighbours of the face
+        """
+        connected_faces = {}
+        for n in self.nodes:
+            for f in n.faces:
+                if f not in connected_faces:
+                    connected_faces[f] = 1
+                else:
+                    connected_faces[f] += 1
+        self.neighbour_faces = [f for f in connected_faces if connected_faces[f] == 2]
+
     def inner_angle(self, n):
         """
         Get inner angle of the node.
@@ -522,6 +535,29 @@ class Zone:
 
         return Zone.objects_slice_str(lambda f: f[e], self.faces)
 
+class Edge:
+    """
+    Edge - border between two faces
+    """
+
+    def __init__(self, face1, face2):
+        """
+        Initialization.
+
+        Parameters
+        ----------
+        face1: Face
+            first face
+        face2: Face
+            second face
+        """
+        self.face1 = face1
+        self.face2 = face2
+
+    def __eq__(self, other):
+        return self.face1 == other.face1 and self.face2 == other.face2 \
+                or self.face1 == other.face2 and self.face2 == other.face1
+
 
 class Mesh:
     """
@@ -541,6 +577,7 @@ class Mesh:
         self.zones = []
         self.nodes = []
         self.faces = []
+        self.edges = []
 
         # Rounded coordinates bag.
         self.rounded_coordinates_bag = set()
@@ -777,6 +814,17 @@ class Mesh:
             f.calculate_area()
             f.calculate_normal()
 
+    def calculate_edges(self):
+        """
+        calculate edges of the mesh
+        """
+        for f in self.faces:
+            f.calculate_neighbour_faces()
+            es = [Edge(f, neighbour) for neighbour in f.neighbour_faces]
+            for e in es:
+                if e not in self.edges:
+                    self.edges.append(e)
+
     def generate_accretion_rate(self):
         """
         Generate accretion rate.
@@ -910,14 +958,19 @@ class Mesh:
         V(h) = ah + bh^2 = target_ice
 
         TODO: from [1] IV.A.5
+        Returns
+        -------
+        float
+            max face height
         """
-
+        maxH = 0
         for f in self.faces:
 
             a, b = f.v_coef_a, f.v_coef_b
 
             # Prismas method.
             f.h = f.ice_chunk / f.area
+
 
             # Try to solve more accurately (pyramides method).
             if abs(b) > EPS:
@@ -932,15 +985,32 @@ class Mesh:
                         f.h = h1
                     elif h2 >= 0.0:
                         f.h = h2
+            if f.h > maxH:
+                maxH = f.h
+        return maxH
 
-    def height_smoothing(self):
+    def height_smoothing(self, maxH, ah, beta):
         """
         Height smoothing.
 
+        Parameters
+        ----------
+        maxH : float
+            max of height field of mesh
+        ah : float
+            coefficient
+        beta : float
+            coefficient
         TODO: [1] IV.A.6
         """
-
-        pass
+        for e in self.edges:
+            f1 = e.face1
+            f2 = e.face2
+            if (f1.h < f2.h):
+                f1, f2 = f2, f1
+            dV = f1.area * min(f1.h - f2.h, ah*maxH)
+            f1.ice_chunk -= dV * beta
+            f2.ice_chunk += dV * beta
 
     def update_surface_nodal_positions(self):
         """
@@ -982,6 +1052,13 @@ class Mesh:
             # [1] IV.A.8 formula (14)
             f.target_ice -= pseudoprism_volume(f.nodes[0].old_p, f.nodes[1].old_p, f.nodes[2].old_p,
                                                f.nodes[0].p, f.nodes[1].p, f.nodes[2].p)
+        for f in self.faces:
+            if f.target_ice < 0:
+                f_max = max(f.neighbour_faces, key=lambda nf:nf.target_ice)
+                f_max.target_ice += f.target_ice
+                if f_max.target_ice < 0:
+                    f_max.target_ice = 0
+                f.target_ice = 0
 
     def null_space_smoothing(self, threshold, safety_factor=0.2):
         """
@@ -1044,7 +1121,7 @@ class Mesh:
                is_simple_tsf=False,
                normal_smoothing_steps=10, normal_smoothing_s=10.0, normal_smoothing_k=0.15,
                height_smoothing_steps=20, time_step_fraction_k=0.25,
-               threshold_for_null_space = 0.003):
+               threshold_for_null_space = 0.003, height_smoothing_alpha = 0.2, height_smoothing_b = 0.1):
         """
         Remesh.
 
@@ -1081,11 +1158,15 @@ class Mesh:
             Coefficient for define time-step fraction.
         threshold_for_null_space : float
             threshold to separate primary and null space
+        height_smoothing_alpha : float
+            Coefficient for height_smoothing, 0 < alpha < 1
+        height_smoothing_b : float
+            Coefficient for height_smoothing, 0 < b < 0.5
         """
 
         self.calculate_faces_geometrical_properties()
         self.generate_accretion_rate()
-
+        self.calculate_edges()
         step_i = 0
 
         while True:
@@ -1100,10 +1181,10 @@ class Mesh:
             tsf = self.time_step_fraction(is_simple_tsf, steps - step_i + 1, time_step_fraction_k)
             log.info(f'step_i = {step_i}, tsf = {tsf}')
 
-            self.define_height_field()
+            max_face_height = self.define_height_field()
             for _ in range(height_smoothing_steps):
-                self.height_smoothing()
-                self.define_height_field()
+                self.height_smoothing(max_face_height, height_smoothing_alpha, height_smoothing_b)
+                max_face_height = self.define_height_field()
 
             self.update_surface_nodal_positions()
             self.redistribute_remaining_volume()
