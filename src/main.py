@@ -153,6 +153,26 @@ def primary_and_null_space(A, threshold):
     return primary_space, null_space, eigen_values, k
 
 
+def find_common_nodes(face1, face2):
+    """
+    finds common nodes between faces
+
+    Parameters
+    ----------
+    face1, face2: Face
+
+    Returns
+    -------
+    Node, Node
+    """
+    nodes = []
+    for n in face1.nodes:
+        if n in face2.nodes:
+            nodes.append(n)
+    return nodes[0], nodes[1]
+
+
+
 class Node:
     """
     Node - container for coordinates.
@@ -535,6 +555,7 @@ class Zone:
 
         return Zone.objects_slice_str(lambda f: f[e], self.faces)
 
+
 class Edge:
     """
     Edge - border between two faces
@@ -553,11 +574,17 @@ class Edge:
         """
         self.face1 = face1
         self.face2 = face2
+        self.node1, self.node2 = find_common_nodes(face1, face2)
 
     def __eq__(self, other):
         return self.face1 == other.face1 and self.face2 == other.face2 \
                 or self.face1 == other.face2 and self.face2 == other.face1
 
+    def points(self):
+        return self.node1.p, self.node2.p
+
+    def old_points(self):
+        return self.node1.old_p, self.node2.old_p
 
 class Mesh:
     """
@@ -1072,6 +1099,7 @@ class Mesh:
             0 < safety_factor < 1
 
         """
+
         for n in self.nodes:
             n.calculate_A_and_b()
             _, null_space, eigen_values, k = primary_and_null_space(n.A, threshold)
@@ -1080,9 +1108,10 @@ class Mesh:
                 for f in n.faces:
                     C = abs(np.dot(f.normal, n.normal)) if f.is_contracting else 1.0
                     wi = np.append(wi, f.inner_angle(n) * C * C)
-                ci = np.array([n.p - np.mean(f.points(), axis=0) for f in n.faces])
+                ci = np.array([np.mean(f.points() - n.p, axis=0) for f in n.faces])
                 dv = np.sum([wi[i] * ci[i] for i in range(len(n.faces))], axis=0)/np.sum(wi)
                 t = safety_factor * np.sum([np.dot(dv, e)*e for e in null_space.T], axis=0)
+                n.old_p = n.p.copy()
                 n.p += t
                 #logging.debug(f'dv =  {dv}; t = {t}')
 
@@ -1092,8 +1121,22 @@ class Mesh:
 
         TODO: [1] IV.A.10
         """
-
-        pass
+        for e in self.edges:
+            n_e = (e.face1.normal + e.face2.normal)/2
+            p1, p2 = e.points()
+            p3, p4 = e.old_points()
+            n_s = np.cross(p2 - p1, p3 - p1)
+            A_s = 0.5 * (LA.norm(np.cross(p2 - p1, p3 - p1)) + LA.norm(np.cross(p4 - p3, p4 - p2)))
+            A_r = e.face1.area
+            A_l = e.face2.area
+            V_flux = 0
+            a = np.dot(n_s, n_e)
+            if a >= 0:
+                V_flux = a * e.face1.ice_chunk * A_s / A_r
+            else:
+                V_flux = a * e.face2.ice_chunk * A_s / A_l
+            e.face2.ice_chunk += V_flux
+            e.face1.ice_chunk -= V_flux
 
     def final_volume_correction_step(self):
         """
@@ -1117,7 +1160,7 @@ class Mesh:
         return sum(map(lambda f: f.target_ice, self.faces))
 
     def remesh(self,
-               steps=5,
+               steps=10,
                is_simple_tsf=False,
                normal_smoothing_steps=10, normal_smoothing_s=10.0, normal_smoothing_k=0.15,
                height_smoothing_steps=20, time_step_fraction_k=0.25,
