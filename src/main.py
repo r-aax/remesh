@@ -218,7 +218,7 @@ class Node:
         a = np.ones(m)
         W = np.zeros((m, m))
         for i in range(m):
-            W[i, i] = self.faces[i].inner_angle(self)
+            W[i, i] = self.faces[i].area#inner_angle(self)
         self.b = N.T @ W @ a
         self.A = N.T @ W @ N
 
@@ -1108,7 +1108,7 @@ class Mesh:
                 for f in n.faces:
                     C = abs(np.dot(f.normal, n.normal)) if f.is_contracting else 1.0
                     wi = np.append(wi, f.inner_angle(n) * C * C)
-                ci = np.array([np.mean(f.points() - n.p, axis=0) for f in n.faces])
+                ci = np.array([np.mean(f.points(), axis=0) - n.p for f in n.faces])
                 dv = np.sum([wi[i] * ci[i] for i in range(len(n.faces))], axis=0)/np.sum(wi)
                 t = safety_factor * np.sum([np.dot(dv, e)*e for e in null_space.T], axis=0)
                 n.old_p = n.p.copy()
@@ -1160,10 +1160,10 @@ class Mesh:
         return sum(map(lambda f: f.target_ice, self.faces))
 
     def remesh(self,
-               steps=10,
+               steps=50,
                is_simple_tsf=False,
                normal_smoothing_steps=10, normal_smoothing_s=10.0, normal_smoothing_k=0.15,
-               height_smoothing_steps=20, time_step_fraction_k=0.25,
+               height_smoothing_steps=20, time_step_fraction_k=0.25, null_space_smoothing_steps=1,
                threshold_for_null_space = 0.003, height_smoothing_alpha = 0.2, height_smoothing_b = 0.1):
         """
         Remesh.
@@ -1199,6 +1199,8 @@ class Mesh:
             Steps of height smoothing.
         time_step_fraction_k : float
             Coefficient for define time-step fraction.
+        null_space_smoothing_steps : int
+            Steps of null space smoothing
         threshold_for_null_space : float
             threshold to separate primary and null space
         height_smoothing_alpha : float
@@ -1231,8 +1233,11 @@ class Mesh:
 
             self.update_surface_nodal_positions()
             self.redistribute_remaining_volume()
-            self.null_space_smoothing(threshold_for_null_space)
-            self.null_space_smoothing_accretion_volume_interpolation()
+
+            for _ in range(null_space_smoothing_steps):
+                self.null_space_smoothing(threshold_for_null_space)
+                self.calculate_faces_geometrical_properties()
+                self.null_space_smoothing_accretion_volume_interpolation()
 
             # Break on total successfull remesh.
             if tsf == 1.0:
