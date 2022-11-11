@@ -767,12 +767,12 @@ class Mesh:
                                     [d[j][i] for j in range(face_variables_count)])
                         self.faces.append(face)
                         zone.faces.append(face)
-
                     # Read connectivity lists.
                     for i in range(faces_to_read):
                         line = f.readline()
                         face = zone.faces[i]
                         nodes = [zone.nodes[int(ss) - 1] for ss in line.split()]
+
                         if len(nodes) != 3:
                             raise Exception('Internal error')
                         face.nodes = nodes
@@ -787,6 +787,9 @@ class Mesh:
         # Set identifiers.
         for i, f in enumerate(self.faces):
             f['Id'] = i
+        for n in self.nodes:
+            if len(n.faces) == 0:
+                self.nodes.remove(n)
 
     def store(self, filename):
         """
@@ -1365,4 +1368,5 @@ if __name__ == '__main__':
     # lrs('../cases/naca/naca_t05.dat', '../res_naca_t05.dat')
     lrs('../cases/naca/naca_t12.dat', '../res_naca_t12.dat')
     # lrs('../cases/naca/naca_t25.dat', '../res_naca_t25.dat')
-    lrs('../cases/bunny.dat', '../res_bunny.dat')
+    #lrs('../cases/bunny.dat', '../res_bunny.dat')
+    lrs('../cases/bunny_fixed.dat', '../res_bunny_fixed.dat')
