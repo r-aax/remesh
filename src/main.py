@@ -1163,7 +1163,7 @@ class Mesh:
         return sum(map(lambda f: f.target_ice, self.faces))
 
     def remesh(self,
-               steps=50,
+               steps=400,
                is_simple_tsf=False,
                normal_smoothing_steps=10, normal_smoothing_s=10.0, normal_smoothing_k=0.15,
                height_smoothing_steps=20, time_step_fraction_k=0.25, null_space_smoothing_steps=1,
@@ -1366,7 +1366,7 @@ if __name__ != '__main__':
 
 if __name__ == '__main__':
     # lrs('../cases/naca/naca_t05.dat', '../res_naca_t05.dat')
-    lrs('../cases/naca/naca_t12.dat', '../res_naca_t12.dat')
+    #lrs('../cases/naca/naca_t12.dat', '../res_naca_t12.dat')
     # lrs('../cases/naca/naca_t25.dat', '../res_naca_t25.dat')
-    #lrs('../cases/bunny.dat', '../res_bunny.dat')
-    lrs('../cases/bunny_fixed.dat', '../res_bunny_fixed.dat')
+    lrs('../cases/blender_custom_meshes/holes.dat', '../res_holes.dat')
+    #lrs('../cases/bunny_fixed.dat', '../res_bunny_fixed.dat')
