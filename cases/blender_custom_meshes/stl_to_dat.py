@@ -6,15 +6,17 @@ import sys
 
 def createParser ():
     parser = argparse.ArgumentParser()
-    parser.add_argument ('-n', '--stl_name')
+    parser.add_argument('-n', '--stl_name')
     parser.add_argument('-d', '--dat_name', default="result.dat")
-    parser.add_argument('-p', '--ice_percent', default=0.0)
+    parser.add_argument('-p', '--ice_percent', default=0.0, help="0.0 <= ice_percent <= 1.0, default = 0")
+    parser.add_argument('-dir', '--direction', nargs='+', help='direction of ice growth, vector of 3 floats, if none, then ice grows in all directions')
+
     return parser
 
-def print_row_in_file(f, x, cnt):
+def print_row_in_file(f, x):
     s = ''
-    for j in range(cnt):
-        s += f'{x} '
+    for j in range(len(x)):
+        s += f'{x[j]} '
     f.write(f'{s}\n')
 
 if __name__ == '__main__':
@@ -24,6 +26,9 @@ if __name__ == '__main__':
     dat_name = namespace.dat_name
     ice_percent = numpy.float64(namespace.ice_percent)
     stl_mesh = trimesh.load_mesh(stl_name)
+    if namespace.direction is not None:
+        direction = [float(x) for x in namespace.direction]
+        #print(direction)
     with open(dat_name, 'w', newline='\n') as f:
         f.write('#\n')
         f.write('TITLE=""\n')
@@ -39,11 +44,18 @@ if __name__ == '__main__':
             for j in range(len(stl_mesh.vertices)):
                 s += f'{stl_mesh.vertices[j][i]} '
             f.write(f'{s}\n')
+
         for i in range(2):
-            print_row_in_file(f, 0.0, len(stl_mesh.faces))
-        print_row_in_file(f, stl_mesh.volume*ice_percent, len(stl_mesh.faces))
+            print_row_in_file(f, [0.0] * len(stl_mesh.faces))
+
+        if namespace.direction is not None:
+            print_row_in_file(f, [stl_mesh.volume * ice_percent * max(0, numpy.dot(direction, fn)) for fn in stl_mesh.face_normals])
+        else:
+            print_row_in_file(f, [stl_mesh.volume * ice_percent] * len(stl_mesh.faces))
+
         for i in range(5):
-            print_row_in_file(f, 0.0, len(stl_mesh.faces))
+            print_row_in_file(f, [0.0] * len(stl_mesh.faces))
+
         for face in stl_mesh.faces:
             s = ''
             for i in range(3):
