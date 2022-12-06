@@ -172,7 +172,6 @@ def find_common_nodes(face1, face2):
     return nodes[0], nodes[1]
 
 
-
 class Node:
     """
     Node - container for coordinates.
@@ -586,6 +585,7 @@ class Edge:
     def old_points(self):
         return self.node1.old_p, self.node2.old_p
 
+
 class Mesh:
     """
     Mesh - consists of surface triangle faces.
@@ -611,7 +611,6 @@ class Mesh:
 
         # Target ice in the beginning of remeshing.
         self.initial_target_ice = 0.0
-
 
     def clear(self):
         """
@@ -886,9 +885,6 @@ class Mesh:
                 normal += (primary_space[:, i] @ n.b) * primary_space[:, i] / eigen_values[i]
             n.normal = normal / np.linalg.norm(normal)
 
-
-
-
     def normal_smoothing(self, normal_smoothing_steps, normal_smoothing_s, normal_smoothing_k):
         """
         Reduce surface noise by local normal smoothing.
@@ -1000,7 +996,6 @@ class Mesh:
 
             # Prismas method.
             f.h = f.ice_chunk / f.area
-
 
             # Try to solve more accurately (pyramides method).
             if abs(b) > EPS:
@@ -1157,17 +1152,45 @@ class Mesh:
         Returns
         -------
         float
-            Targte ice.
+            Target ice.
         """
 
         return sum(map(lambda f: f.target_ice, self.faces))
+
+    def add_additional_data_for_analysis(self):
+        """
+        Add additional data for analysis.
+        """
+
+        # Additional data for analyzis.
+        for f in self.faces:
+            v = f.normal
+            f['NX'] = v[0]
+            f['NY'] = v[1]
+            f['NZ'] = v[2]
+            f['NMod'] = LA.norm(v)
+            v = f.nodes[0].normal
+            f['N1X'] = v[0]
+            f['N1Y'] = v[1]
+            f['N1Z'] = v[2]
+            f['N1Mod'] = LA.norm(v)
+            v = f.nodes[1].normal
+            f['N2X'] = v[0]
+            f['N2Y'] = v[1]
+            f['N2Z'] = v[2]
+            f['N2Mod'] = LA.norm(v)
+            v = f.nodes[2].normal
+            f['N3X'] = v[0]
+            f['N3Y'] = v[1]
+            f['N3Z'] = v[2]
+            f['N3Mod'] = LA.norm(v)
 
     def remesh(self,
                steps=5,
                is_simple_tsf=False,
                normal_smoothing_steps=10, normal_smoothing_s=10.0, normal_smoothing_k=0.15,
                height_smoothing_steps=20, time_step_fraction_k=0.25, null_space_smoothing_steps=250,
-               threshold_for_null_space = 0.003, height_smoothing_alpha = 0.2, height_smoothing_b = 0.1):
+               threshold_for_null_space=0.003, height_smoothing_alpha=0.2, height_smoothing_b=0.1):
         """
         Remesh.
 
@@ -1256,29 +1279,7 @@ class Mesh:
             self.calculate_faces_geometrical_properties()
 
         self.final_volume_correction_step()
-
-        # Additional data for analyzis.
-        for f in self.faces:
-            v = f.normal
-            f['NX'] = v[0]
-            f['NY'] = v[1]
-            f['NZ'] = v[2]
-            f['NMod'] = LA.norm(v)
-            v = f.nodes[0].normal
-            f['N1X'] = v[0]
-            f['N1Y'] = v[1]
-            f['N1Z'] = v[2]
-            f['N1Mod'] = LA.norm(v)
-            v = f.nodes[1].normal
-            f['N2X'] = v[0]
-            f['N2Y'] = v[1]
-            f['N2Z'] = v[2]
-            f['N2Mod'] = LA.norm(v)
-            v = f.nodes[2].normal
-            f['N3X'] = v[0]
-            f['N3Y'] = v[1]
-            f['N3Z'] = v[2]
-            f['N3Mod'] = LA.norm(v)
+        self.add_additional_data_for_analysis()
 
 
 def lrs(name_in, name_out):
@@ -1365,9 +1366,9 @@ if __name__ != '__main__':
 
 
 if __name__ == '__main__':
-    # lrs('../cases/naca/naca_t05.dat', '../res_naca_t05.dat')
-    #lrs('../cases/naca/naca_t12.dat', '../res_naca_t12.dat')
+    lrs('../cases/naca/naca_t05.dat', '../res_naca_t05.dat')
+    # lrs('../cases/naca/naca_t12.dat', '../res_naca_t12.dat')
     # lrs('../cases/naca/naca_t25.dat', '../res_naca_t25.dat')
-    #lrs('../cases/blender_custom_meshes/holes.dat', '../res_holes.dat')
-    lrs('../cases/blender_custom_meshes/snowman.dat', '../res_snowman.dat')
-    #lrs('../cases/bunny_fixed.dat', '../res_bunny_fixed.dat')
+    # lrs('../cases/blender_custom_meshes/holes.dat', '../res_holes.dat')
+    # lrs('../cases/blender_custom_meshes/snowman.dat', '../res_snowman.dat')
+    # lrs('../cases/bunny.dat', '../res_bunny.dat')
