@@ -854,6 +854,18 @@ class Mesh:
                 if e not in self.edges:
                     self.edges.append(e)
 
+    def remesh_prepare(self):
+        """
+        Prepare mesh for remeshing
+        """
+
+        self.calculate_faces_geometrical_properties()
+
+        for f in self.faces:
+            f.target_ice = f.area * f['Hi']
+
+        self.initial_target_ice = self.target_ice()
+
     def generate_accretion_rate(self):
         """
         Generate accretion rate.
@@ -862,10 +874,8 @@ class Mesh:
         Source: [1] IV.A.1
         """
 
-        for f in self.faces:
-            f.target_ice = f.area * f['Hi']
-
-        self.initial_target_ice = self.target_ice()
+        # Nothing to do.
+        pass
 
     def define_nodal_offset_direction(self, threshold):
         """
@@ -1165,6 +1175,7 @@ class Mesh:
         # Additional data for analyzis.
         for f in self.faces:
             v = f.normal
+            print(v)
             f['NX'] = v[0]
             f['NY'] = v[1]
             f['NZ'] = v[2]
@@ -1235,7 +1246,7 @@ class Mesh:
             Coefficient for height_smoothing, 0 < b < 0.5
         """
 
-        self.calculate_faces_geometrical_properties()
+        self.remesh_prepare()
         self.generate_accretion_rate()
         self.calculate_edges()
         step_i = 0
@@ -1280,6 +1291,16 @@ class Mesh:
 
         self.final_volume_correction_step()
         self.add_additional_data_for_analysis()
+
+    def new_remesh(self):
+        """
+        New remesh algorithm.
+        """
+
+        # Prepare.
+        self.remesh_prepare()
+
+        pass
 
 
 def lrs(name_in, name_out):
@@ -1366,9 +1387,9 @@ if __name__ != '__main__':
 
 
 if __name__ == '__main__':
-    lrs('../cases/naca/naca_t05.dat', '../res_naca_t05.dat')
+    # lrs('../cases/naca/naca_t05.dat', '../res_naca_t05.dat')
     # lrs('../cases/naca/naca_t12.dat', '../res_naca_t12.dat')
     # lrs('../cases/naca/naca_t25.dat', '../res_naca_t25.dat')
     # lrs('../cases/blender_custom_meshes/holes.dat', '../res_holes.dat')
     # lrs('../cases/blender_custom_meshes/snowman.dat', '../res_snowman.dat')
-    # lrs('../cases/bunny.dat', '../res_bunny.dat')
+    lrs('../cases/bunny.dat', '../res_bunny.dat')
