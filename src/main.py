@@ -834,13 +834,20 @@ class Mesh:
 
             f.close()
 
-    def calculate_faces_geometrical_properties(self):
+    def calculate_faces_areas(self):
         """
-        Geometry properties for faces.
+        Calculate faces areas.
         """
 
         for f in self.faces:
             f.calculate_area()
+
+    def calculate_faces_normals(self):
+        """
+        Calculate faces normals.
+        """
+
+        for f in self.faces:
             f.calculate_normal()
 
     def calculate_edges(self):
@@ -858,8 +865,6 @@ class Mesh:
         """
         Prepare mesh for remeshing
         """
-
-        self.calculate_faces_geometrical_properties()
 
         for f in self.faces:
             f.target_ice = f.area * f['Hi']
@@ -1175,7 +1180,6 @@ class Mesh:
         # Additional data for analyzis.
         for f in self.faces:
             v = f.normal
-            print(v)
             f['NX'] = v[0]
             f['NY'] = v[1]
             f['NZ'] = v[2]
@@ -1246,6 +1250,8 @@ class Mesh:
             Coefficient for height_smoothing, 0 < b < 0.5
         """
 
+        self.calculate_faces_areas()
+        self.calculate_faces_normals()
         self.remesh_prepare()
         self.generate_accretion_rate()
         self.calculate_edges()
@@ -1273,7 +1279,8 @@ class Mesh:
 
             for _ in range(null_space_smoothing_steps):
                 self.null_space_smoothing(threshold_for_null_space)
-                self.calculate_faces_geometrical_properties()
+                self.calculate_faces_areas()
+                self.calculate_faces_normals()
                 self.null_space_smoothing_accretion_volume_interpolation()
 
             # Break on total successfull remesh.
@@ -1287,20 +1294,64 @@ class Mesh:
                 break
 
             # Recalculate areas and normals for next iteration.
-            self.calculate_faces_geometrical_properties()
+            self.calculate_faces_areas()
+            self.calculate_faces_normals()
 
         self.final_volume_correction_step()
         self.add_additional_data_for_analysis()
 
-    def new_remesh(self):
+    def calculate_nodes_normals(self):
+        """
+        Calculate nodes normals.
+        """
+
+        for n in self.nodes:
+            n.normal = sum(map(lambda f: f.normal, n.faces)) / len(n.faces)
+
+    def new_remesh(self,
+                   steps=1):
         """
         New remesh algorithm.
+
+        Parameters
+        ----------
+        steps : int
+            Steps count.
         """
 
         # Prepare.
+        self.calculate_faces_areas()
+        self.calculate_faces_normals()
+        self.calculate_nodes_normals()
         self.remesh_prepare()
 
-        pass
+        for step_i in range(steps, 0, -1):
+
+            log.info(f'new_remesh : step, trying to accrete part {step_i} of target ice')
+
+            # Calculate ice_chunk for current iteration and height.
+            for f in self.faces:
+                f.chunk = f.target_ice / step_i
+                f.shift = f.chunk / f.area
+
+            # Define node shifts.
+            for n in self.nodes:
+                n.shift = (sum(map(lambda f: f.shift, n.faces))) / len(n.faces)
+
+            # Define new points positions.
+            for n in self.nodes:
+                n.old_p = n.p.copy()
+                n.p = n.old_p + (n.normal * n.shift)
+
+            # Correct target ice.
+            for f in self.faces:
+                f.target_ice -= pseudoprism_volume(f.nodes[0].old_p, f.nodes[1].old_p, f.nodes[2].old_p,
+                                                   f.nodes[0].p, f.nodes[1].p, f.nodes[2].p)
+
+            # Recalculate geometry.
+            self.calculate_faces_areas()
+            self.calculate_faces_normals()
+            self.calculate_nodes_normals()
 
 
 def lrs(name_in, name_out):
@@ -1345,7 +1396,7 @@ if __name__ != '__main__':
         def solve(self, pool: dict):
             g = Mesh()
             g.load(self.mesh_file_in)
-            pool['surface_mesh'] = g;
+            pool['surface_mesh'] = g
 
 
     @dataclass
