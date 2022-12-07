@@ -1154,11 +1154,9 @@ class Mesh:
     def final_volume_correction_step(self):
         """
         Final volume correction step.
-
-        TODO: [1] IV.A.11
         """
 
-        pass
+        self.null_space_smoothing_accretion_volume_interpolation()
 
     def target_ice(self):
         """
