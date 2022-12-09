@@ -312,10 +312,10 @@ def time_to_icing_triangle_surface(a, ra, b, rb, c, rc, d):
     ns = map(normal, [1.0, -1.0])
     for n in ns:
         a_sh, b_sh, c_sh = a + n * ra, b + n * rb, c + n * rc
-        al1, bt1, gm1 = line_plane_intersection(a, d, a_sh, b_sh - a_sh, c_sh - a_sh)
-        p1 = a + d * al1
-        al2, bt2, gm2 = line_plane_intersection(p1, -n, a, ab, ac)
-        alphas.append(alpha(bt2, gm2))
+        surf_alpha, _, _ = line_plane_intersection(a, d, a_sh, b_sh - a_sh, c_sh - a_sh)
+        surf_point = a + d * surf_alpha
+        _, beta, gamma = line_plane_intersection(surf_point, -n, a, ab, ac)
+        alphas.append(alpha(beta, gamma))
 
     # Case 2.
     for beta in find_local_extremums_kxk_qxxqxq(k_b, q_b2, q_b, q):
