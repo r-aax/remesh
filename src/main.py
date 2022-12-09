@@ -287,7 +287,7 @@ def time_to_icing_triangle_surface(a, ra, b, rb, c, rc, d):
         else:
             return k_b * beta + k_g * gamma + math.sqrt(sq)
 
-    res = []
+    alphas = []
 
     #
     # Case 1.
@@ -314,7 +314,7 @@ def time_to_icing_triangle_surface(a, ra, b, rb, c, rc, d):
         al1, bt1, gm1 = line_plane_intersection(a, d, a_sh, b_sh - a_sh, c_sh - a_sh)
         p1 = a + d * al1
         al2, bt2, gm2 = line_plane_intersection(p1, -n, a, ab, ac)
-        res.append((bt2, gm2, alpha(bt2, gm2)))
+        alphas.append(alpha(bt2, gm2))
 
     #
     # Case 2.
@@ -322,7 +322,7 @@ def time_to_icing_triangle_surface(a, ra, b, rb, c, rc, d):
 
     c2_betas = [0.0, 1.0] + find_local_extremums_kxk_qxxqxq(k_b, q_b2, q_b, q)
     for c2_b in c2_betas:
-        res.append((c2_b, 0.0, alpha(c2_b, 0.0)))
+        alphas.append(alpha(c2_b, 0.0))
 
     #
     # Case 3.
@@ -330,7 +330,7 @@ def time_to_icing_triangle_surface(a, ra, b, rb, c, rc, d):
 
     c3_gammas = [0.0, 1.0] + find_local_extremums_kxk_qxxqxq(k_g, q_g2, q_g, q)
     for c3_g in c3_gammas:
-        res.append((0.0, c3_g, alpha(0.0, c3_g)))
+        alphas.append(alpha(0.0, c3_g))
 
     #
     # Case 4.
@@ -341,9 +341,9 @@ def time_to_icing_triangle_surface(a, ra, b, rb, c, rc, d):
                                                              -2.0 * q_b2 + q_bg - q_b + q_g,
                                                              q_b2 + q_b + q)
     for c4_g in c4_gammas:
-        res.append((1.0 - c4_g, c4_g, alpha(1.0 - c4_g, c4_g)))
+        alphas.append(alpha(1.0 - c4_g, c4_g))
 
-    return max(map(lambda r: r[2], res))
+    return max(alphas)
 
 
 def primary_and_null_space(A, threshold):
