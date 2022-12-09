@@ -317,32 +317,20 @@ def time_to_icing_triangle_surface(a, ra, b, rb, c, rc, d):
         al2, bt2, gm2 = line_plane_intersection(p1, -n, a, ab, ac)
         alphas.append(alpha(bt2, gm2))
 
-    #
     # Case 2.
-    #
+    for beta in find_local_extremums_kxk_qxxqxq(k_b, q_b2, q_b, q):
+        alphas.append(alpha(beta, 0.0))
 
-    c2_betas = find_local_extremums_kxk_qxxqxq(k_b, q_b2, q_b, q)
-    for c2_b in c2_betas:
-        alphas.append(alpha(c2_b, 0.0))
-
-    #
     # Case 3.
-    #
+    for gamma in find_local_extremums_kxk_qxxqxq(k_g, q_g2, q_g, q):
+        alphas.append(alpha(0.0, gamma))
 
-    c3_gammas = find_local_extremums_kxk_qxxqxq(k_g, q_g2, q_g, q)
-    for c3_g in c3_gammas:
-        alphas.append(alpha(0.0, c3_g))
-
-    #
     # Case 4.
-    #
-
-    c4_gammas = find_local_extremums_kxk_qxxqxq(k_g - k_b,
-                                                q_b2 + q_g2 - q_bg,
-                                                -2.0 * q_b2 + q_bg - q_b + q_g,
-                                                q_b2 + q_b + q)
-    for c4_g in c4_gammas:
-        alphas.append(alpha(1.0 - c4_g, c4_g))
+    for gamma in find_local_extremums_kxk_qxxqxq(k_g - k_b,
+                                                 q_b2 + q_g2 - q_bg,
+                                                 -2.0 * q_b2 + q_bg - q_b + q_g,
+                                                 q_b2 + q_b + q):
+        alphas.append(alpha(1.0 - gamma, gamma))
 
     return max(alphas)
 
