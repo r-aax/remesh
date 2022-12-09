@@ -184,10 +184,10 @@ def solve_quadratic_equation(a, b, c):
             return 1, [-b / (2.0 * a)]
 
 
-def find_local_extremums_kxk_qxxqxq(k_x, k, q_x2, q_x, q):
+def find_local_extremums_kxk_qxxqxq(k_x, q_x2, q_x, q):
     """
     Find extremum point for function
-    alfa(x) = k_x * x + k + sqrt(q_x2 * x^2 + q_x * x + q).
+    alfa(x) = k_x * x + sqrt(q_x2 * x^2 + q_x * x + q).
 
     Parameters
     ----------
@@ -204,31 +204,28 @@ def find_local_extremums_kxk_qxxqxq(k_x, k, q_x2, q_x, q):
 
     Returns
     -------
-    list(float)
+    [float]
         List of extremums.
     """
 
     def sq(x):
         return q_x2 * x**2 + q_x * x + q
 
-    def f(x):
-        return k_x * x + k + math.sqrt(sq(x))
-
     def df(x):
         return k_x + (2.0 * q_x2 * x + q_x) / (2.0 * (math.sqrt(sq(x))))
 
     # Find roots when sq(x) = 0.
-    _, r1 = solve_quadratic_equation(q_x2, q_x, q)
+    _, r_sq = solve_quadratic_equation(q_x2, q_x, q)
 
-    # Construct quadratic equation for find extremums.
+    # Construct quadratic equation for find extremums (df = 0).
     a = 4.0 * (k_x**2 * q_x2 - q_x2**2)
     b = 4.0 * q_x * (k_x**2 - q_x2)
     c = 4.0 * k_x**2 * q - q_x**2
 
     # Solve equation.
-    _, r2 = solve_quadratic_equation(a, b, c)
+    _, r_df = solve_quadratic_equation(a, b, c)
 
-    return r1 + list(filter(lambda x: (sq(x) >= 0.0) and (abs(df(x)) <= 1.0e-10), r2))
+    return r_sq + list(filter(lambda x: (sq(x) >= 0.0) and (abs(df(x)) <= EPS), r_df))
 
 
 def time_to_icing_triangle_surface(ap, ar,
@@ -326,7 +323,7 @@ def time_to_icing_triangle_surface(ap, ar,
     # Case 2.
     #
 
-    c2_betas = [0.0, 1.0] + find_local_extremums_kxk_qxxqxq(k_b, 0.0, q_b2, q_b, q)
+    c2_betas = [0.0, 1.0] + find_local_extremums_kxk_qxxqxq(k_b, q_b2, q_b, q)
     for c2_b in c2_betas:
         res.append((c2_b, 0.0, alpha(c2_b, 0.0)))
 
@@ -334,7 +331,7 @@ def time_to_icing_triangle_surface(ap, ar,
     # Case 3.
     #
 
-    c3_gammas = [0.0, 1.0] + find_local_extremums_kxk_qxxqxq(k_g, 0.0, q_g2, q_g, q)
+    c3_gammas = [0.0, 1.0] + find_local_extremums_kxk_qxxqxq(k_g, q_g2, q_g, q)
     for c3_g in c3_gammas:
         res.append((0.0, c3_g, alpha(0.0, c3_g)))
 
@@ -342,7 +339,7 @@ def time_to_icing_triangle_surface(ap, ar,
     # Case 4.
     #
 
-    c4_gammas = [0.0, 1.0] + find_local_extremums_kxk_qxxqxq(k_g - k_b, 1.0,
+    c4_gammas = [0.0, 1.0] + find_local_extremums_kxk_qxxqxq(k_g - k_b,
                                                              q_b2 + q_g2 - q_bg,
                                                              -2.0 * q_b2 + q_bg - q_b + q_g,
                                                              q_b2 + q_b + q)
@@ -1610,7 +1607,7 @@ def lrs(name_in, name_out):
     g = Mesh()
     g.load(name_in)
     t0 = time.time()
-    g.remesh()
+    g.new_remesh()
     t = time.time() - t0
     target_ice = g.target_ice()
     target_ice_perc = 100.0 * (target_ice / g.initial_target_ice)
