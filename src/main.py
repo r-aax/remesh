@@ -127,6 +127,231 @@ def pseudoprism_volume(a, b, c, na, nb, nc):
            + tetrahedra_volume(a, na, nb, nc)
 
 
+def solve_quadratic_equation(a, b, c):
+    """
+    Solve equation a * x^2 + b * x + c = 0
+
+    Parameters
+    ----------
+    a : float
+        Parameter near x^2.
+    b : float
+        Parameter near x.
+    c : float
+        Free parameter.
+
+    Returns
+    -------
+    Tuple (num, roots)
+    num : int
+        Number of roots (0, 1, 2, or math.inf).
+    roots : [float]
+        Roots array (for 1 root or 2 roots) or [].
+
+    Examples
+    --------
+    0, []
+    1, [r]
+    2, [r1, r2]
+    math.inf, []
+    """
+
+    if a == 0.0:
+        # Linear equation b * x + c = 0.
+        if b == 0.0:
+            # Horizontal line c = 0.
+            if c == 0.0:
+                # All numbers are roots.
+                return math.inf, []
+            else:
+                # No roots.
+                return 0, []
+        else:
+            # One root.
+            return 1, [-c / b]
+    else:
+        # Quadratic equation.
+        d = b * b - 4.0 * a * c
+        if d < 0.0:
+            # No roots.
+            return 0, []
+        elif d > 0.0:
+            # 2 roots.
+            sd = math.sqrt(d)
+            return 2, [(-b + sd) / (2.0 * a), (-b - sd) / (2.0 * a)]
+        else:
+            # 1 root.
+            return 1, [-b / (2.0 * a)]
+
+
+def find_local_extremums_kxk_qxxqxq(k_x, k, q_x2, q_x, q):
+    """
+    Find extremum point for function
+    alfa(x) = k_x * x + k + sqrt(q_x2 * x^2 + q_x * x + q).
+
+    Parameters
+    ----------
+    k_x : float
+        Parameter.
+    k : float
+        Parameter.
+    q_x2 : float
+        Parameter.
+    q_x : float
+        Parameter.
+    q : float
+        Parameter.
+
+    Returns
+    -------
+    list(float)
+        List of extremums.
+    """
+
+    def sq(x):
+        return q_x2 * x**2 + q_x * x + q
+
+    def f(x):
+        return k_x * x + k + math.sqrt(sq(x))
+
+    def df(x):
+        return k_x + (2.0 * q_x2 * x + q_x) / (2.0 * (math.sqrt(sq(x))))
+
+    # Find roots when sq(x) = 0.
+    _, r1 = solve_quadratic_equation(q_x2, q_x, q)
+
+    # Construct quadratic equation for find extremums.
+    a = 4.0 * (k_x**2 * q_x2 - q_x2**2)
+    b = 4.0 * q_x * (k_x**2 - q_x2)
+    c = 4.0 * k_x**2 * q - q_x**2
+
+    # Solve equation.
+    _, r2 = solve_quadratic_equation(a, b, c)
+
+    return r1 + list(filter(lambda x: (sq(x) >= 0.0) and (abs(df(x)) <= 1.0e-10), r2))
+
+
+def time_to_icing_triangle_surface(ap, ar,
+                                   bp, br,
+                                   cp, cr,
+                                   d):
+    """
+    Time to the surface of icing triangle.
+
+    Parameters
+    ----------
+    ap : array
+        A point.
+    ar : float
+        A radius.
+    bp : array
+        B point.
+    br : float
+        B radius.
+    cp : array
+        C point.
+    cr : float
+        C radius.
+    d : array
+        Direction to the surface.
+
+    Returns
+    -------
+    list((float, float, float))
+        List of tuples (beta, gama, alpha)
+    """
+
+    # Normalize d.
+    d = d / LA.norm(d)
+
+    # print(f'time_to_icing_triangle_surface(ap = {ap}, ar = {ar},')
+    # print(f'                               bp = {bp}, br = {br},')
+    # print(f'                               cp = {cp}, cr = {cr},')
+    # print(f'                                d = {d})')
+
+    # Points and radiuses differences.
+    v_ab, v_ac, v_bc = bp - ap, cp - ap, cp - bp
+    r_ab, r_ac, r_bc = br - ar, cr - ar, cr - br
+    # alpha(beta, gama) = k_b * beta + k_g * gama + sqrt(T).
+    k_b = d @ v_ab
+    k_g = d @ v_ac
+    q_b2 = (d @ v_ab)**2 - (LA.norm(v_ab))**2 + r_ab**2
+    q_g2 = (d @ v_ac)**2 - (LA.norm(v_ac))**2 + r_ac**2
+    q_bg = 2.0 * ((d @ v_ab) * (d @ v_ac) - (v_ab @ v_ac) + r_ab * r_ac)
+    q_b = 2.0 * ar * r_ab
+    q_g = 2.0 * ar * r_ac
+    q = ar * ar
+
+    # General function for alpha.
+    def alpha(b, g):
+        if (b < 0.0) or (g < 0.0) or (b + g > 1.0):
+            return 0.0
+        sq = q_b2 * b**2 + q_g2 * g**2 + q_bg * b * g + q_b * b + q_g * g + q
+        if sq < 0.0:
+            return 0.0
+        else:
+            return k_b * b + k_g * g + math.sqrt(sq)
+
+    res = []
+
+    #
+    # Case 1.
+    #
+
+    def normal(t):
+        m = np.array([[t, r_ac * v_ab[2] - r_ab * v_ac[2], r_ab * v_ac[1] - r_ac * v_ab[1]],
+                      [r_ab * v_ac[2] - r_ac * v_ab[2], t, r_ac * v_ab[0] - r_ab * v_ac[0]],
+                      [r_ac * v_ab[1] - r_ab * v_ac[1], r_ab * v_ac[0] - r_ac * v_ab[0], t]])
+        n = LA.inv(m) @ (np.cross(v_ab, v_ac))
+        return n / LA.norm(n)
+
+    def line_plane_intersection(p, loc_d, a, ab, ac):
+        m = np.array([[loc_d[0], -ab[0], -ac[0]],
+                      [loc_d[1], -ab[1], -ac[1]],
+                      [loc_d[2], -ab[2], -ac[2]]])
+        if LA.det(m) == 0.0:
+            return 0.0, 0.0, 0.0
+        mi = LA.inv(m)
+        return mi @ (a - p)
+
+    ns = map(normal, [1.0, -1.0])
+    for ni in ns:
+        a_sh, b_sh, c_sh = ap + ni * ar, bp + ni * br, cp + ni * cr
+        al1, bt1, gm1 = line_plane_intersection(ap, d, a_sh, b_sh - a_sh, c_sh - a_sh)
+        p1 = ap + d * al1
+        al2, bt2, gm2 = line_plane_intersection(p1, -ni, ap, v_ab, v_ac)
+        res.append((bt2, gm2, alpha(bt2, gm2)))
+
+    #
+    # Case 2.
+    #
+
+    c2_betas = [0.0, 1.0] + find_local_extremums_kxk_qxxqxq(k_b, 0.0, q_b2, q_b, q)
+    for c2_b in c2_betas:
+        res.append((c2_b, 0.0, alpha(c2_b, 0.0)))
+
+    #
+    # Case 3.
+    #
+
+    c3_gammas = [0.0, 1.0] + find_local_extremums_kxk_qxxqxq(k_g, 0.0, q_g2, q_g, q)
+    for c3_g in c3_gammas:
+        res.append((0.0, c3_g, alpha(0.0, c3_g)))
+
+    #
+    # Case 4.
+    #
+
+    c4_gammas = [0.0, 1.0] + find_local_extremums_kxk_qxxqxq(k_g - k_b, 1.0,
+                                                             q_b2 + q_g2 - q_bg,
+                                                             -2.0 * q_b2 + q_bg - q_b + q_g,
+                                                             q_b2 + q_b + q)
+    for c4_g in c4_gammas:
+        res.append((1.0 - c4_g, c4_g, alpha(1.0 - c4_g, c4_g)))
+
+    return max(map(lambda r: r[2], res))
+
+
 def primary_and_null_space(A, threshold):
     """
     Calculation of primary and null space of point
@@ -1335,6 +1560,23 @@ class Mesh:
             # Define node shifts.
             for n in self.nodes:
                 n.shift = (sum(map(lambda f: f.shift, n.faces))) / len(n.faces)
+
+            # Define node shifts 2.
+            for n in self.nodes:
+                alfa = 0.0
+                a = n
+                for f in n.faces:
+                    if f.nodes[0] == a:
+                        b, c = f.nodes[1], f.nodes[2]
+                    elif f.nodes[1] == a:
+                        b, c = f.nodes[0], f.nodes[2]
+                    elif f.nodes[2] == a:
+                        b, c = f.nodes[0], f.nodes[1]
+                    alfa = max(alfa,
+                               time_to_icing_triangle_surface(a.p, a.shift, b.p, b.shift, c.p, c.shift, a.normal))
+                n.shift2 = alfa
+            for n in self.nodes:
+                n.shift = n.shift2
 
             # Define new points positions.
             for n in self.nodes:
