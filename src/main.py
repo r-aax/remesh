@@ -255,8 +255,11 @@ def time_to_icing_triangle_surface(a, ra, b, rb, c, rc, d):
         List of tuples (beta, gamma, alpha)
     """
 
+    def normalized(v):
+        return v / LA.norm(v)
+
     # Normalize d.
-    d = d / LA.norm(d)
+    d = normalized(d)
 
     # Points and radiuses differences.
     ab, ac, bc = b - a, c - a, c - b
@@ -294,8 +297,7 @@ def time_to_icing_triangle_surface(a, ra, b, rb, c, rc, d):
         m = np.array([[t, rac * ab[2] - rab * ac[2], rab * ac[1] - rac * ab[1]],
                       [rab * ac[2] - rac * ab[2], t, rac * ab[0] - rab * ac[0]],
                       [rac * ab[1] - rab * ac[1], rab * ac[0] - rac * ab[0], t]])
-        n = LA.inv(m) @ (np.cross(ab, ac))
-        return n / LA.norm(n)
+        return normalized(LA.inv(m) @ (np.cross(ab, ac)))
 
     def line_plane_intersection(lp, ld, la, lab, lac):
         m = np.array([[ld[0], -lab[0], -lac[0]],
@@ -307,11 +309,11 @@ def time_to_icing_triangle_surface(a, ra, b, rb, c, rc, d):
         return mi @ (la - lp)
 
     ns = map(normal, [1.0, -1.0])
-    for ni in ns:
-        a_sh, b_sh, c_sh = a + ni * ra, b + ni * rb, c + ni * rc
+    for n in ns:
+        a_sh, b_sh, c_sh = a + n * ra, b + n * rb, c + n * rc
         al1, bt1, gm1 = line_plane_intersection(a, d, a_sh, b_sh - a_sh, c_sh - a_sh)
         p1 = a + d * al1
-        al2, bt2, gm2 = line_plane_intersection(p1, -ni, a, ab, ac)
+        al2, bt2, gm2 = line_plane_intersection(p1, -n, a, ab, ac)
         res.append((bt2, gm2, alpha(bt2, gm2)))
 
     #
