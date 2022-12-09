@@ -301,13 +301,11 @@ def time_to_icing_triangle_surface(a, ra, b, rb, c, rc, d):
         return normalized(LA.inv(m) @ (np.cross(ab, ac)))
 
     def line_plane_intersection(lp, ld, la, lab, lac):
-        m = np.array([[ld[0], -lab[0], -lac[0]],
-                      [ld[1], -lab[1], -lac[1]],
-                      [ld[2], -lab[2], -lac[2]]])
+        m = np.array([ld, -lab, -lac]).transpose()
         if LA.det(m) == 0.0:
             return 0.0, 0.0, 0.0
-        mi = LA.inv(m)
-        return mi @ (la - lp)
+        else:
+            return LA.inv(m) @ (la - lp)
 
     ns = map(normal, [1.0, -1.0])
     for n in ns:
