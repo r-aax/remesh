@@ -287,7 +287,8 @@ def time_to_icing_triangle_surface(a, ra, b, rb, c, rc, d):
         else:
             return k_b * beta + k_g * gamma + math.sqrt(sq)
 
-    alphas = []
+    # Initial alphas for triangle nodes.
+    alphas = [alpha(0.0, 0.0), alpha(1.0, 0.0), alpha(0.0, 1.0)]
 
     #
     # Case 1.
@@ -320,7 +321,7 @@ def time_to_icing_triangle_surface(a, ra, b, rb, c, rc, d):
     # Case 2.
     #
 
-    c2_betas = [0.0, 1.0] + find_local_extremums_kxk_qxxqxq(k_b, q_b2, q_b, q)
+    c2_betas = find_local_extremums_kxk_qxxqxq(k_b, q_b2, q_b, q)
     for c2_b in c2_betas:
         alphas.append(alpha(c2_b, 0.0))
 
@@ -328,7 +329,7 @@ def time_to_icing_triangle_surface(a, ra, b, rb, c, rc, d):
     # Case 3.
     #
 
-    c3_gammas = [0.0, 1.0] + find_local_extremums_kxk_qxxqxq(k_g, q_g2, q_g, q)
+    c3_gammas = find_local_extremums_kxk_qxxqxq(k_g, q_g2, q_g, q)
     for c3_g in c3_gammas:
         alphas.append(alpha(0.0, c3_g))
 
@@ -336,10 +337,10 @@ def time_to_icing_triangle_surface(a, ra, b, rb, c, rc, d):
     # Case 4.
     #
 
-    c4_gammas = [0.0, 1.0] + find_local_extremums_kxk_qxxqxq(k_g - k_b,
-                                                             q_b2 + q_g2 - q_bg,
-                                                             -2.0 * q_b2 + q_bg - q_b + q_g,
-                                                             q_b2 + q_b + q)
+    c4_gammas = find_local_extremums_kxk_qxxqxq(k_g - k_b,
+                                                q_b2 + q_g2 - q_bg,
+                                                -2.0 * q_b2 + q_bg - q_b + q_g,
+                                                q_b2 + q_b + q)
     for c4_g in c4_gammas:
         alphas.append(alpha(1.0 - c4_g, c4_g))
 
