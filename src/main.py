@@ -1591,7 +1591,7 @@ def lrs(name_in, name_out):
     g = Mesh()
     g.load(name_in)
     t0 = time.time()
-    g.new_remesh()
+    g.remesh()
     t = time.time() - t0
     target_ice = g.target_ice()
     target_ice_perc = 100.0 * (target_ice / g.initial_target_ice)
