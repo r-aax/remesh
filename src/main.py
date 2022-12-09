@@ -228,66 +228,61 @@ def find_local_extremums_kxk_qxxqxq(k_x, q_x2, q_x, q):
     return r_sq + list(filter(lambda x: (sq(x) >= 0.0) and (abs(df(x)) <= EPS), r_df))
 
 
-def time_to_icing_triangle_surface(ap, ar,
-                                   bp, br,
-                                   cp, cr,
-                                   d):
+def time_to_icing_triangle_surface(a, ra, b, rb, c, rc, d):
     """
     Time to the surface of icing triangle.
 
     Parameters
     ----------
-    ap : array
+    a : array
         A point.
-    ar : float
+    ra : float
         A radius.
-    bp : array
+    b : array
         B point.
-    br : float
+    rb : float
         B radius.
-    cp : array
+    c : array
         C point.
-    cr : float
+    rc : float
         C radius.
     d : array
         Direction to the surface.
 
     Returns
     -------
-    list((float, float, float))
-        List of tuples (beta, gama, alpha)
+    [(float, float, float)]
+        List of tuples (beta, gamma, alpha)
     """
 
     # Normalize d.
     d = d / LA.norm(d)
 
-    # print(f'time_to_icing_triangle_surface(ap = {ap}, ar = {ar},')
-    # print(f'                               bp = {bp}, br = {br},')
-    # print(f'                               cp = {cp}, cr = {cr},')
-    # print(f'                                d = {d})')
-
     # Points and radiuses differences.
-    v_ab, v_ac, v_bc = bp - ap, cp - ap, cp - bp
-    r_ab, r_ac, r_bc = br - ar, cr - ar, cr - br
-    # alpha(beta, gama) = k_b * beta + k_g * gama + sqrt(T).
-    k_b = d @ v_ab
-    k_g = d @ v_ac
-    q_b2 = (d @ v_ab)**2 - (LA.norm(v_ab))**2 + r_ab**2
-    q_g2 = (d @ v_ac)**2 - (LA.norm(v_ac))**2 + r_ac**2
-    q_bg = 2.0 * ((d @ v_ab) * (d @ v_ac) - (v_ab @ v_ac) + r_ab * r_ac)
-    q_b = 2.0 * ar * r_ab
-    q_g = 2.0 * ar * r_ac
-    q = ar * ar
+    ab, ac, bc = b - a, c - a, c - b
+    rab, rac, rbc = rb - ra, rc - ra, rc - rb
+
+    # Coefficients.
+    # alpha(beta, gamma) = k_b * beta + k_g * gamma + sqrt(T).
+    # T = q_b2 * beta^2 + q_g2 * gamma^2 + q_bg * beta * gamma + q_b * beta + q_g * gamma + q.
+    k_b = d @ ab
+    k_g = d @ ac
+    q_b2 = (d @ ab)**2 - (LA.norm(ab))**2 + rab**2
+    q_g2 = (d @ ac)**2 - (LA.norm(ac))**2 + rac**2
+    q_bg = 2.0 * ((d @ ab) * (d @ ac) - (ab @ ac) + rab * rac)
+    q_b = 2.0 * ra * rab
+    q_g = 2.0 * ra * rac
+    q = ra**2
 
     # General function for alpha.
-    def alpha(b, g):
-        if (b < 0.0) or (g < 0.0) or (b + g > 1.0):
+    def alpha(beta, gamma):
+        if (beta < 0.0) or (gamma < 0.0) or (beta + gamma > 1.0):
             return 0.0
-        sq = q_b2 * b**2 + q_g2 * g**2 + q_bg * b * g + q_b * b + q_g * g + q
+        sq = q_b2 * beta**2 + q_g2 * gamma**2 + q_bg * beta * gamma + q_b * beta + q_g * gamma + q
         if sq < 0.0:
             return 0.0
         else:
-            return k_b * b + k_g * g + math.sqrt(sq)
+            return k_b * beta + k_g * gamma + math.sqrt(sq)
 
     res = []
 
@@ -296,27 +291,27 @@ def time_to_icing_triangle_surface(ap, ar,
     #
 
     def normal(t):
-        m = np.array([[t, r_ac * v_ab[2] - r_ab * v_ac[2], r_ab * v_ac[1] - r_ac * v_ab[1]],
-                      [r_ab * v_ac[2] - r_ac * v_ab[2], t, r_ac * v_ab[0] - r_ab * v_ac[0]],
-                      [r_ac * v_ab[1] - r_ab * v_ac[1], r_ab * v_ac[0] - r_ac * v_ab[0], t]])
-        n = LA.inv(m) @ (np.cross(v_ab, v_ac))
+        m = np.array([[t, rac * ab[2] - rab * ac[2], rab * ac[1] - rac * ab[1]],
+                      [rab * ac[2] - rac * ab[2], t, rac * ab[0] - rab * ac[0]],
+                      [rac * ab[1] - rab * ac[1], rab * ac[0] - rac * ab[0], t]])
+        n = LA.inv(m) @ (np.cross(ab, ac))
         return n / LA.norm(n)
 
-    def line_plane_intersection(p, loc_d, a, ab, ac):
-        m = np.array([[loc_d[0], -ab[0], -ac[0]],
-                      [loc_d[1], -ab[1], -ac[1]],
-                      [loc_d[2], -ab[2], -ac[2]]])
+    def line_plane_intersection(lp, ld, la, lab, lac):
+        m = np.array([[ld[0], -lab[0], -lac[0]],
+                      [ld[1], -lab[1], -lac[1]],
+                      [ld[2], -lab[2], -lac[2]]])
         if LA.det(m) == 0.0:
             return 0.0, 0.0, 0.0
         mi = LA.inv(m)
-        return mi @ (a - p)
+        return mi @ (la - lp)
 
     ns = map(normal, [1.0, -1.0])
     for ni in ns:
-        a_sh, b_sh, c_sh = ap + ni * ar, bp + ni * br, cp + ni * cr
-        al1, bt1, gm1 = line_plane_intersection(ap, d, a_sh, b_sh - a_sh, c_sh - a_sh)
-        p1 = ap + d * al1
-        al2, bt2, gm2 = line_plane_intersection(p1, -ni, ap, v_ab, v_ac)
+        a_sh, b_sh, c_sh = a + ni * ra, b + ni * rb, c + ni * rc
+        al1, bt1, gm1 = line_plane_intersection(a, d, a_sh, b_sh - a_sh, c_sh - a_sh)
+        p1 = a + d * al1
+        al2, bt2, gm2 = line_plane_intersection(p1, -ni, a, ab, ac)
         res.append((bt2, gm2, alpha(bt2, gm2)))
 
     #
