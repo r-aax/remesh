@@ -1202,7 +1202,7 @@ class Mesh:
                steps=5,
                is_simple_tsf=False,
                normal_smoothing_steps=10, normal_smoothing_s=10.0, normal_smoothing_k=0.15,
-               height_smoothing_steps=20, time_step_fraction_k=0.25, null_space_smoothing_steps=250,
+               height_smoothing_steps=20, time_step_fraction_k=0.25, null_space_smoothing_steps=4,
                threshold_for_null_space=0.003, height_smoothing_alpha=0.2, height_smoothing_b=0.1):
         """
         Remesh.
