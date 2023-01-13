@@ -125,7 +125,7 @@ class RemesherIsotropic(Remesher):
 
     def inner_remesh(self,
                      mesh,
-                     steps=1):
+                     steps=10):
         """
         New remesh algorithm.
 
@@ -143,14 +143,13 @@ class RemesherIsotropic(Remesher):
         mesh.calculate_nodes_normals()
         self.remesh_prepare(mesh)
 
-        for step_i in range(steps, 0, -1):
+        # F-shifts are inited once.
+        for f in mesh.faces:
+            f.shift = f['Hi'] / steps
 
-            print(f'new_remesh : step, trying to accrete part {step_i} of target ice')
+        for step_i in range(steps):
 
-            # Calculate ice_chunk for current iteration and height.
-            for f in mesh.faces:
-                f.chunk = f.target_ice / step_i
-                f.shift = f.chunk / f.area
+            self.log.info(f'remesh_{self.name} : {step_i}-th step.')
 
             # Define node shifts.
             for n in mesh.nodes:
