@@ -2,6 +2,7 @@
 
 import sys
 import math
+import mth
 import time
 import numpy as np
 from numpy import linalg as LA
@@ -32,43 +33,6 @@ log.addHandler(handler)
 
 def init_logging(log_path):
     logging.basicConfig(filename=log_path+'log.txt', encoding='utf-8', level=logging.DEBUG)
-
-
-def quadratic_equation_smallest_positive_root(a, b, c):
-    """
-    Smallest positive root of equation ax^2 + bx + c = 0.
-
-    Parameters
-    ----------
-    a : float
-        Coefficient with x^2.
-    b : float
-        Coefficient with x.
-    c : float
-        Free coefficient.
-
-    Returns
-    -------
-        Smallest positive root or None.
-    """
-
-    if a != 0.0:
-        d = b * b - 4.0 * a * c
-        if d >= 0.0:
-            d = math.sqrt(d)
-            x1, x2 = (-b - d) / (2.0 * a), (-b + d) / (2.0 * a)
-            if (x1 > 0.0) and (x2 > 0.0):
-                return min(x1, x2)
-            elif x1 > 0.0:
-                return x1
-            elif x2 > 0.0:
-                return x2
-    elif b != 0.0:
-        x = -c / b
-        if x > 0.0:
-            return x
-
-    return None
 
 
 def tetrahedra_volume(a, b, c, d):
@@ -127,63 +91,6 @@ def pseudoprism_volume(a, b, c, na, nb, nc):
            + tetrahedra_volume(a, na, nb, nc)
 
 
-def solve_quadratic_equation(a, b, c):
-    """
-    Solve equation a * x^2 + b * x + c = 0
-
-    Parameters
-    ----------
-    a : float
-        Parameter near x^2.
-    b : float
-        Parameter near x.
-    c : float
-        Free parameter.
-
-    Returns
-    -------
-    Tuple (num, roots)
-    num : int
-        Number of roots (0, 1, 2, or math.inf).
-    roots : [float]
-        Roots array (for 1 root or 2 roots) or [].
-
-    Examples
-    --------
-    0, []
-    1, [r]
-    2, [r1, r2]
-    math.inf, []
-    """
-
-    if a == 0.0:
-        # Linear equation b * x + c = 0.
-        if b == 0.0:
-            # Horizontal line c = 0.
-            if c == 0.0:
-                # All numbers are roots.
-                return math.inf, []
-            else:
-                # No roots.
-                return 0, []
-        else:
-            # One root.
-            return 1, [-c / b]
-    else:
-        # Quadratic equation.
-        d = b * b - 4.0 * a * c
-        if d < 0.0:
-            # No roots.
-            return 0, []
-        elif d > 0.0:
-            # 2 roots.
-            sd = math.sqrt(d)
-            return 2, [(-b + sd) / (2.0 * a), (-b - sd) / (2.0 * a)]
-        else:
-            # 1 root.
-            return 1, [-b / (2.0 * a)]
-
-
 def find_local_extremums_kxk_qxxqxq(k_x, q_x2, q_x, q):
     """
     Find extremum point for function
@@ -215,7 +122,7 @@ def find_local_extremums_kxk_qxxqxq(k_x, q_x2, q_x, q):
         return k_x + (2.0 * q_x2 * x + q_x) / (2.0 * (math.sqrt(sq(x))))
 
     # Find roots when sq(x) = 0.
-    _, r_sq = solve_quadratic_equation(q_x2, q_x, q)
+    _, r_sq = mth.solve_quadratic_equation(q_x2, q_x, q)
 
     # Construct quadratic equation for find extremums (df = 0).
     a = 4.0 * (k_x**2 * q_x2 - q_x2**2)
@@ -223,7 +130,7 @@ def find_local_extremums_kxk_qxxqxq(k_x, q_x2, q_x, q):
     c = 4.0 * k_x**2 * q - q_x**2
 
     # Solve equation.
-    _, r_df = solve_quadratic_equation(a, b, c)
+    _, r_df = mth.solve_quadratic_equation(a, b, c)
 
     return r_sq + list(filter(lambda x: (sq(x) >= 0.0) and (abs(df(x)) <= EPS), r_df))
 
