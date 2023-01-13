@@ -1,3 +1,4 @@
+import time
 from remesher import Remesher
 
 
@@ -11,7 +12,7 @@ class RemesherTong(Remesher):
         Constant.
         """
 
-        pass
+        Remesher.__init__(self)
 
     def remesh(self, mesh):
         """
@@ -23,4 +24,6 @@ class RemesherTong(Remesher):
             Mesh.
         """
 
+        self.remesh_time = time.time()
         mesh.remesh()
+        self.remesh_time = time.time() - self.remesh_time

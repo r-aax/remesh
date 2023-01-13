@@ -3,8 +3,6 @@ import mth
 import math
 import numpy as np
 from numpy import linalg as LA
-import logging
-from logging import StreamHandler, Formatter
 
 # Count of valuable digits (after dot) in node coordinates.
 # If coordinates of nodes doesn't differ in valuable digits we consider them equal.
@@ -12,13 +10,6 @@ NODE_COORDINATES_VALUABLE_DIGITS_COUNT = 10
 
 # String of export.
 EXPORT_FORMAT_STRING = '{0:.18e}'
-
-# Log.
-log = logging.getLogger(__name__)
-log.setLevel(logging.DEBUG)
-handler = StreamHandler(stream=sys.stdout)
-handler.setFormatter(Formatter(fmt='[%(asctime)s: %(levelname)s] %(message)s'))
-log.addHandler(handler)
 
 
 def time_to_icing_triangle_surface(a, ra, b, rb, c, rc, d):
@@ -1264,7 +1255,7 @@ class Mesh:
 
             # When we define time-step fraction, we also set ice_chunks.
             tsf = self.time_step_fraction(is_simple_tsf, steps - step_i + 1, time_step_fraction_k)
-            log.info(f'step_i = {step_i}, tsf = {tsf}')
+            print(f'step_i = {step_i}, tsf = {tsf}')
 
             max_face_height = self.define_height_field()
             for _ in range(height_smoothing_steps):
@@ -1282,12 +1273,12 @@ class Mesh:
 
             # Break on total successfull remesh.
             if tsf == 1.0:
-                log.info(f'break on tsf = 1.0')
+                print(f'break on tsf = 1.0')
                 break
 
             # Break on maximum steps number.
             if step_i == steps:
-                log.info(f'break on max_steps ({steps})')
+                print(f'break on max_steps ({steps})')
                 break
 
             # Recalculate areas and normals for next iteration.
@@ -1324,7 +1315,7 @@ class Mesh:
 
         for step_i in range(steps, 0, -1):
 
-            log.info(f'new_remesh : step, trying to accrete part {step_i} of target ice')
+            print(f'new_remesh : step, trying to accrete part {step_i} of target ice')
 
             # Calculate ice_chunk for current iteration and height.
             for f in self.faces:
