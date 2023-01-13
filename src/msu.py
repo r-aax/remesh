@@ -1,5 +1,4 @@
 import mth
-import math
 import numpy as np
 from numpy import linalg as LA
 
@@ -9,8 +8,6 @@ NODE_COORDINATES_VALUABLE_DIGITS_COUNT = 10
 
 # String of export.
 EXPORT_FORMAT_STRING = '{0:.18e}'
-
-
 
 
 def find_common_nodes(face1, face2):
@@ -67,19 +64,6 @@ class Node:
         """
 
         return tuple(map(lambda x: round(x, NODE_COORDINATES_VALUABLE_DIGITS_COUNT), self.p))
-
-    def calculate_A_and_b(self):
-        """
-        Calculate martrices for equation Ax=b for primary and null space calculation
-        """
-        N = np.array([f.normal for f in self.faces])
-        m = len(self.faces)
-        a = np.ones(m)
-        W = np.zeros((m, m))
-        for i in range(m):
-            W[i, i] = self.faces[i].area#inner_angle(self)
-        self.b = N.T @ W @ a
-        self.A = N.T @ W @ N
 
 
 class Edge:
@@ -241,52 +225,6 @@ class Face:
         self.normal = self.normal / LA.norm(self.normal)
         self.smoothed_normal = self.normal.copy()
 
-    def calculate_p_u_vectors(self):
-        """
-        Ice accreted on face with p1, p2, p3 points and n1, n2, n3 normal directions and n - normal of the face.
-        Returns
-        -------
-        float
-            vectors for stable time-step coefficients
-        """
-
-        p1, p2, p3 = self.nodes[0].p, self.nodes[1].p, self.nodes[2].p
-        n1, n2, n3 = self.nodes[0].normal, self.nodes[1].normal, self.nodes[2].normal
-        u1 = n1 / np.dot(self.normal, n1)
-        u2 = n2 / np.dot(self.normal, n2)
-        u3 = n3 / np.dot(self.normal, n3)
-        u21, u31 = u2 - u1, u3 - u1
-        p21, p31 = p2 - p1, p3 - p1
-
-        return p21, p31, u21, u31
-
-    def calculate_jiao_coefs(self):
-        """
-        Function returns a, b, c coefficients for Jiao stability limit.
-        """
-        p21, p31, u21, u31 = self.calculate_p_u_vectors()
-        c0 = np.cross(p21, p31)
-        self.jiao_coef_a = c0 @ c0
-        self.jiao_coef_b = c0 @ (np.cross(p21, u31) - np.cross(p31,u21))
-        self.jiao_coef_c = c0 @ np.cross(u21, u31)
-
-    def calculate_v_coefs(self):
-        """
-        V(h) = ah + bh^2 + ch^3
-
-        Function returns a, b, c coefficients.
-        And we inspect fact is the face contracting or diverging.
-        """
-
-        p21, p31, u21, u31 = self.calculate_p_u_vectors()
-        self.v_coef_a = 0.5 * LA.norm(np.cross(p21, p31))
-        self.v_coef_b = 0.25 * np.dot(np.cross(p21, u31) + np.cross(u21, p31), self.normal)
-        self.v_coef_c = 0.25 * np.dot(np.cross(u21, u31), self.normal)
-
-        # V'(h) = a + h * (...)
-        # If a > 0 then the face is contracting, otherwise diverging.
-        self.is_contracting = self.v_coef_a > 0.0
-
     def calculate_neighbour_faces(self):
         """
         calculate neighbours of the face
@@ -320,54 +258,6 @@ class Face:
 
         # (a, b) = |a| * |b| * cos(alpha)
         return np.arccos(np.dot(v1, v2) / (LA.norm(v1) * LA.norm(v2)))
-
-    def calculate_time_step_fraction_jiao(self):
-        """
-        Calculate time-step fraction jiao.
-        Jiao step time fraction is in [0.0, 1.0].
-        """
-
-        h = mth.quadratic_equation_smallest_positive_root(self.jiao_coef_c,
-                                                          self.jiao_coef_b,
-                                                          self.jiao_coef_a)
-        if h is not None:
-            self.tsf_jiao = min(h, 1.0)
-        else:
-            self.tsf_jiao = 1.0
-
-        # Stub.
-        self.tsf_jiao = 1.0
-
-        # This is is to be exported.
-        self['TsfJiao'] = self.tsf_jiao
-
-    def calculate_time_step_fraction(self, time_step_fraction_k, time_step_fraction_jiao):
-        """
-        Time-step fraction.
-
-        Source: [1] IV.A.4
-
-        Parameters
-        ----------
-        time_step_fraction_k : float
-            Coefficient for define time-step fraction.
-        time_step_fraction_jiao : float
-            global Jiao time step
-        """
-
-        # Equation 3ch^2 + 2bh + a = 0.
-        h = mth.quadratic_equation_smallest_positive_root(3.0 * self.v_coef_c,
-                                                          2.0 * self.v_coef_b,
-                                                          self.v_coef_a)
-        if h is not None:
-            tsf = time_step_fraction_k \
-                  * (self.v_coef_a * h + self.v_coef_b * h * h + self.v_coef_c * h * h * h) / self.target_ice
-            self.tsf = min(tsf, time_step_fraction_jiao, 1.0)
-        else:
-            self.tsf = time_step_fraction_jiao
-
-        # This is is to be exported.
-        self['Tsf'] = self.tsf
 
 
 class Zone:

@@ -5,6 +5,69 @@ from numpy import linalg as LA
 from remesher import Remesher
 
 
+def node_calculate_A_and_b(node):
+    """
+    Calculate martrices for equation Ax=b for primary and null space calculation
+    """
+    N = np.array([f.normal for f in node.faces])
+    m = len(node.faces)
+    a = np.ones(m)
+    W = np.zeros((m, m))
+    for i in range(m):
+        W[i, i] = node.faces[i].area  # inner_angle(self)
+    node.b = N.T @ W @ a
+    node.A = N.T @ W @ N
+
+
+def face_calculate_p_u_vectors(face):
+    """
+    Ice accreted on face with p1, p2, p3 points and n1, n2, n3 normal directions and n - normal of the face.
+    Returns
+    -------
+    float
+        vectors for stable time-step coefficients
+    """
+
+    p1, p2, p3 = face.nodes[0].p, face.nodes[1].p, face.nodes[2].p
+    n1, n2, n3 = face.nodes[0].normal, face.nodes[1].normal, face.nodes[2].normal
+    u1 = n1 / np.dot(face.normal, n1)
+    u2 = n2 / np.dot(face.normal, n2)
+    u3 = n3 / np.dot(face.normal, n3)
+    u21, u31 = u2 - u1, u3 - u1
+    p21, p31 = p2 - p1, p3 - p1
+
+    return p21, p31, u21, u31
+
+
+def face_calculate_jiao_coefs(face):
+    """
+    Function returns a, b, c coefficients for Jiao stability limit.
+    """
+    p21, p31, u21, u31 = face_calculate_p_u_vectors(face)
+    c0 = np.cross(p21, p31)
+    face.jiao_coef_a = c0 @ c0
+    face.jiao_coef_b = c0 @ (np.cross(p21, u31) - np.cross(p31,u21))
+    face.jiao_coef_c = c0 @ np.cross(u21, u31)
+
+
+def face_calculate_v_coefs(face):
+    """
+    V(h) = ah + bh^2 + ch^3
+
+    Function returns a, b, c coefficients.
+    And we inspect fact is the face contracting or diverging.
+    """
+
+    p21, p31, u21, u31 = face_calculate_p_u_vectors(face)
+    face.v_coef_a = 0.5 * LA.norm(np.cross(p21, p31))
+    face.v_coef_b = 0.25 * np.dot(np.cross(p21, u31) + np.cross(u21, p31), face.normal)
+    face.v_coef_c = 0.25 * np.dot(np.cross(u21, u31), face.normal)
+
+    # V'(h) = a + h * (...)
+    # If a > 0 then the face is contracting, otherwise diverging.
+    face.is_contracting = face.v_coef_a > 0.0
+
+
 def primary_and_null_space(A, threshold):
     """
     Calculation of primary and null space of point
@@ -29,6 +92,56 @@ def primary_and_null_space(A, threshold):
     primary_space = eigen_vectors[:, :k]
     null_space = eigen_vectors[:, k:]
     return primary_space, null_space, eigen_values, k
+
+
+def face_calculate_time_step_fraction_jiao(face):
+    """
+    Calculate time-step fraction jiao.
+    Jiao step time fraction is in [0.0, 1.0].
+    """
+
+    h = mth.quadratic_equation_smallest_positive_root(face.jiao_coef_c,
+                                                      face.jiao_coef_b,
+                                                      face.jiao_coef_a)
+    if h is not None:
+        face.tsf_jiao = min(h, 1.0)
+    else:
+        face.tsf_jiao = 1.0
+
+    # Stub.
+    face.tsf_jiao = 1.0
+
+    # This is is to be exported.
+    face['TsfJiao'] = face.tsf_jiao
+
+
+def face_calculate_time_step_fraction(face, time_step_fraction_k, time_step_fraction_jiao):
+    """
+    Time-step fraction.
+
+    Source: [1] IV.A.4
+
+    Parameters
+    ----------
+    time_step_fraction_k : float
+        Coefficient for define time-step fraction.
+    time_step_fraction_jiao : float
+        global Jiao time step
+    """
+
+    # Equation 3ch^2 + 2bh + a = 0.
+    h = mth.quadratic_equation_smallest_positive_root(3.0 * face.v_coef_c,
+                                                          2.0 * face.v_coef_b,
+                                                          face.v_coef_a)
+    if h is not None:
+        tsf = time_step_fraction_k \
+              * (face.v_coef_a * h + face.v_coef_b * h * h + face.v_coef_c * h * h * h) / face.target_ice
+        face.tsf = min(tsf, time_step_fraction_jiao, 1.0)
+    else:
+        face.tsf = time_step_fraction_jiao
+
+    # This is is to be exported.
+    face['Tsf'] = face.tsf
 
 
 class RemesherTong(Remesher):
@@ -177,7 +290,7 @@ class RemesherTong(Remesher):
         """
 
         for n in mesh.nodes:
-            n.calculate_A_and_b()
+            node_calculate_A_and_b(n)
             primary_space, _, eigen_values, k = primary_and_null_space(n.A, threshold)
             normal = np.array([0.0, 0.0, 0.0])
             for i in range(k):
@@ -224,8 +337,8 @@ class RemesherTong(Remesher):
 
         # After nodes normals stay unchanged we can calculate V(h) cubic coefficients.
         for f in mesh.faces:
-            f.calculate_v_coefs()
-            f.calculate_jiao_coefs()
+            face_calculate_v_coefs(f)
+            face_calculate_jiao_coefs(f)
 
     def time_step_fraction(self, mesh, is_simple_tsf, steps_left, time_step_fraction_k):
         """
@@ -263,13 +376,13 @@ class RemesherTong(Remesher):
 
             # Calculate tsf_jiao for all faces.
             for f in mesh.faces:
-                f.calculate_time_step_fraction_jiao()
+                face_calculate_time_step_fraction_jiao(f)
 
             tsf_jiao = min(map(lambda lf: lf.tsf_jiao, mesh.faces))
 
             # Calculate time step fraction.
             for f in mesh.faces:
-                f.calculate_time_step_fraction(time_step_fraction_k, tsf_jiao)
+                face_calculate_time_step_fraction(f, time_step_fraction_k, tsf_jiao)
 
                 tsf = min(map(lambda lf: lf.tsf, mesh.faces))
 
@@ -423,7 +536,7 @@ class RemesherTong(Remesher):
         """
 
         for n in mesh.nodes:
-            n.calculate_A_and_b()
+            node_calculate_A_and_b(n)
             _, null_space, eigen_values, k = primary_and_null_space(n.A, threshold)
             if k != 3:
                 wi = np.array([])
