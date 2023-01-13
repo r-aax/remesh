@@ -13,8 +13,9 @@ class RemesherTong(Remesher):
         """
 
         Remesher.__init__(self)
+        self.name = 'tong'
 
-    def remesh(self, mesh):
+    def inner_remesh(self, mesh):
         """
         Remesh.
 
@@ -24,6 +25,4 @@ class RemesherTong(Remesher):
             Mesh.
         """
 
-        self.remesh_time = time.time()
         mesh.remesh()
-        self.remesh_time = time.time() - self.remesh_time
