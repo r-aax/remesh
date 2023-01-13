@@ -28,6 +28,21 @@ class Remesher:
         # Log.
         self.log = log
 
+    def remesh_prepare(self, mesh):
+        """
+        Prepare mesh for remeshing.
+
+        Parameters
+        ----------
+        mesh : Mesh
+            Mesh.
+        """
+
+        for f in mesh.faces:
+            f.target_ice = f.area * f['Hi']
+
+        mesh.initial_target_ice = mesh.target_ice()
+
     def remesh(self, name_in, name_out):
         """
         Remesh.
