@@ -20,9 +20,6 @@ NODE_COORDINATES_VALUABLE_DIGITS_COUNT = 10
 # String of export.
 EXPORT_FORMAT_STRING = '{0:.18e}'
 
-# Small eps.
-EPS = 1.0e-10
-
 # Log.
 log = logging.getLogger(__name__)
 log.setLevel(logging.DEBUG)
@@ -35,104 +32,10 @@ def init_logging(log_path):
     logging.basicConfig(filename=log_path+'log.txt', encoding='utf-8', level=logging.DEBUG)
 
 
-def tetrahedra_volume(a, b, c, d):
-    """
-    Tetrahedra volume.
-
-    Parameters
-    ----------
-    a : np.array
-        First point
-    b : np.array
-        Second point
-    c : np.array
-        Third point
-    d : np.array
-        4-th point
-
-    Returns
-    -------
-    float
-        Volume
-    """
-
-    return abs(np.dot((a - d), np.cross(b - d, c - d))) / 6.0
 
 
-def pseudoprism_volume(a, b, c, na, nb, nc):
-    """
-    Pseudoprism volume.
-
-    Source: [4] Fig. 1.
-
-    Parameters
-    ----------
-    a : Vector
-        First vector
-    b : Vector
-        Second vector
-    c : Vector
-        Third vector
-    na : Vector
-        New position of the first vector
-    nb : Vector
-        New position of the second vector
-    nc : Vector
-        New position of the third vector
-
-    Returns
-    -------
-    float
-        Volume
-    """
-
-    return tetrahedra_volume(a, b, c, nc) \
-           + tetrahedra_volume(a, b, nb, nc) \
-           + tetrahedra_volume(a, na, nb, nc)
 
 
-def find_local_extremums_kxk_qxxqxq(k_x, q_x2, q_x, q):
-    """
-    Find extremum point for function
-    alfa(x) = k_x * x + sqrt(q_x2 * x^2 + q_x * x + q).
-
-    Parameters
-    ----------
-    k_x : float
-        Parameter.
-    k : float
-        Parameter.
-    q_x2 : float
-        Parameter.
-    q_x : float
-        Parameter.
-    q : float
-        Parameter.
-
-    Returns
-    -------
-    [float]
-        List of extremums.
-    """
-
-    def sq(x):
-        return q_x2 * x**2 + q_x * x + q
-
-    def df(x):
-        return k_x + (2.0 * q_x2 * x + q_x) / (2.0 * (math.sqrt(sq(x))))
-
-    # Find roots when sq(x) = 0.
-    _, r_sq = mth.solve_quadratic_equation(q_x2, q_x, q)
-
-    # Construct quadratic equation for find extremums (df = 0).
-    a = 4.0 * (k_x**2 * q_x2 - q_x2**2)
-    b = 4.0 * q_x * (k_x**2 - q_x2)
-    c = 4.0 * k_x**2 * q - q_x**2
-
-    # Solve equation.
-    _, r_df = mth.solve_quadratic_equation(a, b, c)
-
-    return r_sq + list(filter(lambda x: (sq(x) >= 0.0) and (abs(df(x)) <= EPS), r_df))
 
 
 def time_to_icing_triangle_surface(a, ra, b, rb, c, rc, d):
@@ -223,18 +126,18 @@ def time_to_icing_triangle_surface(a, ra, b, rb, c, rc, d):
         alphas.append(alpha(beta, gamma))
 
     # Case 2.
-    for beta in find_local_extremums_kxk_qxxqxq(k_b, q_b2, q_b, q):
+    for beta in mth.find_extremums_kx_qx2qxq(k_b, q_b2, q_b, q):
         alphas.append(alpha(beta, 0.0))
 
     # Case 3.
-    for gamma in find_local_extremums_kxk_qxxqxq(k_g, q_g2, q_g, q):
+    for gamma in mth.find_extremums_kx_qx2qxq(k_g, q_g2, q_g, q):
         alphas.append(alpha(0.0, gamma))
 
     # Case 4.
-    for gamma in find_local_extremums_kxk_qxxqxq(k_g - k_b,
-                                                 q_b2 + q_g2 - q_bg,
-                                                 -2.0 * q_b2 + q_bg - q_b + q_g,
-                                                 q_b2 + q_b + q):
+    for gamma in mth.find_extremums_kx_qx2qxq(k_g - k_b,
+                                              q_b2 + q_g2 - q_bg,
+                                              -2.0 * q_b2 + q_bg - q_b + q_g,
+                                              q_b2 + q_b + q):
         alphas.append(alpha(1.0 - gamma, gamma))
 
     return max(alphas)
@@ -549,9 +452,9 @@ class Face:
         Jiao step time fraction is in [0.0, 1.0].
         """
 
-        h = quadratic_equation_smallest_positive_root(self.jiao_coef_c,
-                                                      self.jiao_coef_b,
-                                                      self.jiao_coef_a)
+        h = mth.quadratic_equation_smallest_positive_root(self.jiao_coef_c,
+                                                          self.jiao_coef_b,
+                                                          self.jiao_coef_a)
         if h is not None:
             self.tsf_jiao = min(h, 1.0)
         else:
@@ -578,9 +481,9 @@ class Face:
         """
 
         # Equation 3ch^2 + 2bh + a = 0.
-        h = quadratic_equation_smallest_positive_root(3.0 * self.v_coef_c,
-                                                      2.0 * self.v_coef_b,
-                                                      self.v_coef_a)
+        h = mth.quadratic_equation_smallest_positive_root(3.0 * self.v_coef_c,
+                                                          2.0 * self.v_coef_b,
+                                                          self.v_coef_a)
         if h is not None:
             tsf = time_step_fraction_k \
                   * (self.v_coef_a * h + self.v_coef_b * h * h + self.v_coef_c * h * h * h) / self.target_ice
@@ -1126,7 +1029,7 @@ class Mesh:
             f.h = f.ice_chunk / f.area
 
             # Try to solve more accurately (pyramides method).
-            if abs(b) > EPS:
+            if abs(b) > mth.EPS:
                 # bh^2 + ah - V = 0
                 d = a * a + 4.0 * b * f.ice_chunk
                 if d >= 0.0:
@@ -1203,8 +1106,8 @@ class Mesh:
         for f in self.faces:
 
             # [1] IV.A.8 formula (14)
-            f.target_ice -= pseudoprism_volume(f.nodes[0].old_p, f.nodes[1].old_p, f.nodes[2].old_p,
-                                               f.nodes[0].p, f.nodes[1].p, f.nodes[2].p)
+            f.target_ice -= mth.pseudoprism_volume(f.nodes[0].old_p, f.nodes[1].old_p, f.nodes[2].old_p,
+                                                   f.nodes[0].p, f.nodes[1].p, f.nodes[2].p)
         for f in self.faces:
             if f.target_ice < 0:
                 f_max = max(f.neighbour_faces, key=lambda nf:nf.target_ice)
@@ -1473,8 +1376,8 @@ class Mesh:
 
             # Correct target ice.
             for f in self.faces:
-                f.target_ice -= pseudoprism_volume(f.nodes[0].old_p, f.nodes[1].old_p, f.nodes[2].old_p,
-                                                   f.nodes[0].p, f.nodes[1].p, f.nodes[2].p)
+                f.target_ice -= mth.pseudoprism_volume(f.nodes[0].old_p, f.nodes[1].old_p, f.nodes[2].old_p,
+                                                       f.nodes[0].p, f.nodes[1].p, f.nodes[2].p)
 
             # Recalculate geometry.
             self.calculate_faces_areas()
