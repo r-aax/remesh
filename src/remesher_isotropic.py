@@ -13,8 +13,9 @@ class RemesherIsotropic(Remesher):
         """
 
         Remesher.__init__(self)
+        self.name = 'isotropic'
 
-    def remesh(self, mesh):
+    def inner_remesh(self, mesh):
         """
         Remesh.
 
@@ -24,6 +25,4 @@ class RemesherIsotropic(Remesher):
             Mesh.
         """
 
-        self.remesh_time = time.time()
         mesh.new_remesh()
-        self.remesh_time = time.time() - self.remesh_time
