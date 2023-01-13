@@ -1591,71 +1591,12 @@ def lrs(name_in, name_out):
     g = Mesh()
     g.load(name_in)
     t0 = time.time()
-    g.remesh()
+    g.new_remesh()
     t = time.time() - t0
     target_ice = g.target_ice()
     target_ice_perc = 100.0 * (target_ice / g.initial_target_ice)
     g.store(name_out)
     log.info(f'remesh end : time = {t:.5f} s, target_ice = {target_ice} ({target_ice_perc}%)')
-
-
-if __name__ != '__main__':
-
-    @dataclass
-    class RemeshInputer(Solver):
-        mesh_file_in: str
-
-        @classmethod
-        def from_config(cls, config: dict) -> "Solver":
-            name = config.get("inputer", None)
-            if name is None:
-                raise KeyError("remesh not found `solver` or `inputer` or `outputer` keyword")
-            assert name == "remesh"
-            mesh_file_in = cls.extract(config, "mesh_file_in", str)
-            return cls(mesh_file_in)
-
-        def solve(self, pool: dict):
-            g = Mesh()
-            g.load(self.mesh_file_in)
-            pool['surface_mesh'] = g
-
-
-    @dataclass
-    class RemeshSolver(Solver):
-
-        @classmethod
-        def from_config(cls, config: dict) -> "Solver":
-            name = config.get("solver", None)
-            if name is None:
-                raise KeyError("remesh not found `solver` or `inputer` or `outputer` keyword")
-            assert name == "remesh"
-            return cls()
-
-        def solve(self, pool: dict):
-            g = pool['surface_mesh']
-            t0 = time.time()
-            g.remesh()
-            t = time.time() - t0
-            target_ice = g.target_ice()
-            log.info(f'\ttime = {t:.5f} s, target_ice = {target_ice:.8f}')
-
-
-    @dataclass
-    class RemeshOutputer(Solver):
-        mesh_file_out: str
-
-        @classmethod
-        def from_config(cls, config: dict) -> "Solver":
-            name = config.get("outputer", None)
-            if name is None:
-                raise KeyError("remesh not found `solver` or `inputer` or `outputer` keyword")
-            assert name == "remesh"
-            mesh_file_out = cls.extract(config, "mesh_file_out", str)
-            return cls(mesh_file_out)
-
-        def solve(self, pool: dict):
-            g = pool['surface_mesh']
-            g.store(self.mesh_file_out)
 
 
 if __name__ == '__main__':
