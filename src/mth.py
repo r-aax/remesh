@@ -220,7 +220,7 @@ def find_extremums_kx_qx2qxq(k_x, q_x2, q_x, q):
     # Solve equation.
     _, r_df = solve_quadratic_equation(a, b, c)
 
-    return r_sq + list(filter(lambda x: (sq(x) >= 0.0) and (abs(df(x)) <= EPS), r_df))
+    return r_sq + list(filter(lambda x: (sq(x) > 0.0) and (abs(df(x)) <= EPS), r_df))
 
 
 if __name__ == '__main__':
