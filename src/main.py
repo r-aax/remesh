@@ -3,6 +3,8 @@ import msu
 import time
 import logging
 from logging import StreamHandler, Formatter
+from remesher_tong import RemesherTong
+from remesher_isotropic import RemesherIsotropic
 
 # Log.
 log = logging.getLogger(__name__)
@@ -12,7 +14,7 @@ handler.setFormatter(Formatter(fmt='[%(asctime)s: %(levelname)s] %(message)s'))
 log.addHandler(handler)
 
 
-def lrs(name_in, name_out):
+def lrs(name_in, name_out_tong, name_out_isotropic):
     """
     Load, remesh, store.
 
@@ -24,16 +26,30 @@ def lrs(name_in, name_out):
         Name of output mesh file.
     """
 
-    log.info(f'remesh start : {name_in} -> {name_out}')
+    remesher_tong = RemesherTong()
+    remesher_isotropic = RemesherIsotropic()
+
+    log.info(f'remesh_tong start : {name_in} -> {name_out_tong}')
     g = msu.Mesh()
     g.load(name_in)
     t0 = time.time()
-    g.new_remesh()
+    remesher_tong.remesh(g)
     t = time.time() - t0
     target_ice = g.target_ice()
     target_ice_perc = 100.0 * (target_ice / g.initial_target_ice)
-    g.store(name_out)
-    log.info(f'remesh end : time = {t:.5f} s, target_ice = {target_ice} ({target_ice_perc}%)')
+    g.store(name_out_tong)
+    log.info(f'remesh_tong end : time = {t:.5f} s, target_ice = {target_ice} ({target_ice_perc}%)')
+
+    log.info(f'remesh_isotropic start : {name_in} -> {name_out_isotropic}')
+    g = msu.Mesh()
+    g.load(name_in)
+    t0 = time.time()
+    remesher_isotropic.remesh(g)
+    t = time.time() - t0
+    target_ice = g.target_ice()
+    target_ice_perc = 100.0 * (target_ice / g.initial_target_ice)
+    g.store(name_out_isotropic)
+    log.info(f'remesh_isotropic end : time = {t:.5f} s, target_ice = {target_ice} ({target_ice_perc}%)')
 
 
 if __name__ == '__main__':
@@ -42,4 +58,4 @@ if __name__ == '__main__':
     # lrs('../cases/naca/naca_t25.dat', '../res_naca_t25.dat')
     # lrs('../cases/blender_custom_meshes/holes.dat', '../res_holes.dat')
     # lrs('../cases/blender_custom_meshes/snowman.dat', '../res_snowman.dat')
-    lrs('../cases/bunny.dat', '../res_bunny.dat')
+    lrs('../cases/bunny.dat', '../remesh_tong_res_bunny.dat', '../remesh_isotropic_res_bunny.dat')
