@@ -1,4 +1,5 @@
 import math
+import cmath
 import numpy as np
 
 # Small eps.
@@ -61,9 +62,9 @@ def solve_quadratic_equation(a, b, c):
     -------
     Tuple (num, roots)
     num : int
-        Number of roots (0, 1, 2, or math.inf).
+        Number of real roots (0, 1, 2, or math.inf).
     roots : [float]
-        Roots array (for 1 root or 2 roots) or [].
+        Real roots array (for 1 root or 2 roots) or [].
 
     Examples
     --------
@@ -123,6 +124,73 @@ def quadratic_equation_smallest_positive_root(a, b, c) -> float | None:
         return None
     else:
         return min(roots)
+
+
+def solve_cubic_equation(a, b, c, d):
+    """
+    Solve equation a * x^3 + b * x^2 + c * x + d = 0
+
+    Parameters
+    ----------
+    a : float
+        Parameter for x^3.
+    b : float
+        Parameter for x^2.
+    c : float
+        Parameter for x.
+    d : float
+        Free parameter.
+
+    Returns
+    -------
+    Tuple (num, roots)
+    num : int
+        Number of real roots (0, 1, 2, 3, or math.inf).
+    roots : [float]
+        Complex roots array (for 1, 2 or 3 roots) or [].
+
+    Examples
+    --------
+    0, []
+    1, [r]
+    2, [r1, r2]
+    3, [r1, r2, r3]
+    math.inf, []
+    """
+
+    if a != 0.0:
+
+        def cbrt(p):
+            r1 = p ** (1.0 / 3.0)
+            s = math.sqrt(3.0) * 1j
+            r2 = r1 * (-1.0 + s) / 2.0
+            r3 = r1 * (-1.0 - s) / 2.0
+            return [r1, r2, r3]
+
+        # True cubic equation.
+        # Solve it with Cardano method.
+        p = (3.0 * a * c - b**2) / (3.0 * a**2)
+        q = (2.0 * b**3 - 9.0 * a * b * c + 27.0 * a**2 * d) / (27.0 * a**3)
+
+        Q = (p / 3.0)**3.0 + (q / 2.0)**2.0
+        sQ = cmath.sqrt(Q)
+        alfa = cbrt(-q / 2.0 + sQ)
+        beta = cbrt(-q / 2.0 - sQ)
+
+        roots = []
+        for i in alfa:
+            for j in beta:
+                if abs((i * j) + p / 3.0) < EPS:
+                    x = i + j - b / (3.0 * a)
+                    roots.append(x)
+
+                    # Go to next alfa.
+                    break
+
+        return len(roots), roots
+
+    else:
+        return solve_quadratic_equation(b, c, d)
 
 
 def tetrahedra_volume(a, b, c, d) -> float:
@@ -234,3 +302,9 @@ if __name__ == '__main__':
     assert solve_quadratic_equation(1.0, 0.0, -1.0) == (2, [1.0, -1.0])
     assert solve_quadratic_equation(1.0, -2.0, 1.0) == (1, [1.0])
     assert solve_quadratic_equation(1.0, 0.0, 1.0) == (0, [])
+
+    # Cubic equation.
+    # print(solve_cubic_equation(1.0, -3.0, 3.0, -1.0))
+    # print(solve_cubic_equation(1.0, 0.0, 0.0, -1.0))
+    # print(solve_cubic_equation(1.0, 0.0, 0.0, 0.0))
+    # print(solve_cubic_equation(1.0, 1.0, -1.0, -1.0))
