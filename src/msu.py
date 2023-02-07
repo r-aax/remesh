@@ -203,7 +203,7 @@ class Face:
             String.
         """
 
-        return f'Face ({self.nodes[0].glo_id}, {self.nodes[1].glo_id}, {self.nodes[2].glo_id})'
+        return f'Face {self.glo_id} ({self.nodes[0].glo_id}, {self.nodes[1].glo_id}, {self.nodes[2].glo_id})'
 
     def __getitem__(self, item):
         """
@@ -490,7 +490,7 @@ class Mesh:
             n.glo_id = i
 
         for i, f in enumerate(self.faces):
-            n.glo_id = i
+            f.glo_id = i
 
     def load(self, filename):
         """
@@ -820,7 +820,8 @@ class Mesh:
 
         # Replace b node with a node in all faces.
         delete_faces = []
-        for f in b.faces:
+        tmp = [f for f in b.faces]
+        for f in tmp:
             if f in a.faces:
                 delete_faces.append(f)
             else:
