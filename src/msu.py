@@ -772,7 +772,8 @@ class Mesh:
         """
 
         # Remove from nodes.
-        for n in f.nodes:
+        tmp = [n for n in f.nodes]
+        for n in tmp:
             self.delete_node_face_link(n, f)
 
         # Remove from zones.
@@ -817,6 +818,7 @@ class Mesh:
         """
 
         a, b = e.node1, e.node2
+        a.p = 0.5 * (a.p + b.p)
 
         # Replace b node with a node in all faces.
         delete_faces = []
@@ -830,6 +832,10 @@ class Mesh:
         # Delete extra node and faces.
         for f in delete_faces:
             self.delete_face(f)
+
+        # We need no b node anymore if it is isolated.
+        if not b.faces:
+            self.delete_node(b)
 
 
 if __name__ == '__main__':
