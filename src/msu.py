@@ -671,6 +671,40 @@ class Mesh:
         for n in self.nodes:
             n.normal = sum(map(lambda f: f.normal, n.faces)) / len(n.faces)
 
+    def delete_node_face_link(self, n, f):
+        """
+        Delete node-face link.
+
+        Parameters
+        ----------
+        n : Node
+            Node.
+        f : Face
+            Face.
+        """
+
+        n.faces.remove(f)
+        f.nodes.remove(n)
+
+    def replace_node_face_link(self, n, new_n, f):
+        """
+        Replace node in node-face link.
+
+        Parameters
+        ----------
+        n : Node
+            Old node.
+        new_n : Node
+            New node.
+        f : Face
+            Face.
+        """
+
+        i = f.nodes.index(n)
+        f.nodes[i] = new_n
+        n.faces.remove(f)
+        new_n.faces.append(f)
+
     def delete_face(self, f):
         """
         Delete face.
@@ -683,7 +717,7 @@ class Mesh:
 
         # Remove from nodes.
         for n in f.nodes:
-            n.faces.remove(f)
+            self.delete_node_face_link(n, f)
 
         # Remove from zones.
         for z in self.zones:
@@ -692,6 +726,53 @@ class Mesh:
 
         # Remove from mesh.
         self.faces.remove(f)
+
+    def delete_node(self, n):
+        """
+        Delete node.
+
+        Parameters
+        ----------
+        n : Node
+            Node to be deleted.
+        """
+
+        # First we must delete all adjacent faces.
+        tmp = [f for f in n.faces]
+        for f in tmp:
+            self.delete_face(f)
+
+        # Remove node from zones.
+        for z in self.zones:
+            if n in z.nodes:
+                z.nodes.remove(n)
+
+        # Remove node from mesh.
+        self.nodes.remove(n)
+
+    def reduce_edge(self, e):
+        """
+        Reduce edge.
+
+        Parameters
+        ----------
+        e : Edge
+            Edge.
+        """
+
+        a, b = e.node1, e.node2
+
+        # Replace b node with a node in all faces.
+        delete_faces = []
+        for f in b.faces:
+            if f in a.faces:
+                delete_faces.append(f)
+            else:
+                self.replace_node_face_link(b, a, f)
+
+        # Delete extra node and faces.
+        for f in delete_faces:
+            self.delete_face(f)
 
 
 if __name__ == '__main__':
