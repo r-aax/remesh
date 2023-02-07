@@ -45,6 +45,9 @@ class Node:
             Point coordinates.
         """
 
+        # Global identifier.
+        self.glo_id = -1
+
         self.p = p
         self.old_p = None
         self.faces = []
@@ -52,6 +55,18 @@ class Node:
         self.b = None
         # Direction for node moving (we call it normal).
         self.normal = None
+
+    def __repr__(self):
+        """
+        String representation.
+
+        Returns
+        -------
+        str
+            String.
+        """
+
+        return f'Node {self.glo_id}'
 
     def rounded_coordinates(self):
         """
@@ -82,6 +97,7 @@ class Edge:
         face2: Face
             second face
         """
+
         self.face1 = face1
         self.face2 = face2
         self.node1, self.node2 = find_common_nodes(face1, face2)
@@ -89,6 +105,18 @@ class Edge:
     def __eq__(self, other):
         return self.face1 == other.face1 and self.face2 == other.face2 \
                 or self.face1 == other.face2 and self.face2 == other.face1
+
+    def __repr__(self):
+        """
+        String representation.
+
+        Returns
+        -------
+        str
+            String.
+        """
+
+        return f'Edge {self.node1.glo_id} - {self.node2.glo_id}'
 
     def points(self):
         return self.node1.p, self.node2.p
@@ -126,6 +154,9 @@ class Face:
             List of values.
         """
 
+        # Global identifier.
+        self.glo_id = -1
+
         self.data = dict(zip(variables, values))
         self.nodes = []
         self.neighbour_faces = []
@@ -161,6 +192,18 @@ class Face:
 
         # Diverging or contracting face.
         self.is_contracting = False
+
+    def __repr__(self):
+        """
+        String representation.
+
+        Returns
+        -------
+        str
+            String.
+        """
+
+        return f'Face ({self.nodes[0].glo_id}, {self.nodes[1].glo_id}, {self.nodes[2].glo_id})'
 
     def __getitem__(self, item):
         """
@@ -438,6 +481,17 @@ class Mesh:
         else:
             return found_node
 
+    def set_glo_ids(self):
+        """
+        Set global identifiers.
+        """
+
+        for i, n in enumerate(self.nodes):
+            n.glo_id = i
+
+        for i, f in enumerate(self.faces):
+            n.glo_id = i
+
     def load(self, filename):
         """
         Load mesh.
@@ -551,6 +605,8 @@ class Mesh:
         for n in self.nodes:
             if len(n.faces) == 0:
                 self.nodes.remove(n)
+
+        self.set_glo_ids()
 
     def store(self, filename):
         """
