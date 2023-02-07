@@ -772,9 +772,8 @@ class Mesh:
         """
 
         # Remove from nodes.
-        tmp = [n for n in f.nodes]
-        for n in tmp:
-            self.delete_node_face_link(n, f)
+        while f.nodes:
+            self.delete_node_face_link(f.nodes[0], f)
 
         # Remove from zones.
         for z in self.zones:
@@ -795,9 +794,8 @@ class Mesh:
         """
 
         # First we must delete all adjacent faces.
-        tmp = [f for f in n.faces]
-        for f in tmp:
-            self.delete_face(f)
+        while n.faces:
+            self.delete_face(n.faces[0])
 
         # Remove node from zones.
         for z in self.zones:
