@@ -96,6 +96,18 @@ class Edge:
     def old_points(self):
         return self.node1.old_p, self.node2.old_p
 
+    def length(self):
+        """
+        Length of the edge.
+
+        Returns
+        -------
+        float
+            Length of the edge.
+        """
+
+        return LA.norm(self.node1.p - self.node2.p)
+
 
 class Face:
     """
@@ -658,6 +670,28 @@ class Mesh:
 
         for n in self.nodes:
             n.normal = sum(map(lambda f: f.normal, n.faces)) / len(n.faces)
+
+    def delete_face(self, f):
+        """
+        Delete face.
+
+        Parameters
+        ----------
+        f : Face
+            Face to delete.
+        """
+
+        # Remove from nodes.
+        for n in f.nodes:
+            n.faces.remove(f)
+
+        # Remove from zones.
+        for z in self.zones:
+            if f in z.faces:
+                z.faces.remove(f)
+
+        # Remove from mesh.
+        self.faces.remove(f)
 
 
 if __name__ == '__main__':
