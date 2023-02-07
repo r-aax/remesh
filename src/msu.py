@@ -835,6 +835,38 @@ class Mesh:
         if not b.faces:
             self.delete_node(b)
 
+    def split_edge(self, e, p):
+        """
+        Split edge with point.
+
+        Parameters
+        ----------
+        e : Edge
+            Edge to be splitted.
+        p : Point
+            Point for split.
+        """
+
+        # Anyway delete faces.
+        for f in [e.face1, e.face2]:
+            if f is not None:
+                self.delete_face(f)
+
+    def split_face(self, f, p):
+        """
+        Split face with point.
+
+        Parameters
+        ----------
+        f : Face
+            Face to be splitted.
+        p : Point
+            Point for spllit.
+        """
+
+        # Anyway delete face.
+        self.delete_face(f)
+
 
 if __name__ == '__main__':
     pass
