@@ -1,4 +1,5 @@
 import numpy as np
+import numpy.linalg as la
 import itertools
 
 
@@ -100,6 +101,117 @@ class Triangle:
         triangles_for_sorting.sort(key=lambda tri: tri.center()[axis])
         return triangles_for_sorting
 
+    def is_intersect_with_segment(self, p, q):
+        """
+        Check if triangle intersects segment [p, q].
+        Parameters
+        ----------
+        p : Point
+            Segment begin.
+        q : Point
+            Segment end.
+
+        Returns
+        -------
+        True - if there is intersection,
+        False - if there is no intersection.
+        """
+
+        def is_in_tri(bet, gam):
+            return (bet >= 0.0) and (gam >= 0.0) and (bet + gam <= 1.0)
+
+        def is_in_seg(phi):
+            return 0.0 <= phi <= 1.0
+
+        a, b, c = self.points[0], self.points[1], self.points[2]
+
+        #
+        # Point (x, y, z) inside triangle can be represented as
+        # x = x_a + (x_b - x_a) * bet + (x_c - x_a) * gam
+        # y = y_a + (y_b - y_a) * bet + (y_c - y_a) * gam
+        # z = z_a + (z_b - z_a) * bet + (z_c - z_a) * gam
+        #    where (x_a, y_a, z_a) - coordinates of point a,
+        #          (x_b, y_b, z_b) - coordinates of point b,
+        #          (x_c, y_c, z_c) - coordinates of point c,
+        #          bet >= 0,
+        #          gam >= 0,
+        #          bet + gam <= 1.
+        # ...
+        # x = x_a + x_ba * bet + x_ca * gam
+        # y = y_a + y_ba * bet + y_ca * gam
+        # z = z_a + z_ba * bet + z_ca * gam
+        #
+        # Point (x, y, z) on segment can be represented as
+        # x = x_p + (x_q - x_p) * phi
+        # y = y_p + (y_q - y_p) * phi
+        # x = z_p + (z_q - z_p) * phi
+        #   where (x_p, y_p, z_p) - coordinates of point p,
+        #         (x_q, y_q, z_q) - coordinates of point q,
+        #         0 <= phi <= 1.
+        # ...
+        # x = x_p + x_qp * phi
+        # y = y_p + y_qp * phi
+        # x = z_p + z_qp * phi
+        #
+        # So to find intersection we have to solve system
+        # x_a + x_ba * bet + x_ca * gam = x_p + x_qp * phi
+        # y_a + y_ba * bet + y_ca * gam = y_p + y_qp * phi
+        # z_a + z_ba * bet + z_ca * gam = z_p + z_qp * phi
+        # ...
+        # x_ba * bet + x_ca * gam + (-x_qp) * phi = x_p - x_a
+        # y_ba * bet + y_ca * gam + (-y_qp) * phi = y_p - y_a
+        # z_ba * bet + z_ca * gam + (-z_qp) * phi = z_p - z_a
+        # ...
+        # x_ba * bet + x_ca * gam + x_pq * phi = x_pa
+        # y_ba * bet + y_ca * gam + y_pq * phi = y_pa
+        # z_ba * bet + z_ca * gam + z_pq * phi = z_pa
+        #
+        # Matrix view of this system can be written in the following view
+        # [x_ba x_ca x_pq]     [bet]     [x_pa]
+        # [y_ba y_ca y_pq]  X  [gam]  =  [y_pa]
+        # [z_ba z_ca z_pq]     [phi]     [z_pa]
+        #
+
+        ba, ca, pq, pa = b - a, c - a, p - q, p - a
+
+        m = np.array([ba, ca, pq])
+        m = np.transpose(m)
+        d = la.det(m)
+
+        if d != 0.0:
+            im = la.inv(m)
+            [bet, gam, phi] = im.dot(pa)
+
+            return is_in_tri(bet, gam) and (is_in_seg(phi))
+        else:
+            # TODO.
+            # If det = 0.0 segment may lay in triangle plane.
+            return False
+
+    def is_intersect_with_triangle(self, t):
+        """
+        Check if triangle intersects another triangle.
+
+        Parameters
+        ----------
+        t : Triangle
+            Triangle for check intersection.
+
+        Returns
+        -------
+        True - if there is intersection,
+        False - if there is no intersection.
+        """
+
+        # There is intersection if any side of one triangle
+        # intersects another triangle.
+        return self.is_intersect_with_segment(t.points[0], t.points[1]) \
+               or self.is_intersect_with_segment(t.points[1], t.points[2]) \
+               or self.is_intersect_with_segment(t.points[2], t.points[0]) \
+               or t.is_intersect_with_segment(self.points[0], self.points[1]) \
+               or t.is_intersect_with_segment(self.points[1], self.points[2]) \
+               or t.is_intersect_with_segment(self.points[2], self.points[0])
+
 
 class Box:
     """
@@ -200,9 +312,9 @@ class Box:
                and (self.lo[1] <= p[1] <= self.hi[1]) \
                and (self.lo[2] <= p[2] <= self.hi[2])
 
-    def is_potential_intersect_with_box(self, other_box):
+    def is_intersect_with_box(self, other_box):
         """
-        Check for potential intersection with another box.
+        Check for intersection with another box.
 
         Parameters
         ----------
@@ -364,7 +476,7 @@ class TrianglesCloud:
 
         return is_triangles
 
-    def potential_intersection_with_triangles_cloud(self, tc):
+    def intersection_with_triangles_cloud(self, tc):
         """
         Find intersection with another triangles cloud.
 
@@ -380,23 +492,29 @@ class TrianglesCloud:
         """
 
         # Cold check.
-        if not self.box.is_potential_intersect_with_box(tc.box):
+        if not self.box.is_intersect_with_box(tc.box):
             return []
 
         if self.subclouds != []:
-            return list(itertools.chain(*[a.potential_intersection_with_triangles_cloud(tc) for a in self.subclouds]))
+            return list(itertools.chain(*[a.intersection_with_triangles_cloud(tc) for a in self.subclouds]))
 
         elif tc.subclouds != []:
-            return list(itertools.chain(*[self.potential_intersection_with_triangles_cloud(b) for b in tc.subclouds]))
+            return list(itertools.chain(*[self.intersection_with_triangles_cloud(b) for b in tc.subclouds]))
 
         else:
             # List triangles in intersected box potentially intersect.
             return [[t1, t2]
                     for t1 in self.triangles
                     for t2 in tc.triangles
-                    # Do not analyse t1 = t2 for self-intersection.
-                    if not t1.has_common_points_with(t2)]
+                    if (not t1.has_common_points_with(t2)) and t1.is_intersect_with_triangle(t2)]
 
 
 if __name__ == '__main__':
-    pass
+
+    # Distance between triangles.
+    t1 = Triangle(np.array([1.0, 0.0, 0.0]), np.array([0.0, 1.0, 0.0]), np.array([1.0, 1.0, 0.0]))
+    t2 = Triangle(np.array([0.0, 0.0, 0.0]), np.array([2.0, 1.0, 0.1]), np.array([2.0, 0.5, -0.1]))
+    assert t1.is_intersect_with_triangle(t2)
+    t1 = Triangle(np.array([0.0, 0.0, 0.0]), np.array([1.0, 0.0, 0.0]), np.array([0.0, 1.0, 0.0]))
+    t2 = Triangle(np.array([2.0, 0.0, 0.0]), np.array([2.0, 1.0, 0.0]), np.array([1.0, 1.0, 0.0]))
+    assert not t1.is_intersect_with_triangle(t2)
