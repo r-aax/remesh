@@ -11,7 +11,7 @@ class Triangle:
                beta + gamme <= 1
     """
 
-    def __init__(self, a, b, c):
+    def __init__(self, a, b, c, back_ref=None):
         """
         Constructor.
 
@@ -23,12 +23,14 @@ class Triangle:
             Second point.
         c : Point
             Third point.
+        back_ref : object
+            Back reference.
         """
 
         self.points = [a, b, c]
 
         # Back reference for linking with face.
-        self.back_ref = None
+        self.back_ref = back_ref
 
     def __repr__(self):
         """
@@ -53,6 +55,29 @@ class Triangle:
         """
 
         return (self.points[0] + self.points[1] + self.points[2]) / 3.0
+
+    def has_common_points_with(self, t):
+        """
+        Check if triangle has common points with another triangle.
+
+        Parameters
+        ----------
+        t : Triangle
+            Another triangle.
+
+        Returns
+        -------
+        True - if triangles have common points,
+        False - if triangles have no common points.
+        """
+
+        for p1 in self.points:
+            for p2 in t.points:
+                if p1.data == p2.data:
+                    # Check for equality as objects.
+                    return True
+
+        return False
 
     @staticmethod
     def sorting_by_the_selected_axis(triangles_for_sorting, axis):
@@ -193,7 +218,10 @@ class Box:
         def is_no(i):
             return (other_box.lo[i] > self.hi[i]) or (other_box.hi[i] < self.lo[i])
 
-        return is_no(0) or is_no(1) or is_no(2)
+        if is_no(0) or is_no(1) or is_no(2):
+            return False
+        else:
+            return True
 
 
 class TrianglesCloud:
@@ -336,7 +364,7 @@ class TrianglesCloud:
 
         return is_triangles
 
-    def intersection_with_triangles_cloud(self, tc):
+    def potential_intersection_with_triangles_cloud(self, tc):
         """
         Find intersection with another triangles cloud.
 
@@ -352,20 +380,22 @@ class TrianglesCloud:
         """
 
         # Cold check.
-        if not self.Box.is_potential_intersect_with_box(tc.Box):
+        if not self.box.is_potential_intersect_with_box(tc.box):
             return []
 
         if self.subclouds != []:
-            return list(itertools.chain(*[a.intersection_with_triangles_cloud(tc) for a in self.subclouds]))
+            return list(itertools.chain(*[a.potential_intersection_with_triangles_cloud(tc) for a in self.subclouds]))
 
         elif tc.subclouds != []:
-            return list(itertools.chain(*[self.intersection_with_triangles_cloud(b) for b in tc.subclouds]))
+            return list(itertools.chain(*[self.potential_intersection_with_triangles_cloud(b) for b in tc.subclouds]))
 
         else:
+            # List triangles in intersected box potentially intersect.
             return [[t1, t2]
-                    for t1 in self.Triangles
-                    for t2 in tc.Triangles
-                    if t1.intersection_with_triangle(t2) != []]
+                    for t1 in self.triangles
+                    for t2 in tc.triangles
+                    # Do not analyse t1 = t2 for self-intersection.
+                    if not t1.has_common_points_with(t2)]
 
 
 if __name__ == '__main__':
