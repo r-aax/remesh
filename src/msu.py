@@ -457,7 +457,24 @@ class Mesh:
 
         raise Exception('Internal error')
 
-    def add_node(self, node):
+    def max_node_glo_id(self):
+        """
+        Get maximum node global id
+        (id of the last node).
+
+        Returns
+        -------
+        int
+            Maximum node global id,
+            or -1, if there is no nodes.
+        """
+
+        if self.nodes:
+            return self.nodes[-1].glo_id
+        else:
+            return -1
+
+    def add_node(self, node, zone):
         """
         Add node to mesh.
 
@@ -465,29 +482,27 @@ class Mesh:
         ----------
         node : Node
             Node to add.
-
-        Returns
-        -------
-            If new node is added - return this node,
-            otherwise - return existed node.
+        zone : Zone
+            Zone to add node to.
         """
 
         found_node = self.find_near_node(node)
 
         if found_node is None:
+            max_glo_id = self.max_node_glo_id()
+            node.glo_id = max_glo_id + 1
             self.nodes.append(node)
             self.rounded_coordinates_bag.add(node.rounded_coordinates())
-            return node
+            node_to_zone = node
         else:
-            return found_node
+            node_to_zone = found_node
+
+        zone.nodes.append(node_to_zone)
 
     def set_glo_ids(self):
         """
         Set global identifiers.
         """
-
-        for i, n in enumerate(self.nodes):
-            n.glo_id = i
 
         for i, f in enumerate(self.faces):
             f.glo_id = i
@@ -569,8 +584,7 @@ class Mesh:
                         c.append([float(xi) for xi in line.split()])
                     for i in range(nodes_to_read):
                         node = Node(np.array([c[0][i], c[1][i], c[2][i]]))
-                        node = self.add_node(node)
-                        zone.nodes.append(node)
+                        self.add_node(node, zone)
 
                     # Read data for faces.
                     d = []
