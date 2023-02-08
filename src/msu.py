@@ -236,6 +236,23 @@ class Face:
 
         self.data[key] = value
 
+    def copy(self):
+        """
+        Get copy of face.
+        Copy with the same data and linked to the same zone.
+        But copy doesn't contain links to nodes.
+
+        Returns
+        -------
+        Face
+            Copy.
+        """
+
+        f = Face(self.data.keys(), self.data.values())
+        f.zone = self.zone
+
+        return f
+
     def points(self):
         """
         Get points.
@@ -533,6 +550,55 @@ class Mesh:
         self.faces.append(face)
         zone.faces.append(face)
 
+    def add_face_node_link(self, f, n):
+        """
+        Add face-node link.
+
+        Parameters
+        ----------
+        f : Face
+            Face.
+        n : Node
+            Node.
+        """
+
+        f.nodes.append(n)
+        n.faces.append(f)
+
+    def delete_face_node_link(self, f, n):
+        """
+        Delete face-node link.
+
+        Parameters
+        ----------
+        f : Face
+            Face.
+        n : Node
+            Node.
+        """
+
+        f.nodes.remove(n)
+        n.faces.remove(f)
+
+    def replace_face_node_link(self, f, n, new_n):
+        """
+        Replace node in face-node link.
+
+        Parameters
+        ----------
+        f : Face
+            Face.
+        n : Node
+            Old node.
+        new_n : Node
+            New node.
+        """
+
+        i = f.nodes.index(n)
+        f.nodes[i] = new_n
+        n.faces.remove(f)
+        new_n.faces.append(f)
+
     def load(self, filename):
         """
         Load mesh.
@@ -629,9 +695,8 @@ class Mesh:
 
                         if len(nodes) != 3:
                             raise Exception('Internal error')
-                        face.nodes = nodes
                         for n in nodes:
-                            n.faces.append(face)
+                            self.add_face_node_link(face, n)
                 else:
                     raise Exception('Unexpected line : {0}.'.format(line))
 
@@ -764,40 +829,6 @@ class Mesh:
         for n in self.nodes:
             n.normal = sum(map(lambda f: f.normal, n.faces)) / len(n.faces)
 
-    def delete_node_face_link(self, n, f):
-        """
-        Delete node-face link.
-
-        Parameters
-        ----------
-        n : Node
-            Node.
-        f : Face
-            Face.
-        """
-
-        n.faces.remove(f)
-        f.nodes.remove(n)
-
-    def replace_node_face_link(self, n, new_n, f):
-        """
-        Replace node in node-face link.
-
-        Parameters
-        ----------
-        n : Node
-            Old node.
-        new_n : Node
-            New node.
-        f : Face
-            Face.
-        """
-
-        i = f.nodes.index(n)
-        f.nodes[i] = new_n
-        n.faces.remove(f)
-        new_n.faces.append(f)
-
     def delete_face(self, f):
         """
         Delete face.
@@ -810,7 +841,7 @@ class Mesh:
 
         # Remove from nodes.
         while f.nodes:
-            self.delete_node_face_link(f.nodes[0], f)
+            self.delete_face_node_link(f, f.nodes[0])
 
         # Remove from zones.
         for z in self.zones:
@@ -862,7 +893,7 @@ class Mesh:
             if f in a.faces:
                 delete_faces.append(f)
             else:
-                self.replace_node_face_link(b, a, f)
+                self.replace_face_node_link(f, b, a)
 
         # Delete extra node and faces.
         for f in delete_faces:
@@ -901,7 +932,7 @@ class Mesh:
             Point for spllit.
         """
 
-        # Anyway delete face.
+        # Delete old face.
         self.delete_face(f)
 
 
