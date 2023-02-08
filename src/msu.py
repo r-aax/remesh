@@ -159,6 +159,7 @@ class Face:
 
         self.data = dict(zip(variables, values))
         self.nodes = []
+        self.zone = None
         self.neighbour_faces = []
         # Area of the face.
         self.area = 0.0
@@ -239,8 +240,8 @@ class Face:
     def copy(self):
         """
         Get copy of face.
-        Copy with the same data and linked to the same zone.
-        But copy doesn't contain links to nodes.
+        Copy with the same data.
+        But copy doesn't contain links.
 
         Returns
         -------
@@ -248,10 +249,7 @@ class Face:
             Copy.
         """
 
-        f = Face(self.data.keys(), self.data.values())
-        f.zone = self.zone
-
-        return f
+        return Face(self.data.keys(), self.data.values())
 
     def points(self):
         """
@@ -264,6 +262,18 @@ class Face:
         """
 
         return self.nodes[0].p, self.nodes[1].p, self.nodes[2].p
+
+    def center(self):
+        """
+        Center point.
+
+        Returns
+        -------
+        Point
+            Point of center.
+        """
+
+        return (self.nodes[0].p + self.nodes[1].p + self.nodes[2].p) / 3.0
 
     def normals(self):
         """
@@ -549,6 +559,7 @@ class Mesh:
         face.glo_id = max_glo_id + 1
         self.faces.append(face)
         zone.faces.append(face)
+        face.zone = zone
 
     def add_face_node_link(self, f, n):
         """
@@ -564,6 +575,21 @@ class Mesh:
 
         f.nodes.append(n)
         n.faces.append(f)
+
+    def add_face_nodes_links(self, f, ns):
+        """
+        Add face-node links.
+
+        Parameters
+        ----------
+        f : Face
+            Face.
+        ns : [Node]
+            Nodes list.
+        """
+
+        for n in ns:
+            self.add_face_node_link(f, n)
 
     def delete_face_node_link(self, f, n):
         """
@@ -774,6 +800,7 @@ class Mesh:
         """
         calculate edges of the mesh
         """
+        self.edges = []
         for f in self.faces:
             f.calculate_neighbour_faces()
             es = [Edge(f, neighbour) for neighbour in f.neighbour_faces]
@@ -915,10 +942,32 @@ class Mesh:
             Point for split.
         """
 
-        # Anyway delete faces.
+        n = Node(p)
+
+        # We need split both faces for edge.
         for f in [e.face1, e.face2]:
-            if f is not None:
-                self.delete_face(f)
+
+            if f is None:
+                continue
+
+            # Data from face.
+            a, b, c = f.nodes[0], f.nodes[1], f.nodes[2]
+            f1, f2 = f.copy(), f.copy()
+            z = f.zone
+
+            # Add node.
+            self.add_node(n, z)
+
+            # Delete old face.
+            self.delete_face(f)
+
+            # Add new faces.
+            self.add_face(f1, z)
+            self.add_face_nodes_links(f1, [a, b, c])
+            self.replace_face_node_link(f1, e.node1, n)
+            self.add_face(f2, z)
+            self.add_face_nodes_links(f2, [a, b, c])
+            self.replace_face_node_link(f2, e.node2, n)
 
     def split_face(self, f, p):
         """
@@ -932,8 +981,25 @@ class Mesh:
             Point for spllit.
         """
 
+        # Data from old face.
+        a, b, c = f.nodes[0], f.nodes[1], f.nodes[2]
+        f1, f2, f3 = f.copy(), f.copy(), f.copy()
+        z = f.zone
+
+        # New node.
+        n = Node(p)
+        self.add_node(n, z)
+
         # Delete old face.
         self.delete_face(f)
+
+        # Add new faces.
+        self.add_face(f1, z)
+        self.add_face_nodes_links(f1, [a, b, n])
+        self.add_face(f2, z)
+        self.add_face_nodes_links(f2, [b, c, n])
+        self.add_face(f3, z)
+        self.add_face_nodes_links(f3, [c, a, n])
 
 
 if __name__ == '__main__':
