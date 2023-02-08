@@ -1,6 +1,47 @@
 import numpy as np
 
 
+class Triangle:
+    """
+    Triangle - locus of points P:
+               P = A + (B - A) * beta + (C - A) * gamma
+               beta >= 0
+               gamma >= 0
+               beta + gamme <= 1
+    """
+
+    def __init__(self, a, b, c):
+        """
+        Constructor.
+
+        Parameters
+        ----------
+        a : Point
+            First point.
+        b : Point
+            Second point.
+        c : Point
+            Third point.
+        """
+
+        self.points = [a, b, c]
+
+        # Back reference for linking with face.
+        self.back_ref = None
+
+    def __repr__(self):
+        """
+        String representation.
+
+        Returns
+        -------
+        str
+            String.
+        """
+
+        return f'Triangle ({self.points[0]}, {self.points[1]}, {self.points[2]})'
+
+
 class Box:
     """
     Box - locus of points (X, Y, Z):
