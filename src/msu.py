@@ -474,6 +474,23 @@ class Mesh:
         else:
             return -1
 
+    def max_face_glo_id(self):
+        """
+        Get maximum face global id
+        (id of the last face).
+
+        Returns
+        -------
+        int
+            Maximum face global if,
+            or -1, if there is no faces.
+        """
+
+        if self.faces:
+            return self.faces[-1].glo_id
+        else:
+            return -1
+
     def add_node(self, node, zone):
         """
         Add node to mesh.
@@ -499,13 +516,22 @@ class Mesh:
 
         zone.nodes.append(node_to_zone)
 
-    def set_glo_ids(self):
+    def add_face(self, face, zone):
         """
-        Set global identifiers.
+        Add fae to mesh.
+
+        Parameters
+        ----------
+        face : Face
+            Face to add.
+        zone : Zone
+            Zone to add to.
         """
 
-        for i, f in enumerate(self.faces):
-            f.glo_id = i
+        max_glo_id = self.max_face_glo_id()
+        face.glo_id = max_glo_id + 1
+        self.faces.append(face)
+        zone.faces.append(face)
 
     def load(self, filename):
         """
@@ -594,8 +620,7 @@ class Mesh:
                     for i in range(faces_to_read):
                         face = Face(face_variables,
                                     [d[j][i] for j in range(face_variables_count)])
-                        self.faces.append(face)
-                        zone.faces.append(face)
+                        self.add_face(face, zone)
                     # Read connectivity lists.
                     for i in range(faces_to_read):
                         line = f.readline()
@@ -619,8 +644,6 @@ class Mesh:
         for n in self.nodes:
             if len(n.faces) == 0:
                 self.nodes.remove(n)
-
-        self.set_glo_ids()
 
     def store(self, filename):
         """
