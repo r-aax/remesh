@@ -1,6 +1,7 @@
-import mth
 import numpy as np
 from numpy import linalg as LA
+import mth
+import geom
 
 # Count of valuable digits (after dot) in node coordinates.
 # If coordinates of nodes doesn't differ in valuable digits we consider them equal.
@@ -1033,6 +1034,27 @@ class Mesh:
             self.add_node(n, z)
         for f in m.faces:
             self.add_face(f, z)
+
+    def delete_self_intersected_faces(self):
+        """
+        Delete all self-intersected faces.
+        """
+
+        # Find self-intersected faces.
+        tc = geom.TrianglesCloud([geom.Triangle(f.nodes[0].p, f.nodes[1].p, f.nodes[2].p, f) for f in self.faces])
+        pairs = tc.intersection_with_triangles_cloud(tc)
+
+        # Mark self-intersected faces
+        for f in self.faces:
+            f['M'] = 0
+        for p in pairs:
+            for t in p:
+                t.back_ref['M'] = 1
+
+        # Delete faces.
+        faces_to_delete = [f for f in self.faces if f['M'] == 1]
+        for f in faces_to_delete:
+            self.delete_face(f)
 
 
 if __name__ == '__main__':
