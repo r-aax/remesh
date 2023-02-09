@@ -424,6 +424,11 @@ class Mesh:
     Mesh - consists of surface triangle faces.
     """
 
+    ColorCommon = 0
+    ColorToDelete = 1
+    ColorBorder = 2
+    ColorFree = 3
+
     def __init__(self):
         """
         Initialization.
@@ -1067,23 +1072,23 @@ class Mesh:
 
         # First all faces are common.
         for f in self.faces:
-            f['M'] = 0
+            f['M'] = Mesh.ColorCommon
 
         # If face intersects any - mark it in 1.
         for p in pairs:
             for t in p:
-                t.back_ref['M'] = 1
+                t.back_ref['M'] = Mesh.ColorToDelete
 
         # Neighbours of deleted faces are marked in 2.
         for f in self.faces:
-            if f['M'] == 0:
+            if f['M'] == Mesh.ColorCommon:
                 for n in f.nodes:
                     for f1 in n.faces:
-                        if f1['M'] == 1:
-                            f['M'] = 2
+                        if f1['M'] == Mesh.ColorToDelete:
+                            f['M'] = Mesh.ColorBorder
 
         # Delete faces.
-        faces_to_delete = [f for f in self.faces if f['M'] == 1]
+        faces_to_delete = [f for f in self.faces if f['M'] == Mesh.ColorToDelete]
         for f in faces_to_delete:
             self.delete_face(f)
 
@@ -1134,6 +1139,32 @@ class Mesh:
         tl = geom.Triangle.sorting_by_the_selected_axis(tl, i)
 
         return tl[-1].back_ref
+
+    def walk_until_border(self, start, mark_color):
+        """
+        Mark f into mark_color.
+        Mark all neighbours of f into mark_color.
+        And so on, while not reaching border.
+
+        Parameters
+        ----------
+        start : Face
+            Start face.
+        mark_color : int
+            Color for mark.
+        """
+
+        li = [start]
+
+        while li:
+            f = li.pop()
+            if f['M'] == mark_color:
+                continue
+            if f['M'] != Mesh.ColorBorder:
+                f['M'] = mark_color
+                for n in f.nodes:
+                    for f1 in n.faces:
+                        li.append(f1)
 
 
 if __name__ == '__main__':
