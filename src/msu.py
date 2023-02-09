@@ -1035,26 +1035,105 @@ class Mesh:
         for f in m.faces:
             self.add_face(f, z)
 
+    def triangles_list(self):
+        """
+        Construct triangles list.
+
+        Returns
+        -------
+        [Triangle]
+            Triangles list.
+        """
+
+        return [geom.Triangle(f.nodes[0].p, f.nodes[1].p, f.nodes[2].p, f) for f in self.faces]
+
     def delete_self_intersected_faces(self):
         """
         Delete all self-intersected faces.
+
+        We process the following marking:
+          0 - common face,
+          1 - face to delete,
+          2 - face, adjacent to deleted,
         """
 
         # Find self-intersected faces.
-        tc = geom.TrianglesCloud([geom.Triangle(f.nodes[0].p, f.nodes[1].p, f.nodes[2].p, f) for f in self.faces])
+        tc = geom.TrianglesCloud(self.triangles_list())
         pairs = tc.intersection_with_triangles_cloud(tc)
 
-        # Mark self-intersected faces
+        #
+        # Mark faces
+        #
+
+        # First all faces are common.
         for f in self.faces:
             f['M'] = 0
+
+        # If face intersects any - mark it in 1.
         for p in pairs:
             for t in p:
                 t.back_ref['M'] = 1
+
+        # Neighbours of deleted faces are marked in 2.
+        for f in self.faces:
+            if f['M'] == 0:
+                for n in f.nodes:
+                    for f1 in n.faces:
+                        if f1['M'] == 1:
+                            f['M'] = 2
 
         # Delete faces.
         faces_to_delete = [f for f in self.faces if f['M'] == 1]
         for f in faces_to_delete:
             self.delete_face(f)
+
+    def lo_face(self, i):
+        """
+        Min face.
+        Examples:
+          i = 0 - left face
+          i = 1 - bottom face
+          i = 2 - back face
+
+        Parameters
+        ----------
+        i : int
+            Axis.
+
+        Returns
+        -------
+        Face
+            Face with minimal position.
+        """
+
+        tl = self.triangles_list()
+        tl = geom.Triangle.sorting_by_the_selected_axis(tl, i)
+
+        return tl[0].back_ref
+
+    def hi_face(self, i):
+        """
+        Max face.
+        Examples:
+          i = 0 - right face
+          i = 1 - up face
+          i = 2 - front face
+
+        Parameters
+        ----------
+        i : int
+            Axis.
+
+        Returns
+        -------
+        Face
+            Face with maximum position.
+        """
+
+        tl = self.triangles_list()
+        tl = geom.Triangle.sorting_by_the_selected_axis(tl, i)
+
+        return tl[-1].back_ref
 
 
 if __name__ == '__main__':

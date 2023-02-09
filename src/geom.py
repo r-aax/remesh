@@ -140,6 +140,7 @@ class Triangle:
         """
 
         triangles_for_sorting.sort(key=lambda tri: tri.center()[axis])
+
         return triangles_for_sorting
 
     def is_intersect_with_segment(self, p, q):
