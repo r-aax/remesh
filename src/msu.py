@@ -1001,6 +1001,39 @@ class Mesh:
         self.add_face(f3, z)
         self.add_face_nodes_links(f3, [c, a, n])
 
+    def parallel_move(self, v):
+        """
+        Parallel move all nodes.
+
+        Parameters
+        ----------
+        v : Vector
+            Move vector.
+        """
+
+        for n in self.nodes:
+            n.p += v
+
+    def unite_with(self, m):
+        """
+        Unite with another mesh.
+
+        Parameters
+        ----------
+        m : Mesh
+            Mesh.
+        """
+
+        # Create new zone and add united mesh to it.
+        z = Zone('unite')
+        self.zones.append(z)
+
+        # Add nodes and faces to new zone.
+        for n in m.nodes:
+            self.add_node(n, z)
+        for f in m.faces:
+            self.add_face(f, z)
+
 
 if __name__ == '__main__':
     pass

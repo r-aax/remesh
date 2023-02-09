@@ -1,6 +1,47 @@
 import numpy as np
 import numpy.linalg as la
 import itertools
+import mth
+
+
+def points_dist(a, b):
+    """
+    Distance betweeen points.
+
+    Parameters
+    ----------
+    a : Point
+        First point.
+    b : Point
+        Second point.
+
+    Returns
+    -------
+    float
+        Distance.
+    """
+
+    return la.norm(a - b)
+
+
+def is_points_near(a, b):
+    """
+    Check if points are near.
+
+    Parameters
+    ----------
+    a : Point
+        First point.
+    b : Point
+        Second point.
+
+    Returns
+    -------
+    True - if points are near,
+    False - if points are not near.
+    """
+
+    return points_dist(a, b) < mth.EPS
 
 
 class Triangle:
