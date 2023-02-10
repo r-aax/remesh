@@ -459,6 +459,8 @@ class RemesherTong(Remesher):
         for e in mesh.edges:
             f1 = e.face1
             f2 = e.face2
+            if f1 is None or f2 is None:
+                continue
             if (f1.h < f2.h):
                 f1, f2 = f2, f1
             dV = f1.area * min(f1.h - f2.h, ah*maxH)
@@ -565,6 +567,8 @@ class RemesherTong(Remesher):
             Mesh.
         """
         for e in mesh.edges:
+            if e.face1 is None or e.face2 is None:
+                continue
             n_e = (e.face1.normal + e.face2.normal)/2
             p1, p2 = e.points()
             p3, p4 = e.old_points()
