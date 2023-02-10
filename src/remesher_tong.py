@@ -3,7 +3,7 @@ import mth
 import numpy as np
 from numpy import linalg as LA
 from remesher import Remesher
-
+import time
 
 def node_calculate_A_and_b(node):
     """
@@ -133,7 +133,7 @@ def face_calculate_time_step_fraction(face, time_step_fraction_k, time_step_frac
     h = mth.quadratic_equation_smallest_positive_root(3.0 * face.v_coef_c,
                                                           2.0 * face.v_coef_b,
                                                           face.v_coef_a)
-    if h is not None:
+    if h is not None and face.target_ice > 0:
         tsf = time_step_fraction_k \
               * (face.v_coef_a * h + face.v_coef_b * h * h + face.v_coef_c * h * h * h) / face.target_ice
         face.tsf = min(tsf, time_step_fraction_jiao, 1.0)
@@ -159,7 +159,7 @@ class RemesherTong(Remesher):
 
     def inner_remesh(self,
                      mesh,
-                     steps=5,
+                     steps=2,
                      is_simple_tsf=False,
                      normal_smoothing_steps=10, normal_smoothing_s=10.0, normal_smoothing_k=0.15,
                      height_smoothing_steps=20, time_step_fraction_k=0.25, null_space_smoothing_steps=1,
@@ -214,7 +214,10 @@ class RemesherTong(Remesher):
         mesh.calculate_faces_normals()
         self.remesh_prepare(mesh)
         self.generate_accretion_rate(mesh)
+        calculate_edges_time = time.time()
         mesh.calculate_edges()
+        calculate_edges_time = time.time() - calculate_edges_time
+        print(f'calculate edges time = {calculate_edges_time}, edges count = {len(mesh.edges)}')
         step_i = 0
 
         while True:

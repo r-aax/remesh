@@ -1,3 +1,4 @@
+from typing import overload
 import numpy as np
 from numpy import linalg as LA
 import mth
@@ -13,7 +14,7 @@ EXPORT_FORMAT_STRING = '{0:.18e}'
 
 def find_common_nodes(face1, face2):
     """
-    finds common nodes between faces
+    finds common nodes between faces and return them in sorted order
 
     Parameters
     ----------
@@ -27,8 +28,10 @@ def find_common_nodes(face1, face2):
     for n in face1.nodes:
         if n in face2.nodes:
             nodes.append(n)
-    return nodes[0], nodes[1]
-
+    if nodes[0].glo_id < nodes[1].glo_id:
+        return nodes[0], nodes[1]
+    else:
+        return nodes[1], nodes[0]
 
 class Node:
     """
@@ -87,7 +90,7 @@ class Edge:
     Edge - border between two faces
     """
 
-    def __init__(self, face1, face2):
+    def __init__(self, face1, face2, node1=None, node2 = None):
         """
         Initialization.
 
@@ -101,7 +104,14 @@ class Edge:
 
         self.face1 = face1
         self.face2 = face2
-        self.node1, self.node2 = find_common_nodes(face1, face2)
+        if face1 is not None and face2 is not None:
+            self.node1, self.node2 = find_common_nodes(face1, face2)
+        else:
+            if face1 is None:
+                self.face1, self.face2 = self.face2, self.face1
+            if face1 is None:
+                raise Exception('Edge(None, None)')
+            self.node1, self.node2 = node1, node2
 
     def __eq__(self, other):
         return self.face1 == other.face1 and self.face2 == other.face2 \
@@ -122,6 +132,9 @@ class Edge:
     def points(self):
         return self.node1.p, self.node2.p
 
+    def nodes(self):
+        return self.node1, self.node2
+
     def old_points(self):
         return self.node1.old_p, self.node2.old_p
 
@@ -136,6 +149,14 @@ class Edge:
         """
 
         return LA.norm(self.node1.p - self.node2.p)
+
+    def replace_face(self, f, new_f):
+        if self.face1 == f:
+            self.face1 = new_f
+        elif self.face2 == f:
+            self.face2 = new_f
+        else:
+            raise Exception('No such face')
 
 
 class Face:
@@ -443,7 +464,7 @@ class Mesh:
         self.nodes = []
         self.faces = []
         self.edges = []
-
+        self.edge_table = {}
         # Rounded coordinates bag.
         self.rounded_coordinates_bag = set()
 
@@ -551,7 +572,7 @@ class Mesh:
 
     def add_face(self, face, zone):
         """
-        Add fae to mesh.
+        Add face to mesh.
 
         Parameters
         ----------
@@ -566,6 +587,20 @@ class Mesh:
         self.faces.append(face)
         zone.faces.append(face)
         face.zone = zone
+
+    def add_edge(self, edge):
+        """
+        Add edge to mesh.
+
+        Parameters
+        ----------
+        edge : Edge
+            Edge to add.
+        """
+
+        self.edges.append(edge)
+        self.edge_table[(edge.node1, edge.node2)] = edge
+
 
     def add_face_node_link(self, f, n):
         """
@@ -809,10 +844,14 @@ class Mesh:
         self.edges = []
         for f in self.faces:
             f.calculate_neighbour_faces()
-            es = [Edge(f, neighbour) for neighbour in f.neighbour_faces]
+            es = [Edge(f, neighbour) for neighbour in f.neighbour_faces if f.glo_id < neighbour.glo_id]
             for e in es:
-                if e not in self.edges:
-                    self.edges.append(e)
+                self.add_edge(e)
+            if (len(f.neighbour_faces) < 3):
+                remaining_nodes = sorted([n for n in f.nodes if len(set(n.faces) & set(f.neighbour_faces)) < 2], key=lambda n:n.glo_id)
+                for i in range(3 - len(f.neighbour_faces)):
+                    self.add_edge(Edge(f, None, remaining_nodes[i], remaining_nodes[i+1]))
+
 
     def target_ice(self):
         """
@@ -906,6 +945,19 @@ class Mesh:
         # Remove node from mesh.
         self.nodes.remove(n)
 
+    def delete_edge(self, e):
+        """
+        Delete edge.
+
+        Parameters
+        ----------
+        e : Edge
+            Edge to be deleted.
+        """
+        # Remove node from mesh.
+        self.edges.remove(e)
+        del self.edge_table[(e.node1, e.node2)]
+
     def reduce_edge(self, e):
         """
         Reduce edge.
@@ -935,6 +987,7 @@ class Mesh:
         # We need no b node anymore if it is isolated.
         if not b.faces:
             self.delete_node(b)
+        self.delete_edge(e)
 
     def split_edge(self, e, p):
         """
@@ -949,31 +1002,46 @@ class Mesh:
         """
 
         n = Node(p)
-
+        node1_pair = []
+        node2_pair = []
         # We need split both faces for edge.
         for f in [e.face1, e.face2]:
 
             if f is None:
+                node2_pair.append(None)
+                node1_pair.append(None)
                 continue
 
             # Data from face.
             a, b, c = f.nodes[0], f.nodes[1], f.nodes[2]
+            sorted_nodes = sorted(f.nodes, key=lambda node: node.glo_id)
+            a1, b1, c1 = sorted_nodes[0], sorted_nodes[1], sorted_nodes[2]
             f1, f2 = f.copy(), f.copy()
             z = f.zone
 
             # Add node.
             self.add_node(n, z)
 
-            # Delete old face.
-            self.delete_face(f)
-
             # Add new faces.
             self.add_face(f1, z)
             self.add_face_nodes_links(f1, [a, b, c])
             self.replace_face_node_link(f1, e.node1, n)
+            node2_pair.append(f1)
             self.add_face(f2, z)
             self.add_face_nodes_links(f2, [a, b, c])
             self.replace_face_node_link(f2, e.node2, n)
+            node1_pair.append(f2)
+            for pair in [(a1,b1),(b1,c1),(a1,c1)]:
+                if pair != e.nodes():
+                    f_to_replace = f1 if e.node2 in pair else f2
+                    self.edge_table[pair].replace_face(f, f_to_replace)
+            self.add_edge(Edge(f1, f2))
+            # Delete old face.
+            self.delete_face(f)
+
+        self.add_edge(Edge(node1_pair[0], node1_pair[1]))
+        self.add_edge(Edge(node2_pair[0], node2_pair[1]))
+        self.delete_edge(e)
 
     def split_face(self, f, p):
         """
@@ -995,7 +1063,7 @@ class Mesh:
         # New node.
         n = Node(p)
         self.add_node(n, z)
-
+        print(n.glo_id)
         # Delete old face.
         self.delete_face(f)
 
@@ -1006,6 +1074,16 @@ class Mesh:
         self.add_face_nodes_links(f2, [b, c, n])
         self.add_face(f3, z)
         self.add_face_nodes_links(f3, [c, a, n])
+
+        self.add_edge(Edge(f1, f2))
+        self.add_edge(Edge(f1, f3))
+        self.add_edge(Edge(f2, f3))
+        pair1 = (a, b) if a.glo_id < b.glo_id else (b, a)
+        pair2 = (b, c) if b.glo_id < c.glo_id else (c, b)
+        pair3 = (a, c) if a.glo_id < c.glo_id else (c, a)
+        self.edge_table[pair1].replace_face(f, f1)
+        self.edge_table[pair2].replace_face(f, f2)
+        self.edge_table[pair3].replace_face(f, f3)
 
     def parallel_move(self, v):
         """
