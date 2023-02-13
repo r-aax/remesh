@@ -85,6 +85,18 @@ class Node:
 
         return tuple(map(lambda x: round(x, NODE_COORDINATES_VALUABLE_DIGITS_COUNT), self.p))
 
+    def is_isolated(self):
+        """
+        Check if node is isolated.
+
+        Returns
+        -------
+        True - if node is isolated,
+        False - if node is not isolated.
+        """
+
+        return len(self.faces) == 0
+
 
 class Edge:
     """
@@ -449,8 +461,7 @@ class Mesh:
     ColorCommon = 0
     ColorToDelete = 1
     ColorBorder = 2
-    ColorGoodBorder = 3
-    ColorFree = 4
+    ColorFree = 3
 
     def __init__(self):
         """
@@ -947,6 +958,16 @@ class Mesh:
         # Remove node from mesh.
         self.nodes.remove(n)
 
+    def delete_isolated_nodes(self):
+        """
+        Delete isolated nodes.
+        """
+
+        nodes_to_delete = [n for n in self.nodes if n.is_isolated()]
+
+        for n in nodes_to_delete:
+            self.delete_node(n)
+
     def delete_edge(self, e):
         """
         Delete edge.
@@ -1238,17 +1259,9 @@ class Mesh:
 
         while li:
             f = li.pop()
-
             if f['M'] == mark_color:
                 continue
-
-            if f['M'] == Mesh.ColorGoodBorder:
-                continue
-
-            if f['M'] == Mesh.ColorBorder:
-                f['M'] = Mesh.ColorGoodBorder
-            else:
-                f['M'] = mark_color
+            f['M'] = mark_color
             for n in f.nodes:
                 for f1 in n.faces:
                     li.append(f1)
