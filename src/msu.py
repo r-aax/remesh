@@ -33,6 +33,7 @@ def find_common_nodes(face1, face2):
     else:
         return nodes[1], nodes[0]
 
+
 class Node:
     """
     Node - container for coordinates.
@@ -448,7 +449,8 @@ class Mesh:
     ColorCommon = 0
     ColorToDelete = 1
     ColorBorder = 2
-    ColorFree = 3
+    ColorGoodBorder = 3
+    ColorFree = 4
 
     def __init__(self):
         """
@@ -1236,13 +1238,35 @@ class Mesh:
 
         while li:
             f = li.pop()
+
             if f['M'] == mark_color:
                 continue
-            if f['M'] != Mesh.ColorBorder:
+
+            if f['M'] == Mesh.ColorGoodBorder:
+                continue
+
+            if f['M'] == Mesh.ColorBorder:
+                f['M'] = Mesh.ColorGoodBorder
+            else:
                 f['M'] = mark_color
-                for n in f.nodes:
-                    for f1 in n.faces:
-                        li.append(f1)
+            for n in f.nodes:
+                for f1 in n.faces:
+                    li.append(f1)
+
+    def delete_faces(self, c):
+        """
+        Delete faces of the color.
+
+        Parameters
+        ----------
+        c : int
+            Color.
+        """
+
+        faces_to_delete = [f for f in self.faces if f['M'] == c]
+
+        for f in faces_to_delete:
+            self.delete_face(f)
 
 
 if __name__ == '__main__':
