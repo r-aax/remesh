@@ -125,6 +125,9 @@ class Element(Seq):
 
         self.pred, self.succ = self.succ, self.pred
 
+        if not self.obj is None:
+            self.obj.node1, self.obj.node2 = self.obj.node2, self.obj.node1
+
     def get_els(self):
         """
         Get all elements.
@@ -265,6 +268,21 @@ class Path(Seq):
                 self.els = s.get_els() + self.els
             else:
                 raise Exception('internal error')
+
+    def rot(self, i):
+        """
+        Rotate loop path to position i.
+        After rotation element with i-th index become the first.
+
+        Parameters
+        ----------
+        i : int
+            Index for rotate.
+        """
+
+        assert self.is_loop()
+
+        self.els = self.els[i:] + self.els[:i]
 
 
 class Border:
