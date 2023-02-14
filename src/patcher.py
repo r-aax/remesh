@@ -64,7 +64,7 @@ class Element(Seq):
     Single element.
     """
 
-    def __init__(self, pred, succ, obj):
+    def __init__(self, pred, succ, obj, parent):
         """
         Constructor.
 
@@ -76,11 +76,14 @@ class Element(Seq):
             Succ.
         obj : object
             Any object.
+        parent : Border
+            Parent border.
         """
 
         self.pred = pred
         self.succ = succ
         self.obj = obj
+        self.parent = parent
 
     def __repr__(self):
         """
@@ -125,8 +128,8 @@ class Element(Seq):
 
         self.pred, self.succ = self.succ, self.pred
 
-        if not self.obj is None:
-            self.obj.node1, self.obj.node2 = self.obj.node2, self.obj.node1
+        if not self.parent.element_obj_flip_fun is None:
+            self.parent.element_obj_flip_fun(self.obj)
 
     def get_els(self):
         """
@@ -290,12 +293,18 @@ class Border:
     Border (can contain several seq members).
     """
 
-    def __init__(self):
+    def __init__(self, element_obj_flip_fun=None):
         """
         Constructor.
+
+        Parameters
+        ----------
+        element_obj_flip_fun : function
+            Function for element object flip.
         """
 
         self.paths = []
+        self.element_obj_flip_fun = element_obj_flip_fun
 
     def print(self):
         """
@@ -330,3 +339,20 @@ class Border:
             li[0].add(li[1])
         else:
             raise Exception('internal error')
+
+    def add_element(self, pred, succ, obj):
+        """
+        Add new element.
+
+        Parameters
+        ----------
+        pred : int
+            Predecessor.
+        succ : int
+            Successor.
+        obj : object
+            Object.
+        """
+
+        e = Element(pred, succ, obj, self)
+        self.add(e)

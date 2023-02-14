@@ -171,6 +171,12 @@ class Edge:
         else:
             raise Exception('No such face')
 
+    def flip_nodes(self):
+        """
+        Flip nodes.
+        """
+
+        self.node1, self.node2 = self.node2, self.node1
 
 class Face:
     """
