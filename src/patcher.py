@@ -1,4 +1,6 @@
 import msu
+import numpy as np
+import numpy.linalg as la
 
 
 class Seq:
@@ -398,3 +400,103 @@ class BorderCollector:
         # Construct border.
         for e in es:
             self.border.add_element(e.node1.glo_id, e.node2.glo_id, e)
+
+
+class Zipper(BorderCollector):
+    """
+    Zipper.
+    Class that can zip two border paths.
+    """
+
+    def __init__(self, mesh):
+        """
+        Constructor.
+
+        Parameters
+        ----------
+        mesh : msu.Mesh
+            Mesh.
+        """
+
+        super().__init__(mesh)
+
+    def zip(self, path_i_pos, path_j_pos, is_flip_path_j=False):
+        """
+        Zip pair of paths.
+
+        Parameters
+        ----------
+        path_i_pos : int
+            First path position.
+        path_j_pos : int
+            Second path position.
+        is_flip_path_j : bool
+            Flag for flipping second path.
+        """
+
+        # Find paths.
+        path_i = self.border.paths[path_i_pos]
+        path_j = self.border.paths[path_j_pos]
+
+        # Flip second path is necessary.
+        if is_flip_path_j:
+            path_j.flip()
+
+        # Now we can only zip loop paths.
+        assert path_i.is_loop()
+        assert path_j.is_loop()
+
+        # Find two nearest points of paths.
+        # Both paths are loops so we may only check node1 from each edge.
+        (_, min_i, min_j) = min([(la.norm(path_i.els[i].obj.node1.p - path_j.els[j].obj.node1.p), i, j)
+                                 for i in range(len(path_i.els)) for j in range(len(path_j.els))])
+
+        # Rotate paths to start positions.
+        path_i.rot(min_i)
+        path_j.rot(min_j)
+
+        # The grid create new zone, called zipper.
+        z = msu.Zone('zipper')
+        self.mesh.zones.append(z)
+
+        # Pair of start nodes.
+        start_i, start_j = path_i.els[0].obj.node1, path_j.els[0].obj.node1
+        n_i, n_j = start_i, start_j
+
+        # Watchdog.
+        counter = 0
+        max_counter = 10000
+
+        # While it is possible, move i of j.
+        # Moving is just rot on 1.
+        while True:
+
+            nx_i, nx_j = path_i.els[0].obj.node2, path_j.els[0].obj.node2
+            len_i, len_j = la.norm(nx_i.p - n_j.p), la.norm(nx_j.p - n_i.p)
+
+            # Do not care about double nodes.
+            z.nodes.append(n_i)
+            z.nodes.append(n_j)
+
+            # Do not care about faces phys data.
+            f = self.mesh.faces[0].copy()
+            self.mesh.add_face(f, z)
+
+            if len_i < len_j:
+                # Move i path.
+                z.nodes.append(nx_i)
+                self.mesh.add_face_nodes_links(f, [n_i, n_j, nx_i])
+                path_i.rot(1)
+            else:
+                # Move j path.
+                z.nodes.append(nx_j)
+                self.mesh.add_face_nodes_links(f, [n_i, n_j, nx_j])
+                path_j.rot(1)
+
+            n_i, n_j = path_i.els[0].obj.node1, path_j.els[0].obj.node1
+            if (n_i == start_i) and (n_j == start_j):
+                break
+
+            counter += 1
+            if counter > max_counter:
+                raise Exception('internal error')
