@@ -1,3 +1,6 @@
+import msu
+
+
 class Seq:
     """
     Sequential object.
@@ -356,3 +359,42 @@ class Border:
 
         e = Element(pred, succ, obj, self)
         self.add(e)
+
+
+class BorderCollector:
+    """
+    Class for collect border.
+    """
+
+    def __init__(self, mesh):
+        """
+        Constructor.
+
+        Parameters
+        ----------
+        mesh : msu.Mesh
+            Mesh.
+        """
+
+        self.mesh = mesh
+        self.border = None
+
+    def collect_border(self):
+        """
+        Collect border.
+        """
+
+        self.mesh.calculate_edges()
+
+        # Collect all edges with one incident face.
+        es = []
+        for e in self.mesh.edges:
+            if (e.face1 is not None) and (e.face2 is None):
+                if e not in es:
+                    es.append(e)
+
+        self.border = Border(element_obj_flip_fun=lambda x: x.flip_nodes())
+
+        # Construct border.
+        for e in es:
+            self.border.add_element(e.node1.glo_id, e.node2.glo_id, e)

@@ -178,6 +178,7 @@ class Edge:
 
         self.node1, self.node2 = self.node2, self.node1
 
+
 class Face:
     """
     Face - container for physical data.
