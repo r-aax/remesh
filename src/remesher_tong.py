@@ -2,6 +2,7 @@ import math
 import mth
 import numpy as np
 from numpy import linalg as LA
+from scipy import linalg as sLA
 from remesher import Remesher
 import time
 
@@ -14,7 +15,7 @@ def node_calculate_A_and_b(node):
     a = np.ones(m)
     W = np.zeros((m, m))
     for i in range(m):
-        W[i, i] = node.faces[i].area  # inner_angle(self)
+        W[i, i] = node.faces[i].inner_angle(node)#node.faces[i].area
     node.b = N.T @ W @ a
     node.A = N.T @ W @ N
 
@@ -84,7 +85,12 @@ def primary_and_null_space(A, threshold):
     float matrix, float matrix, float vector, int
         primary space, null space, eigen values of A, rank of primary space
     """
-    eigen_values_original, eigen_vectors_original = LA.eig(A)
+    eigen_values_original, eigen_vectors_original = sLA.eig(A)
+    eigen_values_original = eigen_values_original.real
+    eigen_vectors_original = eigen_vectors_original.real
+    #print("A = ",A)
+    #print("LA.eig(A) = ", LA.eig(A))
+    #print("sLA.eig(A) = ", sLA.eig(A))
     idx = eigen_values_original.argsort()[::-1]
     eigen_values = eigen_values_original[idx]
     eigen_vectors = eigen_vectors_original[:, idx]
@@ -159,10 +165,10 @@ class RemesherTong(Remesher):
 
     def inner_remesh(self,
                      mesh,
-                     steps=2,
+                     steps=10,
                      is_simple_tsf=False,
-                     normal_smoothing_steps=10, normal_smoothing_s=10.0, normal_smoothing_k=0.15,
-                     height_smoothing_steps=20, time_step_fraction_k=0.25, null_space_smoothing_steps=1,
+                     normal_smoothing_steps=30, normal_smoothing_s=10.0, normal_smoothing_k=0.15,
+                     height_smoothing_steps=20, time_step_fraction_k=0.25, null_space_smoothing_steps=10,
                      threshold_for_null_space=0.003, height_smoothing_alpha=0.2, height_smoothing_b=0.1):
         """
         Remesh.
@@ -331,12 +337,12 @@ class RemesherTong(Remesher):
                     sum(map(lambda ln: ln.normal * max(normal_smoothing_s * (1.0 - f.smoothed_normal @ ln.normal),
                                                        normal_smoothing_k),
                             f.nodes))
-                f.smoothed_normal = f.smoothed_normal / LA.norm(f.smoothed_normal)
+                f.smoothed_normal = f.smoothed_normal / LA.norm(f.smoothed_normal, ord=1)
 
             # [1] IV.A.3 formula (5)
             for n in mesh.nodes:
                 n.normal = sum(map(lambda lf: lf.smoothed_normal / lf.area, n.faces))
-                n.normal = n.normal / LA.norm(n.normal)
+                n.normal = n.normal / LA.norm(n.normal, ord=1)
 
         # After nodes normals stay unchanged we can calculate V(h) cubic coefficients.
         for f in mesh.faces:

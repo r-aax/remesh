@@ -23,6 +23,7 @@ if __name__ == '__main__':
     parser = createParser()
     namespace = parser.parse_args(sys.argv[1:])
     stl_name = namespace.stl_name
+
     dat_name = namespace.dat_name
     ice_percent = numpy.float64(namespace.ice_percent)
     stl_mesh = trimesh.load_mesh(stl_name)
