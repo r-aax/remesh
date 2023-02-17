@@ -463,8 +463,8 @@ class RemesherTong(Remesher):
         """
 
         for e in mesh.edges:
-            f1 = e.face1
-            f2 = e.face2
+            f1 = e.faces[0]
+            f2 = e.faces[1]
             if f1 is None or f2 is None:
                 continue
             if (f1.h < f2.h):
@@ -573,23 +573,25 @@ class RemesherTong(Remesher):
             Mesh.
         """
         for e in mesh.edges:
-            if e.face1 is None or e.face2 is None:
+            if len(e.faces) !=2:
                 continue
-            n_e = (e.face1.normal + e.face2.normal)/2
+            face1 = e.faces[0]
+            face2 = e.faces[1]
+            n_e = (face1.normal + face2.normal)/2
             p1, p2 = e.points()
             p3, p4 = e.old_points()
             n_s = np.cross(p2 - p1, p3 - p1)
             A_s = 0.5 * (LA.norm(np.cross(p2 - p1, p3 - p1)) + LA.norm(np.cross(p4 - p3, p4 - p2)))
-            A_r = e.face1.area
-            A_l = e.face2.area
+            A_r = face1.area
+            A_l = face2.area
             V_flux = 0
             a = np.dot(n_s, n_e)
             if a >= 0:
-                V_flux = a * e.face1.ice_chunk * A_s / A_r
+                V_flux = a * face1.ice_chunk * A_s / A_r
             else:
-                V_flux = a * e.face2.ice_chunk * A_s / A_l
-            e.face2.ice_chunk += V_flux
-            e.face1.ice_chunk -= V_flux
+                V_flux = a * face2.ice_chunk * A_s / A_l
+            e.faces[1].ice_chunk += V_flux
+            e.faces[0].ice_chunk -= V_flux
 
     def final_volume_correction_step(self, mesh):
         """
