@@ -29,7 +29,7 @@ def find_common_nodes(face1, face2):
         if n in face2.nodes:
             nodes.append(n)
     assert len(nodes) == 2
-    if nodes[0].glo_id < nodes[1].glo_id:
+    if nodes[0].glo_id > nodes[1].glo_id:
         nodes[0], nodes[1] = nodes[1], nodes[0]
     return nodes
 
@@ -115,9 +115,9 @@ class Edge:
             second face
         """
         if len(faces) == 1:
-            assert len(nodes) == 2
+            assert nodes!= None and len(nodes) == 2
             self.faces = faces
-            self.nodes = sorted(nodes, key=lambda n: -n.glo_id)
+            self.nodes = sorted(nodes, key=lambda n: n.glo_id)
         elif len(faces) == 2:
             self.faces = faces
             self.nodes = find_common_nodes(faces[0], faces[1])
@@ -142,8 +142,6 @@ class Edge:
     def points(self):
         return self.nodes[0].p, self.nodes[1].p
 
-    def nodes(self):
-        return self.nodes[0], self.nodes[1]
 
     def old_points(self):
         return self.nodes[0].old_p, self.nodes[1].old_p
@@ -1032,9 +1030,6 @@ class Mesh:
         node1_pair = []
         node2_pair = []
         # We need split both faces for edge.
-        if len(e.faces) < 2:
-            node2_pair.append(None)
-            node1_pair.append(None)
         for f in e.faces:
             # Data from face.
             a, b, c = f.nodes[0], f.nodes[1], f.nodes[2]
@@ -1056,15 +1051,14 @@ class Mesh:
             self.replace_face_node_link(f2, e.nodes[1], n)
             node1_pair.append(f2)
             for pair in [(a1,b1),(b1,c1),(a1,c1)]:
-                if pair != e.nodes():
+                if pair != tuple(e.nodes):
                     f_to_replace = f1 if e.nodes[1] in pair else f2
                     self.edge_table[pair].replace_face(f, f_to_replace)
             self.add_edge(Edge([f1, f2]))
             # Delete old face.
             self.delete_face(f)
-
-        self.add_edge(Edge([node1_pair[0], node1_pair[1]]))
-        self.add_edge(Edge([node2_pair[0], node2_pair[1]]))
+        self.add_edge(Edge(node1_pair, [n, e.nodes[0]]))
+        self.add_edge(Edge(node2_pair, [n, e.nodes[1]]))
         self.delete_edge(e)
 
     def split_face(self, f, p):
@@ -1083,11 +1077,9 @@ class Mesh:
         a, b, c = f.nodes[0], f.nodes[1], f.nodes[2]
         f1, f2, f3 = f.copy(), f.copy(), f.copy()
         z = f.zone
-
         # New node.
         n = Node(p)
         self.add_node(n, z)
-        print(n.glo_id)
         # Delete old face.
         self.delete_face(f)
 

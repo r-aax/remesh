@@ -51,6 +51,18 @@ def case_01_sphere_2():
     zipper.zip(0, 1, is_flip_path_j=True)
     store_and_say(mesh, f'../{c}_phase_03_zipper.dat')
 
-
+def triangle_case():
+    mesh = msu.Mesh()
+    c = "triangle_case"
+    p1 = [0.6, 0.3, 0.3]
+    p2 = [0.6, -0.3, 0.3]
+    p3 = [0.8, 0.7, 0.7]
+    mesh.load('../cases/pseudogrids/ex1.dat')
+    mesh.calculate_edges()
+    mesh.split_face(mesh.faces[0], p1)
+    mesh.split_edge(mesh.edges[0], p2)
+    mesh.split_edge(mesh.edges[4], p3)
+    store_and_say(mesh, f'../{c}.dat')
 if __name__ == '__main__':
-    case_01_sphere_2()
+    #case_01_sphere_2()
+    triangle_case()
