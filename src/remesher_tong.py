@@ -463,10 +463,10 @@ class RemesherTong(Remesher):
         """
 
         for e in mesh.edges:
+            if len(e.faces) != 2:
+                continue
             f1 = e.faces[0]
             f2 = e.faces[1]
-            if f1 is None or f2 is None:
-                continue
             if (f1.h < f2.h):
                 f1, f2 = f2, f1
             dV = f1.area * min(f1.h - f2.h, ah*maxH)

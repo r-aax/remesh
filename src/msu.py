@@ -865,7 +865,7 @@ class Mesh:
             for e in es:
                 self.add_edge(e)
             if (len(f.neighbour_faces) < 3):
-                remaining_nodes = sorted([n for n in f.nodes if len(set(n.faces) & set(f.neighbour_faces)) < 2], key=lambda n:n.glo_id)
+                remaining_nodes = sorted([n for n in f.nodes if len(set(n.faces) & set(f.neighbour_faces)) < 2], key=lambda n:n.glo_id)*2
                 for i in range(3 - len(f.neighbour_faces)):
                     self.add_edge(Edge([f], remaining_nodes[i:i+2]))
 
