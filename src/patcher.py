@@ -471,7 +471,7 @@ class Zipper(BorderCollector):
         # Moving is just rot on 1.
         while True:
 
-            nx_i, nx_j = path_i.els[0].obj.nodes[0], path_j.els[0].obj.nodes[0]
+            nx_i, nx_j = path_i.els[0].obj.nodes[1], path_j.els[0].obj.nodes[1]
             len_i, len_j = la.norm(nx_i.p - n_j.p), la.norm(nx_j.p - n_i.p)
 
             # Do not care about double nodes.
