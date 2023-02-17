@@ -52,6 +52,7 @@ def case_01_sphere_2():
     zipper.zip(0, 1, is_flip_path_j=True)
     store_and_say(mesh, f'../{c}_phase_03_zipper.dat')
 
+
 def case_02_sphere_2():
     """
     Case 02.
@@ -75,9 +76,11 @@ def case_02_sphere_2():
         print(pair)
         [t1, t2] = pair
         ps = t1.find_intersection_with_triangle(t2)
-        print(ps)
         ps = geom.delete_near_points(ps)
-        print(ps)
+        mesh.split_face(t1.back_ref, ps[0])
+        mesh.split_face(t2.back_ref, ps[0])
+    store_and_say(mesh, f'../{c}_phase_02_cut.dat')
+
 
 def triangle_case():
     mesh = msu.Mesh()
@@ -94,5 +97,5 @@ def triangle_case():
 
 
 if __name__ == '__main__':
-    #case_01_sphere_2()
+    #case_02_sphere_2()
     triangle_case()

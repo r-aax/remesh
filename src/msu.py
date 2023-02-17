@@ -570,6 +570,11 @@ class Mesh:
             Node to add.
         zone : Zone
             Zone to add node to.
+
+        Returns
+        -------
+        Node
+            Added node.
         """
 
         found_node = self.find_near_node(node)
@@ -584,6 +589,8 @@ class Mesh:
             node_to_zone = found_node
 
         zone.nodes.append(node_to_zone)
+
+        return node_to_zone
 
     def add_face(self, face, zone):
         """
@@ -1039,7 +1046,7 @@ class Mesh:
             z = f.zone
 
             # Add node.
-            self.add_node(n, z)
+            n = self.add_node(n, z)
 
             # Add new faces.
             self.add_face(f1, z)
@@ -1079,7 +1086,7 @@ class Mesh:
         z = f.zone
         # New node.
         n = Node(p)
-        self.add_node(n, z)
+        n = self.add_node(n, z)
         # Delete old face.
         self.delete_face(f)
 
