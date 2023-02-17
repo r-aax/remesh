@@ -391,7 +391,7 @@ class BorderCollector:
         # Collect all edges with one incident face.
         es = []
         for e in self.mesh.edges:
-            if (e.face1 is not None) and (e.face2 is None):
+            if len(e.faces) == 1:
                 if e not in es:
                     es.append(e)
 
@@ -399,7 +399,7 @@ class BorderCollector:
 
         # Construct border.
         for e in es:
-            self.border.add_element(e.node1.glo_id, e.node2.glo_id, e)
+            self.border.add_element(e.nodes[0].glo_id, e.nodes[1].glo_id, e)
 
 
 class Zipper(BorderCollector):
@@ -447,8 +447,8 @@ class Zipper(BorderCollector):
         assert path_j.is_loop()
 
         # Find two nearest points of paths.
-        # Both paths are loops so we may only check node1 from each edge.
-        (_, min_i, min_j) = min([(la.norm(path_i.els[i].obj.node1.p - path_j.els[j].obj.node1.p), i, j)
+        # Both paths are loops so we may only check nodes[0] from each edge.
+        (_, min_i, min_j) = min([(la.norm(path_i.els[i].obj.nodes[0].p - path_j.els[j].obj.nodes[0].p), i, j)
                                  for i in range(len(path_i.els)) for j in range(len(path_j.els))])
 
         # Rotate paths to start positions.
@@ -460,7 +460,7 @@ class Zipper(BorderCollector):
         self.mesh.zones.append(z)
 
         # Pair of start nodes.
-        start_i, start_j = path_i.els[0].obj.node1, path_j.els[0].obj.node1
+        start_i, start_j = path_i.els[0].obj.nodes[0], path_j.els[0].obj.nodes[0]
         n_i, n_j = start_i, start_j
 
         # Watchdog.
@@ -471,7 +471,7 @@ class Zipper(BorderCollector):
         # Moving is just rot on 1.
         while True:
 
-            nx_i, nx_j = path_i.els[0].obj.node2, path_j.els[0].obj.node2
+            nx_i, nx_j = path_i.els[0].obj.nodes[0], path_j.els[0].obj.nodes[0]
             len_i, len_j = la.norm(nx_i.p - n_j.p), la.norm(nx_j.p - n_i.p)
 
             # Do not care about double nodes.
@@ -493,7 +493,7 @@ class Zipper(BorderCollector):
                 self.mesh.add_face_nodes_links(f, [n_i, n_j, nx_j])
                 path_j.rot(1)
 
-            n_i, n_j = path_i.els[0].obj.node1, path_j.els[0].obj.node1
+            n_i, n_j = path_i.els[0].obj.nodes[0], path_j.els[0].obj.nodes[0]
             if (n_i == start_i) and (n_j == start_j):
                 break
 

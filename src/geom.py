@@ -244,7 +244,6 @@ class Triangle:
         True - if there is intersection,
         False - if there is no intersection.
         """
-
         # There is intersection if any side of one triangle
         # intersects another triangle.
         return self.is_intersect_with_segment(t.points[0], t.points[1]) \
