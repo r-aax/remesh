@@ -2,6 +2,7 @@ import numpy as np
 import numpy.linalg as la
 import itertools
 import mth
+import random
 
 
 def points_dist(a, b):
@@ -22,6 +23,28 @@ def points_dist(a, b):
     """
 
     return la.norm(a - b)
+
+
+def points_square(a, b, c):
+    """
+    Square between points.
+
+    Parameters
+    ----------
+    a : Point
+        Point A.
+    b : Point
+        Point B.
+    c : Point
+        Point C.
+
+    Returns
+    -------
+    float
+        Square between points.
+    """
+
+    return 0.5 * la.norm(np.cross(b - a, c - a))
 
 
 def is_points_near(a, b):
@@ -123,6 +146,53 @@ class Triangle:
         """
 
         return (self.points[0] + self.points[1] + self.points[2]) / 3.0
+
+    def random_point(self):
+        """
+        Get random point in triangle.
+
+        Returns
+        -------
+        Point
+            Random point.
+        """
+
+        a, b, c = self.points[0], self.points[1], self.points[2]
+        ra, rb, rc = random.random(), random.random(), random.random()
+
+        return (ra * a + rb * b + rc * c) / (ra + rb + rc)
+
+    def square(self):
+        """
+        Square.
+
+        Returns
+        -------
+        float
+            Square.
+        """
+
+        return points_square(self.points[0], self.points[1], self.points[2])
+
+    def squares_difference(self, p):
+        """
+        Measure for p in triagle.
+        |S(a, b, c) - S(a, b, p) - S(b, c, p) - S(a, c, p)|
+
+        Parameters
+        ----------
+        p : Point
+            Point for check.
+
+        Returns
+        -------
+        float
+            Squares difference.
+        """
+
+        a, b, c = self.points[0], self.points[1], self.points[2]
+
+        return abs(self.square() - points_square(a, b, p) - points_square(b, c, p) - points_square(a, c, p))
 
     def has_common_points_with(self, t):
         """

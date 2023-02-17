@@ -378,6 +378,18 @@ class Face:
         # (a, b) = |a| * |b| * cos(alpha)
         return np.arccos(np.dot(v1, v2) / (LA.norm(v1) * LA.norm(v2)))
 
+    def triangle(self):
+        """
+        Create triangle.
+
+        Returns
+        -------
+        Triangle
+            Triangle.
+        """
+
+        return geom.Triangle(self.nodes[0].p, self.nodes[1].p, self.nodes[2].p)
+
 
 class Zone:
     """
@@ -1107,7 +1119,7 @@ class Mesh:
         self.edge_table[pair2].replace_face(f, f2)
         self.edge_table[pair3].replace_face(f, f3)
 
-    def multisplit(self, f, ps):
+    def multisplit_face(self, f, ps):
         """
         Split with several points.
 
@@ -1119,14 +1131,26 @@ class Mesh:
             Points list.
         """
 
-        hps = ps[0]
-        tps = ps[1:]
+        if not ps:
+            return
 
+        hps, tps = ps[0], ps[1:]
+
+        # Split face with first point.
         self.split_face(f, hps)
 
+        # Now split with other points recursively.
+        fs = self.faces[-3:]
+        ts = [f.triangle() for f in fs]
+
+        # Distribute rest points between last three faces.
+        pps = [[], [], []]
         for p in tps:
-            tf = self.faces[-1]
-            self.split_face(tf, p)
+            squares_diffs = [t.squares_difference(p) for t in ts]
+            i = np.argmin(squares_diffs)
+            pps[i].append(p)
+        for i in range(3):
+            self.multisplit_face(fs[i], pps[i])
 
     def parallel_move(self, v):
         """
