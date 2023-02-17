@@ -874,7 +874,6 @@ class Mesh:
                 for i in range(3 - len(f.neighbour_faces)):
                     self.add_edge(Edge([f], remaining_nodes[i:i+2]))
 
-
     def target_ice(self):
         """
         Get sum targe ice.
@@ -1107,6 +1106,27 @@ class Mesh:
         self.edge_table[pair1].replace_face(f, f1)
         self.edge_table[pair2].replace_face(f, f2)
         self.edge_table[pair3].replace_face(f, f3)
+
+    def multisplit(self, f, ps):
+        """
+        Split with several points.
+
+        Parameters
+        ----------
+        f : Face
+            Face to be splitted.
+        ps : [Point]
+            Points list.
+        """
+
+        hps = ps[0]
+        tps = ps[1:]
+
+        self.split_face(f, hps)
+
+        for p in tps:
+            tf = self.faces[-1]
+            self.split_face(tf, p)
 
     def parallel_move(self, v):
         """

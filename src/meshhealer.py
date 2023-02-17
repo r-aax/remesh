@@ -1,6 +1,7 @@
 import msu
 import patcher
 import geom
+import numpy as np
 
 
 def store_and_say(mesh, f):
@@ -96,6 +97,28 @@ def triangle_case():
     store_and_say(mesh, f'../{c}.dat')
 
 
+def case_04_triangle_multisplit():
+    """
+    Case 04.
+    Split face with multiple points.
+    """
+    cs = 'case_04_ex1'
+    f = '../cases/pseudogrids/ex1.dat'
+
+    # Load.
+    mesh = msu.Mesh()
+    mesh.load(f)
+    mesh.calculate_edges()
+    store_and_say(mesh, f'../{cs}_phase_01_original.dat')
+
+    # Split.
+    f = mesh.faces[0]
+    a, b, c = f.nodes[0].p, f.nodes[1].p, f.nodes[2].p
+    mesh.multisplit(mesh.faces[0], [(3.0 * a + b + c) / 5.0,
+                                    (a + 3.0 * b + c) / 5.0,
+                                    (a + b + 3.0 * c) / 5.0])
+    store_and_say(mesh, f'../{cs}_phase_02_multisplit.dat')
+
+
 if __name__ == '__main__':
-    #case_02_sphere_2()
-    triangle_case()
+    case_04_triangle_multisplit()
