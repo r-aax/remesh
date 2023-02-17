@@ -90,7 +90,7 @@ def delete_near_points(ps):
             if is_points_near(ps[i], ps[j]):
                 delete_flags[j] = True
 
-    return [ps[i] for i in range(l) if delete_flags[i]]
+    return [ps[i] for i in range(l) if not delete_flags[i]]
 
 
 class Triangle:

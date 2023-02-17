@@ -61,7 +61,7 @@ def case_02_sphere_2():
     """
 
     c = 'case_02_ex2'
-    f = '../cases/pseudogrids/ex2.dat'
+    f = '../cases/sphere_2.dat'
 
     # Load.
     mesh = msu.Mesh()
@@ -70,6 +70,8 @@ def case_02_sphere_2():
     store_and_say(mesh, f'../{c}_phase_01_original.dat')
 
     # Find intersections.
+    for f in mesh.faces:
+        f.split_points = []
     tc = geom.TrianglesCloud(mesh.triangles_list())
     pairs = tc.intersection_with_triangles_cloud(tc)
     pairs = list(filter(lambda p: p[0].back_ref.glo_id < p[1].back_ref.glo_id, pairs))
@@ -79,8 +81,13 @@ def case_02_sphere_2():
         [t1, t2] = pair
         ps = t1.find_intersection_with_triangle(t2)
         ps = geom.delete_near_points(ps)
-        mesh.split_face(t1.back_ref, ps[0])
-        mesh.split_face(t2.back_ref, ps[0])
+        t1.back_ref.split_points = t1.back_ref.split_points + ps
+        t2.back_ref.split_points = t2.back_ref.split_points + ps
+    for f in mesh.faces:
+        f.split_points = geom.delete_near_points(f.split_points)
+    ff = [f for f in mesh.faces]
+    for f in ff:
+        mesh.multisplit_face(f, f.split_points)
     store_and_say(mesh, f'../{c}_phase_02_cut.dat')
 
 
@@ -123,4 +130,4 @@ def case_04_triangle_multisplit():
 
 
 if __name__ == '__main__':
-    case_04_triangle_multisplit()
+    case_02_sphere_2()
