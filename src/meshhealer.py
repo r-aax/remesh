@@ -1,5 +1,6 @@
 import msu
 import patcher
+import geom
 
 
 def store_and_say(mesh, f):
@@ -51,6 +52,33 @@ def case_01_sphere_2():
     zipper.zip(0, 1, is_flip_path_j=True)
     store_and_say(mesh, f'../{c}_phase_03_zipper.dat')
 
+def case_02_sphere_2():
+    """
+    Case 02.
+    """
+
+    c = 'case_02_ex2'
+    f = '../cases/pseudogrids/ex2.dat'
+
+    # Load.
+    mesh = msu.Mesh()
+    mesh.load(f)
+    mesh.calculate_edges()
+    store_and_say(mesh, f'../{c}_phase_01_original.dat')
+
+    # Find intersections.
+    tc = geom.TrianglesCloud(mesh.triangles_list())
+    pairs = tc.intersection_with_triangles_cloud(tc)
+    pairs = list(filter(lambda p: p[0].back_ref.glo_id < p[1].back_ref.glo_id, pairs))
+    print('Pairs:')
+    for pair in pairs:
+        print(pair)
+        [t1, t2] = pair
+        ps = t1.find_intersection_with_triangle(t2)
+        print(ps)
+        ps = geom.delete_near_points(ps)
+        print(ps)
+
 def triangle_case():
     mesh = msu.Mesh()
     c = "triangle_case"
@@ -63,6 +91,8 @@ def triangle_case():
     mesh.split_edge(mesh.edges[0], p2)
     mesh.split_edge(mesh.edges[4], p3)
     store_and_say(mesh, f'../{c}.dat')
+
+
 if __name__ == '__main__':
     #case_01_sphere_2()
     triangle_case()
