@@ -44,6 +44,32 @@ def is_points_near(a, b):
     return points_dist(a, b) < mth.EPS
 
 
+def delete_near_points(ps):
+    """
+    Delete all near points.
+
+    Parameters
+    ----------
+    ps : [Point]
+        Points list.
+
+    Returns
+    -------
+    [Point]
+        List of points after delete near points.
+    """
+
+    l = len(ps)
+    delete_flags = [False] * l
+
+    for i in range(l):
+        for j in range(i + 1, l):
+            if is_points_near(ps[i], ps[j]):
+                delete_flags[j] = True
+
+    return [ps[i] for i in range(l) if delete_flags[i]]
+
+
 class Triangle:
     """
     Triangle - locus of points P:
@@ -230,6 +256,96 @@ class Triangle:
             # If det = 0.0 segment may lay in triangle plane.
             return False
 
+    def find_intersection_with_segment(self, p, q):
+        """
+        Find intersection point with segment [p, q].
+        Parameters
+        ----------
+        p : Point
+            Segment begin.
+        q : Point
+            Segment end.
+
+        Returns
+        -------
+        [Point]
+            List of intersection points.
+        """
+
+        def is_in_tri(bet, gam):
+            return (bet >= 0.0) and (gam >= 0.0) and (bet + gam <= 1.0)
+
+        def is_in_seg(phi):
+            return 0.0 <= phi <= 1.0
+
+        a, b, c = self.points[0], self.points[1], self.points[2]
+
+        #
+        # Point (x, y, z) inside triangle can be represented as
+        # x = x_a + (x_b - x_a) * bet + (x_c - x_a) * gam
+        # y = y_a + (y_b - y_a) * bet + (y_c - y_a) * gam
+        # z = z_a + (z_b - z_a) * bet + (z_c - z_a) * gam
+        #    where (x_a, y_a, z_a) - coordinates of point a,
+        #          (x_b, y_b, z_b) - coordinates of point b,
+        #          (x_c, y_c, z_c) - coordinates of point c,
+        #          bet >= 0,
+        #          gam >= 0,
+        #          bet + gam <= 1.
+        # ...
+        # x = x_a + x_ba * bet + x_ca * gam
+        # y = y_a + y_ba * bet + y_ca * gam
+        # z = z_a + z_ba * bet + z_ca * gam
+        #
+        # Point (x, y, z) on segment can be represented as
+        # x = x_p + (x_q - x_p) * phi
+        # y = y_p + (y_q - y_p) * phi
+        # x = z_p + (z_q - z_p) * phi
+        #   where (x_p, y_p, z_p) - coordinates of point p,
+        #         (x_q, y_q, z_q) - coordinates of point q,
+        #         0 <= phi <= 1.
+        # ...
+        # x = x_p + x_qp * phi
+        # y = y_p + y_qp * phi
+        # x = z_p + z_qp * phi
+        #
+        # So to find intersection we have to solve system
+        # x_a + x_ba * bet + x_ca * gam = x_p + x_qp * phi
+        # y_a + y_ba * bet + y_ca * gam = y_p + y_qp * phi
+        # z_a + z_ba * bet + z_ca * gam = z_p + z_qp * phi
+        # ...
+        # x_ba * bet + x_ca * gam + (-x_qp) * phi = x_p - x_a
+        # y_ba * bet + y_ca * gam + (-y_qp) * phi = y_p - y_a
+        # z_ba * bet + z_ca * gam + (-z_qp) * phi = z_p - z_a
+        # ...
+        # x_ba * bet + x_ca * gam + x_pq * phi = x_pa
+        # y_ba * bet + y_ca * gam + y_pq * phi = y_pa
+        # z_ba * bet + z_ca * gam + z_pq * phi = z_pa
+        #
+        # Matrix view of this system can be written in the following view
+        # [x_ba x_ca x_pq]     [bet]     [x_pa]
+        # [y_ba y_ca y_pq]  X  [gam]  =  [y_pa]
+        # [z_ba z_ca z_pq]     [phi]     [z_pa]
+        #
+
+        ba, ca, pq, pa = b - a, c - a, p - q, p - a
+
+        m = np.array([ba, ca, pq])
+        m = np.transpose(m)
+        d = la.det(m)
+
+        if d != 0.0:
+            im = la.inv(m)
+            [bet, gam, phi] = im.dot(pa)
+
+            if is_in_tri(bet, gam) and (is_in_seg(phi)):
+                return [p + phi * (q - p)]
+            else:
+                return []
+        else:
+            # TODO.
+            # If det = 0.0 segment may lay in triangle plane.
+            return []
+
     def is_intersect_with_triangle(self, t):
         """
         Check if triangle intersects another triangle.
@@ -252,6 +368,30 @@ class Triangle:
                or t.is_intersect_with_segment(self.points[0], self.points[1]) \
                or t.is_intersect_with_segment(self.points[1], self.points[2]) \
                or t.is_intersect_with_segment(self.points[2], self.points[0])
+
+    def find_intersection_with_triangle(self, t):
+        """
+        Find intersection with another triangle.
+
+        Parameters
+        ----------
+        t : Triangle
+            Triangle for check intersection.
+
+        Returns
+        -------
+        [Point]
+            List of intersection points.
+        """
+
+        points = self.find_intersection_with_segment(t.points[0], t.points[1]) \
+                 + self.find_intersection_with_segment(t.points[1], t.points[2]) \
+                 + self.find_intersection_with_segment(t.points[2], t.points[0]) \
+                 + t.find_intersection_with_segment(self.points[0], self.points[1]) \
+                 + t.find_intersection_with_segment(self.points[1], self.points[2]) \
+                 + t.find_intersection_with_segment(self.points[2], self.points[0])
+
+        return points
 
 
 class Box:
