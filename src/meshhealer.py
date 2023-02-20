@@ -127,19 +127,20 @@ def case_01_zip():
     store_and_say(mesh, f'../{c}_ph_09_zip_2.dat')
 
 
-def case_02_sphere_2():
+def case_02_self_intersections_elimination():
     """
     Case 02.
     """
 
-    c = 'case_02_ex2'
-    f = '../cases/sphere_2.dat'
+    c = 'case_02_sie'
+    #f = '../cases/pseudogrids/ex5.dat'
+    f = '../cases/bunny_2.dat'
 
     # Load.
     mesh = msu.Mesh()
     mesh.load(f)
     mesh.calculate_edges()
-    store_and_say(mesh, f'../{c}_phase_01_original.dat')
+    store_and_say(mesh, f'../{c}_ph_01_orig.dat')
 
     # Find intersections.
     for f in mesh.faces:
@@ -160,7 +161,7 @@ def case_02_sphere_2():
     ff = [f for f in mesh.faces]
     for f in ff:
         mesh.multisplit_face(f, f.split_points)
-    store_and_say(mesh, f'../{c}_phase_02_cut.dat')
+    store_and_say(mesh, f'../{c}_ph_02_cut.dat')
 
 
 def triangle_case():
@@ -182,14 +183,14 @@ def case_04_triangle_multisplit():
     Case 04.
     Split face with multiple points.
     """
-    c = 'case_04_ex1'
+    c = 'case_04_triangle_multisplit'
     f = '../cases/pseudogrids/ex1.dat'
 
     # Load.
     mesh = msu.Mesh()
     mesh.load(f)
     mesh.calculate_edges()
-    store_and_say(mesh, f'../{c}_phase_01_original.dat')
+    store_and_say(mesh, f'../{c}_ph_01_orig.dat')
 
     # Split.
     f = mesh.faces[0]
@@ -198,20 +199,8 @@ def case_04_triangle_multisplit():
     for _ in range(10):
         random_points.append(t.random_point())
     mesh.multisplit_face(mesh.faces[0], random_points)
-    store_and_say(mesh, f'../{c}_phase_02_multisplit.dat')
-
-
-def case_05():
-    c = 'case_05_ex3'
-    f = '../cases/pseudogrids/ex5.dat'
-
-    # Load.
-    mesh = msu.Mesh()
-    mesh.load(f)
-    print(mesh.nodes, mesh.faces)
-    mesh.calculate_edges()
-    print(mesh.edges, mesh.edge_table)
+    store_and_say(mesh, f'../{c}_ph_02_multisplit.dat')
 
 
 if __name__ == '__main__':
-    case_01_zip()
+    case_02_self_intersections_elimination()
