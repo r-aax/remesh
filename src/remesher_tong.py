@@ -5,6 +5,7 @@ from numpy import linalg as LA
 from scipy import linalg as sLA
 from remesher import Remesher
 import time
+from msu import find_common_faces
 
 def node_calculate_A_and_b(node):
     """
@@ -15,7 +16,7 @@ def node_calculate_A_and_b(node):
     a = np.ones(m)
     W = np.zeros((m, m))
     for i in range(m):
-        W[i, i] = node.faces[i].inner_angle(node)#node.faces[i].area
+        W[i, i] = node.faces[i].area#node.faces[i].inner_angle(node)
     node.b = N.T @ W @ a
     node.A = N.T @ W @ N
 
@@ -169,7 +170,7 @@ class RemesherTong(Remesher):
                      is_simple_tsf=False,
                      normal_smoothing_steps=30, normal_smoothing_s=10.0, normal_smoothing_k=0.15,
                      height_smoothing_steps=20, time_step_fraction_k=0.25, null_space_smoothing_steps=10,
-                     threshold_for_null_space=0.003, height_smoothing_alpha=0.2, height_smoothing_b=0.1):
+                     threshold_for_null_space=0.03, height_smoothing_alpha=0.2, height_smoothing_b=0.2):
         """
         Remesh.
 
@@ -469,7 +470,9 @@ class RemesherTong(Remesher):
             f2 = e.faces[1]
             if (f1.h < f2.h):
                 f1, f2 = f2, f1
-            dV = f1.area * min(f1.h - f2.h, ah*maxH)
+            a,b,c = [n.p + (f1.h + f2.h)/2*n.normal for n in f1.nodes]
+            A = 0.5 * LA.norm(np.cross(b - a, c - b))
+            dV = A * min(f1.h - f2.h, ah*maxH)
             f1.ice_chunk -= dV * beta
             f2.ice_chunk += dV * beta
 
@@ -524,8 +527,16 @@ class RemesherTong(Remesher):
             f.target_ice -= mth.pseudoprism_volume(f.nodes[0].old_p, f.nodes[1].old_p, f.nodes[2].old_p,
                                                    f.nodes[0].p, f.nodes[1].p, f.nodes[2].p)
         for f in mesh.faces:
+            neighbour_faces = []
+            for i in range(3):
+                faces = find_common_faces(f.nodes[i], f.nodes[(i+1)%3])
+                if len(faces) == 2:
+                    if faces[0]!=f:
+                        neighbour_faces.append(faces[0])
+                    else:
+                        neighbour_faces.append(faces[1])
             if f.target_ice < 0:
-                f_max = max(f.neighbour_faces, key=lambda nf:nf.target_ice)
+                f_max = max(neighbour_faces, key=lambda nf:nf.target_ice)
                 f_max.target_ice += f.target_ice
                 if f_max.target_ice < 0:
                     f_max.target_ice = 0

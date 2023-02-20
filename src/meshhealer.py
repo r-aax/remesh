@@ -128,6 +128,17 @@ def case_04_triangle_multisplit():
     mesh.multisplit_face(mesh.faces[0], random_points)
     store_and_say(mesh, f'../{c}_phase_02_multisplit.dat')
 
+def case_05():
+    c = 'case_05_ex3'
+    f = '../cases/pseudogrids/ex3.dat'
+
+    # Load.
+    mesh = msu.Mesh()
+    mesh.load(f)
+    print(mesh.nodes, mesh.faces)
+    mesh.calculate_edges()
+    print(mesh.edges, mesh.edge_table)
 
 if __name__ == '__main__':
-    case_02_sphere_2()
+    #case_02_sphere_2()
+    case_05()

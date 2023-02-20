@@ -12,26 +12,23 @@ NODE_COORDINATES_VALUABLE_DIGITS_COUNT = 10
 EXPORT_FORMAT_STRING = '{0:.18e}'
 
 
-def find_common_nodes(face1, face2):
+def find_common_faces(n1, n2):
     """
-    finds common nodes between faces and return them in sorted order
+    finds common faces between nodes and return them in sorted order
 
     Parameters
     ----------
-    face1, face2: Face
+    n1, n2: Node
 
     Returns
     -------
-    [Node]
+    [Face]
     """
-    nodes = []
-    for n in face1.nodes:
-        if n in face2.nodes:
-            nodes.append(n)
-    assert len(nodes) == 2
-    if nodes[0].glo_id > nodes[1].glo_id:
-        nodes[0], nodes[1] = nodes[1], nodes[0]
-    return nodes
+    faces = []
+    for f in n1.faces:
+        if f in n2.faces:
+            faces.append(f)
+    return faces
 
 
 class Node:
@@ -98,34 +95,41 @@ class Node:
         return len(self.faces) == 0
 
 
+    def calculate_neighbour_nodes(self):
+        """
+        calculate neighbours of the node
+        """
+        self.connected_nodes = []
+        for f in self.faces:
+            for n in f.nodes:
+                if n != self and n not in self.connected_nodes:
+                    self.connected_nodes.append(n)
+
 class Edge:
     """
     Edge - border between two faces
     """
 
-    def __init__(self, faces, nodes = None):
+    def __init__(self, nodes, faces = None):
         """
         Initialization.
 
         Parameters
         ----------
+
+        nodes: [Node]
+            first and second node
         faces: [Face]
             first and second face
-        nodes: [Node]
-            second face
         """
-        if len(faces) == 1:
-            assert nodes!= None and len(nodes) == 2
+        if len(nodes) == 2:
             self.faces = faces
             self.nodes = sorted(nodes, key=lambda n: n.glo_id)
-        elif len(faces) == 2:
-            self.faces = faces
-            self.nodes = find_common_nodes(faces[0], faces[1])
         else:
-            raise Exception('Faces count must be 1 or 2, got {}'.format(len(faces)))
+            raise Exception('Nodes count must be 2, got {}'.format(len(nodes)))
 
     def __eq__(self, other):
-        return (self.faces == other.faces or self.faces == other.faces.reverse()) and self.nodes == other.nodes
+        return (self.nodes == other.nodes)
 
     def __repr__(self):
         """
@@ -141,7 +145,6 @@ class Edge:
 
     def points(self):
         return self.nodes[0].p, self.nodes[1].p
-
 
     def old_points(self):
         return self.nodes[0].old_p, self.nodes[1].old_p
@@ -197,7 +200,6 @@ class Face:
         self.data = dict(zip(variables, values))
         self.nodes = []
         self.zone = None
-        self.neighbour_faces = []
         # Area of the face.
         self.area = 0.0
 
@@ -343,19 +345,6 @@ class Face:
         self.normal = np.cross(b - a, c - b)
         self.normal = self.normal / LA.norm(self.normal)
         self.smoothed_normal = self.normal.copy()
-
-    def calculate_neighbour_faces(self):
-        """
-        calculate neighbours of the face
-        """
-        connected_faces = {}
-        for n in self.nodes:
-            for f in n.faces:
-                if f not in connected_faces:
-                    connected_faces[f] = 1
-                else:
-                    connected_faces[f] += 1
-        self.neighbour_faces = [f for f in connected_faces if connected_faces[f] == 2]
 
     def inner_angle(self, n):
         """
@@ -876,16 +865,11 @@ class Mesh:
         calculate edges of the mesh
         """
         self.edges = []
-        for f in self.faces:
-            f.calculate_neighbour_faces()
-            es = [Edge([f, neighbour]) for neighbour in f.neighbour_faces if f.glo_id < neighbour.glo_id]
+        for n in self.nodes:
+            n.calculate_neighbour_nodes()
+            es = [Edge([n, neighbour],find_common_faces(n, neighbour)) for neighbour in n.connected_nodes if n.glo_id < neighbour.glo_id]
             for e in es:
                 self.add_edge(e)
-            if (len(f.neighbour_faces) < 3):
-                remaining_nodes = sorted([n for n in f.nodes if len(set(n.faces) & set(f.neighbour_faces)) < 2], key=lambda n:n.glo_id)*2
-                for i in range(3 - len(f.neighbour_faces)):
-                    self.add_edge(Edge([f], remaining_nodes[i:i+2]))
-
     def target_ice(self):
         """
         Get sum targe ice.
