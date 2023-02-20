@@ -121,20 +121,21 @@ def case_01_zip():
     store_and_say(mesh, f'../{c}_ph_14_del_extra_3.dat')
 
     # Zip.
-    zipper = patcher.Zipper(mesh)
-    zipper.collect_border()
-    zipper.zip(0, 1, is_flip_path_j=True)
-    store_and_say(mesh, f'../{c}_ph_09_zip_2.dat')
+    #zipper = patcher.Zipper(mesh)
+    #zipper.collect_border()
+    #zipper.zip(0, 1, is_flip_path_j=True)
+    #store_and_say(mesh, f'../{c}_ph_15_zip_3.dat')
 
 
 def case_02_self_intersections_elimination():
     """
     Case 02.
+    Self-intersections elimination.
     """
 
     c = 'case_02_sie'
-    #f = '../cases/pseudogrids/ex5.dat'
-    f = '../cases/bunny_2.dat'
+    f = '../cases/pseudogrids/ex2.dat'
+    #f = '../cases/bunny_2.dat'
 
     # Load.
     mesh = msu.Mesh()
@@ -143,39 +144,34 @@ def case_02_self_intersections_elimination():
     store_and_say(mesh, f'../{c}_ph_01_orig.dat')
 
     # Find intersections.
-    for f in mesh.faces:
-        f.split_points = []
-    tc = geom.TrianglesCloud(mesh.triangles_list())
-    pairs = tc.intersection_with_triangles_cloud(tc)
-    pairs = list(filter(lambda p: p[0].back_ref.glo_id < p[1].back_ref.glo_id, pairs))
-    print('Pairs:')
-    for pair in pairs:
-        print(pair)
-        [t1, t2] = pair
-        ps = t1.find_intersection_with_triangle(t2)
-        ps = geom.delete_near_points(ps)
-        t1.back_ref.split_points = t1.back_ref.split_points + ps
-        t2.back_ref.split_points = t2.back_ref.split_points + ps
-    for f in mesh.faces:
-        f.split_points = geom.delete_near_points(f.split_points)
-    ff = [f for f in mesh.faces]
-    for f in ff:
-        mesh.multisplit_face(f, f.split_points)
+    mesh.throw_intersection_points_to_faces()
+    mesh.multisplit_by_intersection_points()
     store_and_say(mesh, f'../{c}_ph_02_cut.dat')
 
+    for f in mesh.faces:
+        print(f.triangle().area())
 
-def triangle_case():
+
+def case_03_triangle_split():
+    """
+    Case 03.
+    Split triangle.
+    """
+
+    c = 'case_03_ts'
+    f = '../cases/pseudogrids/ex1.dat'
+
+    # Load.
     mesh = msu.Mesh()
-    c = "triangle_case"
     p1 = [0.6, 0.3, 0.3]
     p2 = [0.6, -0.3, 0.3]
     p3 = [0.8, 0.7, 0.7]
-    mesh.load('../cases/pseudogrids/ex1.dat')
+    mesh.load(f)
     mesh.calculate_edges()
     mesh.split_face(mesh.faces[0], p1)
     mesh.split_edge(mesh.edges[0], p2)
     mesh.split_edge(mesh.edges[4], p3)
-    store_and_say(mesh, f'../{c}.dat')
+    store_and_say(mesh, f'../{c}_ph_01_res.dat')
 
 
 def case_04_triangle_multisplit():
@@ -203,4 +199,7 @@ def case_04_triangle_multisplit():
 
 
 if __name__ == '__main__':
+    case_01_zip()
     case_02_self_intersections_elimination()
+    case_03_triangle_split()
+    case_04_triangle_multisplit()

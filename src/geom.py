@@ -25,9 +25,9 @@ def points_dist(a, b):
     return la.norm(a - b)
 
 
-def points_square(a, b, c):
+def points_area(a, b, c):
     """
-    Square between points.
+    Area between points.
 
     Parameters
     ----------
@@ -41,7 +41,7 @@ def points_square(a, b, c):
     Returns
     -------
     float
-        Square between points.
+        Area between points.
     """
 
     return 0.5 * la.norm(np.cross(b - a, c - a))
@@ -162,19 +162,19 @@ class Triangle:
 
         return (ra * a + rb * b + rc * c) / (ra + rb + rc)
 
-    def square(self):
+    def area(self):
         """
-        Square.
+        Area.
 
         Returns
         -------
         float
-            Square.
+            Area.
         """
 
-        return points_square(self.points[0], self.points[1], self.points[2])
+        return points_area(self.points[0], self.points[1], self.points[2])
 
-    def squares_difference(self, p):
+    def areas_difference(self, p):
         """
         Measure for p in triagle.
         |S(a, b, c) - S(a, b, p) - S(b, c, p) - S(a, c, p)|
@@ -187,12 +187,12 @@ class Triangle:
         Returns
         -------
         float
-            Squares difference.
+            Areas difference.
         """
 
         a, b, c = self.points[0], self.points[1], self.points[2]
 
-        return abs(self.square() - points_square(a, b, p) - points_square(b, c, p) - points_square(a, c, p))
+        return abs(self.area() - points_area(a, b, p) - points_area(b, c, p) - points_area(a, c, p))
 
     def has_common_points_with(self, t):
         """

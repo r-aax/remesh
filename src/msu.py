@@ -1133,8 +1133,8 @@ class Mesh:
         # Distribute rest points between last three faces.
         pps = [[], [], []]
         for p in tps:
-            squares_diffs = [t.squares_difference(p) for t in ts]
-            i = np.argmin(squares_diffs)
+            areas_diffs = [t.areas_difference(p) for t in ts]
+            i = np.argmin(areas_diffs)
             pps[i].append(p)
         for i in range(3):
             self.multisplit_face(fs[i], pps[i])
@@ -1344,6 +1344,38 @@ class Mesh:
 
         for f in faces_to_delete:
             self.delete_face(f)
+
+    def throw_intersection_points_to_faces(self):
+        """
+        Find all self-intersections of the faces.
+        Throw intersection points to them.
+        """
+
+        for f in self.faces:
+            f.int_points = []
+
+        tc = geom.TrianglesCloud(self.triangles_list())
+        pairs = tc.intersection_with_triangles_cloud(tc)
+        pairs = list(filter(lambda p: p[0].back_ref.glo_id < p[1].back_ref.glo_id, pairs))
+
+        for pair in pairs:
+            [t1, t2] = pair
+            ps = t1.find_intersection_with_triangle(t2)
+            ps = geom.delete_near_points(ps)
+            t1.back_ref.int_points = t1.back_ref.int_points + ps
+            t2.back_ref.int_points = t2.back_ref.int_points + ps
+
+        for f in self.faces:
+            f.int_points = geom.delete_near_points(f.int_points)
+
+    def multisplit_by_intersection_points(self):
+        """
+        Multisplit faces by intersection points.
+        """
+
+        ff = [f for f in self.faces]
+        for f in ff:
+            self.multisplit_face(f, f.int_points)
 
 
 if __name__ == '__main__':
