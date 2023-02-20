@@ -94,7 +94,6 @@ class Node:
 
         return len(self.faces) == 0
 
-
     def calculate_neighbour_nodes(self):
         """
         calculate neighbours of the node
@@ -104,6 +103,7 @@ class Node:
             for n in f.nodes:
                 if n != self and n not in self.connected_nodes:
                     self.connected_nodes.append(n)
+
 
 class Edge:
     """
@@ -624,7 +624,6 @@ class Mesh:
         self.edges.append(edge)
         self.edge_table[tuple(edge.nodes)] = edge
 
-
     def add_face_node_link(self, f, n):
         """
         Add face-node link.
@@ -870,6 +869,7 @@ class Mesh:
             es = [Edge([n, neighbour],find_common_faces(n, neighbour)) for neighbour in n.connected_nodes if n.glo_id < neighbour.glo_id]
             for e in es:
                 self.add_edge(e)
+
     def target_ice(self):
         """
         Get sum targe ice.
@@ -1064,7 +1064,7 @@ class Mesh:
         self.add_edge(Edge([n, e.nodes[1]], node2_pair))
         self.delete_edge(e)
 
-    def split_face(self, f, p):
+    def split_face(self, f, p=None):
         """
         Split face with point.
 
@@ -1073,8 +1073,11 @@ class Mesh:
         f : Face
             Face to be splitted.
         p : Point
-            Point for spllit.
+            Point for spllit of None (in this case we split by center).
         """
+
+        if p is None:
+            p = f.center()
 
         # Data from old face.
         a, b, c = f.nodes[0], f.nodes[1], f.nodes[2]
@@ -1194,6 +1197,7 @@ class Mesh:
         # Find self-intersected faces.
         tc = geom.TrianglesCloud(self.triangles_list())
         pairs = tc.intersection_with_triangles_cloud(tc)
+        pairs = list(filter(lambda p: p[0].back_ref.glo_id < p[1].back_ref.glo_id, pairs))
 
         #
         # Mark faces
@@ -1220,6 +1224,38 @@ class Mesh:
         faces_to_delete = [f for f in self.faces if f['M'] == Mesh.ColorToDelete]
         for f in faces_to_delete:
             self.delete_face(f)
+
+    def split_self_intersected_faces(self):
+        """
+        Split all self-intersected faces.
+        """
+
+        # Find self-intersected faces.
+        tc = geom.TrianglesCloud(self.triangles_list())
+        pairs = tc.intersection_with_triangles_cloud(tc)
+        pairs = list(filter(lambda p: p[0].back_ref.glo_id < p[1].back_ref.glo_id, pairs))
+
+        #
+        # Mark faces
+        #
+
+        # First all faces are common.
+        for f in self.faces:
+            f['M'] = Mesh.ColorCommon
+
+        # If face intersects any - mark it in 1.
+        for p in pairs:
+            for t in p:
+                t.back_ref['M'] = Mesh.ColorToDelete
+
+        # Split faces.
+        faces_to_split = [f for f in self.faces if f['M'] == Mesh.ColorToDelete]
+        for f in faces_to_split:
+            self.split_face(f)
+
+        # Reset colors.
+        for f in self.faces:
+            f['M'] = Mesh.ColorCommon
 
     def lo_face(self, i):
         """
