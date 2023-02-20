@@ -130,7 +130,7 @@ def case_04_triangle_multisplit():
 
 def case_05():
     c = 'case_05_ex3'
-    f = '../cases/pseudogrids/ex3.dat'
+    f = '../cases/pseudogrids/ex5.dat'
 
     # Load.
     mesh = msu.Mesh()
@@ -141,4 +141,5 @@ def case_05():
 
 if __name__ == '__main__':
     #case_02_sphere_2()
-    case_05()
+    #case_04_triangle_multisplit()
+    triangle_case()

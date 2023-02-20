@@ -1036,6 +1036,7 @@ class Mesh:
             # Data from face.
             a, b, c = f.nodes[0], f.nodes[1], f.nodes[2]
             sorted_nodes = sorted(f.nodes, key=lambda node: node.glo_id)
+            remaining_node = set(f.nodes).difference(set(e.nodes)).pop()
             a1, b1, c1 = sorted_nodes[0], sorted_nodes[1], sorted_nodes[2]
             f1, f2 = f.copy(), f.copy()
             z = f.zone
@@ -1056,11 +1057,11 @@ class Mesh:
                 if pair != tuple(e.nodes):
                     f_to_replace = f1 if e.nodes[1] in pair else f2
                     self.edge_table[pair].replace_face(f, f_to_replace)
-            self.add_edge(Edge([f1, f2]))
+            self.add_edge(Edge([remaining_node, n], [f1, f2]))
             # Delete old face.
             self.delete_face(f)
-        self.add_edge(Edge(node1_pair, [n, e.nodes[0]]))
-        self.add_edge(Edge(node2_pair, [n, e.nodes[1]]))
+        self.add_edge(Edge([n, e.nodes[0]], node1_pair))
+        self.add_edge(Edge([n, e.nodes[1]], node2_pair))
         self.delete_edge(e)
 
     def split_face(self, f, p):
@@ -1093,9 +1094,9 @@ class Mesh:
         self.add_face(f3, z)
         self.add_face_nodes_links(f3, [c, a, n])
 
-        self.add_edge(Edge([f1, f2]))
-        self.add_edge(Edge([f1, f3]))
-        self.add_edge(Edge([f2, f3]))
+        self.add_edge(Edge([b,n], [f1, f2]))
+        self.add_edge(Edge([a,n], [f1, f3]))
+        self.add_edge(Edge([c,n], [f2, f3]))
         pair1 = (a, b) if a.glo_id < b.glo_id else (b, a)
         pair2 = (b, c) if b.glo_id < c.glo_id else (c, b)
         pair3 = (a, c) if a.glo_id < c.glo_id else (c, a)
@@ -1122,7 +1123,6 @@ class Mesh:
 
         # Split face with first point.
         self.split_face(f, hps)
-
         # Now split with other points recursively.
         fs = self.faces[-3:]
         ts = [f.triangle() for f in fs]
