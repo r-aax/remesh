@@ -199,7 +199,7 @@ def case_04_triangle_multisplit():
 
 
 if __name__ == '__main__':
-    case_01_zip()
-    case_02_self_intersections_elimination()
+    #case_01_zip()
+    #case_02_self_intersections_elimination()
     case_03_triangle_split()
     case_04_triangle_multisplit()

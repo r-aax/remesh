@@ -480,7 +480,6 @@ class Mesh:
         self.nodes = []
         self.faces = []
         self.edges = []
-        self.edge_table = {}
         # Rounded coordinates bag.
         self.rounded_coordinates_bag = set()
 
@@ -622,7 +621,6 @@ class Mesh:
         """
 
         self.edges.append(edge)
-        self.edge_table[tuple(edge.nodes)] = edge
 
     def add_face_node_link(self, f, n):
         """
@@ -983,7 +981,6 @@ class Mesh:
         """
         # Remove node from mesh.
         self.edges.remove(e)
-        del self.edge_table[tuple(e.nodes)]
 
     def reduce_edge(self, e):
         """
@@ -1053,10 +1050,6 @@ class Mesh:
             self.add_face_nodes_links(f2, [a, b, c])
             self.replace_face_node_link(f2, e.nodes[1], n)
             node1_pair.append(f2)
-            for pair in [(a1,b1),(b1,c1),(a1,c1)]:
-                if pair != tuple(e.nodes):
-                    f_to_replace = f1 if e.nodes[1] in pair else f2
-                    self.edge_table[pair].replace_face(f, f_to_replace)
             self.add_edge(Edge([remaining_node, n], [f1, f2]))
             # Delete old face.
             self.delete_face(f)
@@ -1100,12 +1093,6 @@ class Mesh:
         self.add_edge(Edge([b,n], [f1, f2]))
         self.add_edge(Edge([a,n], [f1, f3]))
         self.add_edge(Edge([c,n], [f2, f3]))
-        pair1 = (a, b) if a.glo_id < b.glo_id else (b, a)
-        pair2 = (b, c) if b.glo_id < c.glo_id else (c, b)
-        pair3 = (a, c) if a.glo_id < c.glo_id else (c, a)
-        self.edge_table[pair1].replace_face(f, f1)
-        self.edge_table[pair2].replace_face(f, f2)
-        self.edge_table[pair3].replace_face(f, f3)
 
     def multisplit_face(self, f, ps):
         """
