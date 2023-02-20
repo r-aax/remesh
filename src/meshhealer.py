@@ -69,7 +69,6 @@ def case_01_zip():
     store_and_say(mesh, f'../{c}_ph_05_orig_2.dat')
 
     # Delete intersections.
-    mesh.calculate_edges()
     mesh.split_self_intersected_faces()
     store_and_say(mesh, f'../{c}_ph_06_split_intersections_2.dat')
     mesh.delete_self_intersected_faces()
@@ -101,10 +100,8 @@ def case_01_zip():
     store_and_say(mesh, f'../{c}_ph_10_orig_3.dat')
 
     # Delete intersections.
-    mesh.calculate_edges()
     mesh.split_self_intersected_faces()
     store_and_say(mesh, f'../{c}_ph_11_split_intersections_3.dat')
-    mesh.calculate_edges()
     mesh.split_self_intersected_faces()
     store_and_say(mesh, f'../{c}_ph_12_more_split_intersections_3.dat')
     mesh.delete_self_intersected_faces()
@@ -140,7 +137,6 @@ def case_02_self_intersections_elimination():
     # Load.
     mesh = msu.Mesh()
     mesh.load(f)
-    mesh.calculate_edges()
     store_and_say(mesh, f'../{c}_ph_01_orig.dat')
 
     # Find intersections.
@@ -167,7 +163,6 @@ def case_03_triangle_split():
     p2 = [0.6, -0.3, 0.3]
     p3 = [0.8, 0.7, 0.7]
     mesh.load(f)
-    mesh.calculate_edges()
     mesh.split_face(mesh.faces[0], p1)
     mesh.split_edge(mesh.edges[0], p2)
     mesh.split_edge(mesh.edges[4], p3)
@@ -185,7 +180,6 @@ def case_04_triangle_multisplit():
     # Load.
     mesh = msu.Mesh()
     mesh.load(f)
-    mesh.calculate_edges()
     store_and_say(mesh, f'../{c}_ph_01_orig.dat')
 
     # Split.
@@ -201,5 +195,9 @@ def case_04_triangle_multisplit():
 if __name__ == '__main__':
     #case_01_zip()
     #case_02_self_intersections_elimination()
-    case_03_triangle_split()
-    case_04_triangle_multisplit()
+    #case_03_triangle_split()
+    #case_04_triangle_multisplit()
+
+    m = msu.Mesh()
+    m.load('../cases/pseudogrids/ex1.dat')
+    m.print()

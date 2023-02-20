@@ -52,6 +52,7 @@ class Node:
 
         self.p = p
         self.old_p = None
+        self.edges = []
         self.faces = []
         self.A = None
         self.b = None
@@ -92,17 +93,7 @@ class Node:
         False - if node is not isolated.
         """
 
-        return len(self.faces) == 0
-
-    def calculate_neighbour_nodes(self):
-        """
-        calculate neighbours of the node
-        """
-        self.connected_nodes = []
-        for f in self.faces:
-            for n in f.nodes:
-                if n != self and n not in self.connected_nodes:
-                    self.connected_nodes.append(n)
+        return len(self.edges) == 0
 
 
 class Edge:
@@ -122,6 +113,9 @@ class Edge:
         faces: [Face]
             first and second face
         """
+
+        self.glo_id = -1
+
         if len(nodes) == 2:
             self.faces = faces
             self.nodes = sorted(nodes, key=lambda n: n.glo_id)
@@ -141,12 +135,28 @@ class Edge:
             String.
         """
 
-        return f'Edge {self.nodes[0].glo_id} - {self.nodes[1].glo_id}'
+        return f'Edge {self.glo_id} ({self.nodes[0].glo_id} - {self.nodes[1].glo_id})'
 
     def points(self):
+        """
+        Get points.
+
+        Returns
+        -------
+        (Point, Point)
+            Points.
+        """
         return self.nodes[0].p, self.nodes[1].p
 
     def old_points(self):
+        """
+        Get old points.
+
+        Returns
+        -------
+        (Point, Point)
+            Old points.
+        """
         return self.nodes[0].old_p, self.nodes[1].old_p
 
     def length(self):
@@ -162,6 +172,17 @@ class Edge:
         return LA.norm(self.nodes[0].p - self.nodes[1].p)
 
     def replace_face(self, f, new_f):
+        """
+        Replace face with new face.
+
+        Parameters
+        ----------
+        f : Face
+            Old face.
+        new_f : Face
+            New face.
+        """
+
         if self.faces[0] == f:
             self.faces[0] = new_f
         elif self.faces[1] == f:
@@ -199,6 +220,7 @@ class Face:
 
         self.data = dict(zip(variables, values))
         self.nodes = []
+        self.edges = []
         self.zone = None
         # Area of the face.
         self.area = 0.0
@@ -494,9 +516,20 @@ class Mesh:
         self.comment = ''
         self.title = ''
         self.nodes.clear()
+        self.edges.clear()
         self.faces.clear()
         self.zones.clear()
         self.rounded_coordinates_bag.clear()
+
+    def print(self):
+        """
+        Print information.
+        """
+
+        print('[MESH]')
+        print('Nodes:\n  ', self.nodes)
+        print('Edges:\n  ', self.edges)
+        print('Faces:\n  ', self.faces)
 
     def find_near_node(self, node):
         """
@@ -797,6 +830,7 @@ class Mesh:
             if len(n.faces) == 0:
                 self.nodes.remove(n)
 
+
     def store(self, filename):
         """
         Store mesh.
@@ -856,17 +890,6 @@ class Mesh:
 
         for f in self.faces:
             f.calculate_normal()
-
-    def calculate_edges(self):
-        """
-        calculate edges of the mesh
-        """
-        self.edges = []
-        for n in self.nodes:
-            n.calculate_neighbour_nodes()
-            es = [Edge([n, neighbour],find_common_faces(n, neighbour)) for neighbour in n.connected_nodes if n.glo_id < neighbour.glo_id]
-            for e in es:
-                self.add_edge(e)
 
     def target_ice(self):
         """
