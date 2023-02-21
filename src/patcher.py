@@ -386,8 +386,6 @@ class BorderCollector:
         Collect border.
         """
 
-        self.mesh.calculate_edges()
-
         # Collect all edges with one incident face.
         es = []
         for e in self.mesh.edges:
@@ -462,6 +460,7 @@ class Zipper(BorderCollector):
         # Pair of start nodes.
         start_i, start_j = path_i.els[0].obj.nodes[0], path_j.els[0].obj.nodes[0]
         n_i, n_j = start_i, start_j
+        self.mesh.add_edge_if_not(n_i, n_j)
 
         # Watchdog.
         counter = 0
@@ -481,16 +480,21 @@ class Zipper(BorderCollector):
             # Do not care about faces phys data.
             f = self.mesh.faces[0].copy()
             self.mesh.add_face(f, z)
+            eij = self.mesh.find_edge(n_i, n_j)
 
             if len_i < len_j:
                 # Move i path.
                 z.nodes.append(nx_i)
-                self.mesh.add_face_nodes_links(f, [n_i, n_j, nx_i])
+                e = self.mesh.add_edge_if_not(nx_i, n_j)
+                self.mesh.links([(n_i, f), (n_j, f), (nx_i, f), (e, f), (eij, f),
+                                 (self.mesh.find_edge(n_i, nx_i), f)])
                 path_i.rot(1)
             else:
                 # Move j path.
                 z.nodes.append(nx_j)
-                self.mesh.add_face_nodes_links(f, [n_i, n_j, nx_j])
+                e = self.mesh.add_edge_if_not(n_i, nx_j)
+                self.mesh.links([(n_i, f), (n_j, f), (nx_j, f), (e, f), (eij, f),
+                                 (self.mesh.find_edge(n_j, nx_j), f)])
                 path_j.rot(1)
 
             n_i, n_j = path_i.els[0].obj.nodes[0], path_j.els[0].obj.nodes[0]

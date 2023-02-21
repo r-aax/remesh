@@ -707,6 +707,32 @@ class Mesh:
         edge.glo_id = max_glo_id + 1
         self.edges.append(edge)
 
+    def add_edge_if_not(self, a, b):
+        """
+        Add edge if there is no such edge.
+
+        Parameters
+        ----------
+        a : Node
+            First node.
+        b : Node
+            Second node.
+
+        Returns
+        -------
+        Edge
+            Edge (found or new).
+        """
+
+        e = self.find_edge(a, b)
+
+        if e is None:
+            e = Edge()
+            self.add_edge(e)
+            self.links([(a, e), (b, e)])
+
+        return e
+
     def add_face(self, face, zone):
         """
         Add face to mesh.
@@ -749,15 +775,15 @@ class Mesh:
                 obj1.faces.append(obj2)
                 obj2.nodes.append(obj1)
             else:
-                raise Exception('msu.Mesh : wrong object type in link')
+                raise Exception(f'msu.Mesh : wrong object type in link ({obj2})')
         elif isinstance(obj1, Edge):
             if isinstance(obj2, Face):
                 obj1.faces.append(obj2)
                 obj2.edges.append(obj1)
             else:
-                raise Exception('msu.Mesh : wrong object type in link')
+                raise Exception(f'msu.Mesh : wrong object type in link ({obj2})')
         else:
-            raise Exception('msu.Mesh : wrong object type in link')
+            raise Exception(f'msu.Mesh : wrong object type in link ({obj1})')
 
     def links(self, li):
         """
@@ -792,15 +818,15 @@ class Mesh:
                 obj1.faces.remove(obj2)
                 obj2.nodes.remove(obj1)
             else:
-                raise Exception('msu.Mesh : wrong object type in unlink')
+                raise Exception(f'msu.Mesh : wrong object type in unlink ({obj2})')
         elif isinstance(obj1, Edge):
             if isinstance(obj2, Face):
                 obj1.faces.remove(obj2)
                 obj2.edges.remove(obj1)
             else:
-                raise Exception('msu.Mesh : wrong object type in unlink')
+                raise Exception(f'msu.Mesh : wrong object type in unlink ({obj2})')
         else:
-            raise Exception('msu.Mesh : wrong object type in unlink')
+            raise Exception(f'msu.Mesh : wrong object type in unlink ({obj1})')
 
     def unlinks(self, li):
         """
@@ -855,11 +881,7 @@ class Mesh:
         for f in self.faces:
             a, b, c = f.nodes[0], f.nodes[1], f.nodes[2]
             for first, second in [(a, b), (b, c), (a, c)]:
-                e = self.find_edge(first, second)
-                if e is None:
-                    e = Edge()
-                    self.add_edge(e)
-                    self.links([(first, e), (second, e)])
+                e = self.add_edge_if_not(first, second)
                 self.link(e, f)
 
     def load(self, filename):
