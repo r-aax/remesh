@@ -144,6 +144,13 @@ def case_02_self_intersections_elimination():
     mesh.multisplit_by_intersection_points()
     store_and_say(mesh, f'../{c}_ph_02_cut.dat')
 
+    # Delete bad triangles.
+    mesh.print()
+    mesh.split_thin_triangles()
+    mesh.print()
+    store_and_say(mesh, f'../{c}_ph_03_del.dat')
+
+
 def case_04_triangle_multisplit():
     """
     Case 04.

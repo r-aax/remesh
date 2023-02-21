@@ -102,7 +102,10 @@ class Edge:
             String.
         """
 
-        return f'Edge {self.glo_id} ({self.nodes[0].glo_id} - {self.nodes[1].glo_id})'
+        id0, id1 = self.nodes[0].glo_id, self.nodes[1].glo_id
+        ps_str = '/ps' if self.is_pseudo() else ''
+
+        return f'Edge{ps_str} {self.glo_id} ({id0} - {id1})'
 
     def is_pseudo(self):
         """
@@ -278,7 +281,11 @@ class Face:
             String.
         """
 
-        return f'Face {self.glo_id} ({self.nodes[0].glo_id}, {self.nodes[1].glo_id}, {self.nodes[2].glo_id})'
+        id0, id1, id2 = self.nodes[0].glo_id, self.nodes[1].glo_id, self.nodes[2].glo_id
+        ps_str = '/ps' if self.is_pseudo() else ''
+        th_str = '/th' if self.is_thin() else ''
+
+        return f'Face{ps_str}{th_str} {self.glo_id} ({id0}, {id1}, {id2})'
 
     def __getitem__(self, item):
         """
@@ -1185,7 +1192,6 @@ class Mesh:
         """
 
         # First we must to delete incident faces.
-        print(e.faces)
         while e.faces:
             self.delete_face(e.faces[0])
 
@@ -1282,7 +1288,6 @@ class Mesh:
         n = Node(p)
 
         # Split all incident faces.
-        print(e.faces)
         for f in e.faces:
             assert not f.is_pseudo()
 
@@ -1645,6 +1650,39 @@ class Mesh:
         ff = [f for f in self.faces]
         for f in ff:
             self.multisplit_face(f, f.int_points)
+
+    def split_thin_triangles(self):
+        """
+        Split thin triangles.
+        """
+
+        # Reset split points.
+        for e in self.edges:
+            e.split_points = []
+
+        # Find all thin triangles and mark to split their biggest edge.
+        for f in self.faces:
+            if f.is_thin():
+                e = f.big_edge()
+                e.split_points.append(f.third_node(e).p)
+
+        # Correct split points of edges.
+        edges_to_split = []
+        for e in self.edges:
+            l = len(e.split_points)
+            if l == 0:
+                pass
+            elif l == 1:
+                edges_to_split.append(e)
+            elif l == 2:
+                p = (e.split_points[0] + e.split_points[1]) / 2.0
+                e.split_points = [p]
+            else:
+                raise Exception(f'msu.Mesh : wrong count of edge split points ({l})')
+
+        # Split edges.
+        for e in edges_to_split:
+            self.split_edge(e, e.split_points[0])
 
 
 if __name__ == '__main__':
