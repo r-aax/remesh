@@ -104,6 +104,18 @@ class Edge:
 
         return f'Edge {self.glo_id} ({self.nodes[0].glo_id} - {self.nodes[1].glo_id})'
 
+    def is_pseudo(self):
+        """
+        Check edge for pseudoedge.
+
+        Returns
+        -------
+        True - if it is pseudo edge,
+        False - if it is normal edge.
+        """
+
+        return self.nodes[0] == self.nodes[1]
+
     def points(self):
         """
         Get points.
@@ -137,6 +149,18 @@ class Edge:
         """
 
         return LA.norm(self.nodes[0].p - self.nodes[1].p)
+
+    def center(self):
+        """
+        Center point.
+
+        Returns
+        -------
+        Point
+            Point of center.
+        """
+
+        return (self.nodes[0].p + self.nodes[1].p) / 2.0
 
     def replace_face(self, f, new_f):
         """
@@ -286,6 +310,20 @@ class Face:
         """
 
         self.data[key] = value
+
+    def is_pseudo(self):
+        """
+        Check if face is pseudo.
+
+        Returns
+        -------
+        True - if face is pseudo,
+        False - if face is not pseudo.
+        """
+
+        a, b, c = self.nodes[0], self.nodes[1], self.nodes[2]
+
+        return (a == b) or (b == c) or (a == c)
 
     def copy(self):
         """
@@ -1156,50 +1194,6 @@ class Mesh:
             self.delete_node(b)
         self.delete_edge(e)
 
-    def split_edge(self, e, p):
-        """
-        Split edge with point.
-
-        Parameters
-        ----------
-        e : Edge
-            Edge to be splitted.
-        p : Point
-            Point for split.
-        """
-
-        n = Node(p)
-        node1_pair = []
-        node2_pair = []
-        # We need split both faces for edge.
-        for f in e.faces:
-            # Data from face.
-            a, b, c = f.nodes[0], f.nodes[1], f.nodes[2]
-            sorted_nodes = sorted(f.nodes, key=lambda node: node.glo_id)
-            remaining_node = set(f.nodes).difference(set(e.nodes)).pop()
-            a1, b1, c1 = sorted_nodes[0], sorted_nodes[1], sorted_nodes[2]
-            f1, f2 = f.copy(), f.copy()
-            z = f.zone
-
-            # Add node.
-            n = self.add_node(n, z)
-
-            # Add new faces.
-            self.add_face(f1, z)
-            self.add_face_nodes_links(f1, [a, b, c])
-            self.replace_face_node_link(f1, e.nodes[0], n)
-            node2_pair.append(f1)
-            self.add_face(f2, z)
-            self.add_face_nodes_links(f2, [a, b, c])
-            self.replace_face_node_link(f2, e.nodes[1], n)
-            node1_pair.append(f2)
-            self.add_edge(Edge([remaining_node, n], [f1, f2]))
-            # Delete old face.
-            self.delete_face(f)
-        self.add_edge(Edge([n, e.nodes[0]], node1_pair))
-        self.add_edge(Edge([n, e.nodes[1]], node2_pair))
-        self.delete_edge(e)
-
     def split_face(self, f, p=None):
         """
         Split face with point.
@@ -1212,6 +1206,7 @@ class Mesh:
             Point for spllit of None (in this case we split by center).
         """
 
+        # Center point by default.
         if p is None:
             p = f.center()
 

@@ -148,27 +148,6 @@ def case_02_self_intersections_elimination():
         print(f.triangle().area())
 
 
-def case_03_triangle_split():
-    """
-    Case 03.
-    Split triangle.
-    """
-
-    c = 'case_03_ts'
-    f = '../cases/pseudogrids/ex1.dat'
-
-    # Load.
-    mesh = msu.Mesh()
-    p1 = [0.6, 0.3, 0.3]
-    p2 = [0.6, -0.3, 0.3]
-    p3 = [0.8, 0.7, 0.7]
-    mesh.load(f)
-    mesh.split_face(mesh.faces[0], p1)
-    #mesh.split_edge(mesh.edges[0], p2)
-    #mesh.split_edge(mesh.edges[4], p3)
-    store_and_say(mesh, f'../{c}_ph_01_res.dat')
-
-
 def case_04_triangle_multisplit():
     """
     Case 04.
@@ -195,5 +174,4 @@ def case_04_triangle_multisplit():
 if __name__ == '__main__':
     #case_01_zip()
     #case_02_self_intersections_elimination()
-    case_03_triangle_split()
-    #case_04_triangle_multisplit()
+    case_04_triangle_multisplit()
