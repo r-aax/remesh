@@ -576,6 +576,23 @@ class Mesh:
         else:
             return -1
 
+    def max_edge_glo_id(self):
+        """
+        Get maximum edge global id
+        (id of the last edge).
+
+        Returns
+        -------
+        int
+            Maximum edge global id,
+            or -1, if there is no edges.
+        """
+
+        if self.edges:
+            return self.edges[-1].glo_id
+        else:
+            return -1
+
     def max_face_glo_id(self):
         """
         Get maximum face global id
@@ -655,50 +672,69 @@ class Mesh:
 
         self.edges.append(edge)
 
-    def add_face_node_link(self, f, n):
+    def link(self, obj1, obj2):
         """
-        Add face-node link.
+        Link two objects.
+        Objects that can be linked:
+          - node - edge
+          - node - face
+          - edge - face
 
         Parameters
         ----------
-        f : Face
-            Face.
-        n : Node
-            Node.
+        obj1 : Node | Edge
+            First object.
+        obj2 : Edge | Face
+            Second object.
         """
 
-        f.nodes.append(n)
-        n.faces.append(f)
+        if isinstance(obj1, Node):
+            if isinstance(obj2, Edge):
+                obj1.edges.append(obj2)
+                obj2.nodes.append(obj1)
+            elif isinstance(obj2, Face):
+                obj1.faces.append(obj2)
+                obj2.nodes.append(obj1)
+            else:
+                raise Exception('msu.Mesh : wrong object type in link')
+        elif isinstance(obj1, Edge):
+            if isinstance(obj2, Face):
+                obj1.faces.append(obj2)
+                obj2.edges.append(obj1)
+            else:
+                raise Exception('msu.Mesh : wrong object type in link')
+        else:
+            raise Exception('msu.Mesh : wrong object type in link')
 
-    def add_face_nodes_links(self, f, ns):
+    def unlink(self, obj1, obj2):
         """
-        Add face-node links.
+        Unlink two objects.
 
         Parameters
         ----------
-        f : Face
-            Face.
-        ns : [Node]
-            Nodes list.
+        obj1 : Node | Edge
+            First object.
+        obj2 : Edge | Face
+            Second object.
         """
 
-        for n in ns:
-            self.add_face_node_link(f, n)
-
-    def delete_face_node_link(self, f, n):
-        """
-        Delete face-node link.
-
-        Parameters
-        ----------
-        f : Face
-            Face.
-        n : Node
-            Node.
-        """
-
-        f.nodes.remove(n)
-        n.faces.remove(f)
+        if isinstance(obj1, Node):
+            if isinstance(obj2, Edge):
+                obj1.edges.remove(obj2)
+                obj2.nodes.remove(obj1)
+            elif isinstance(obj2, Face):
+                obj1.faces.remove(obj2)
+                obj2.nodes.remove(obj1)
+            else:
+                raise Exception('msu.Mesh : wrong object type in unlink')
+        elif isinstance(obj1, Edge):
+            if isinstance(obj2, Face):
+                obj1.faces.remove(obj2)
+                obj2.edges.remove(obj1)
+            else:
+                raise Exception('msu.Mesh : wrong object type in unlink')
+        else:
+            raise Exception('msu.Mesh : wrong object type in unlink')
 
     def replace_face_node_link(self, f, n, new_n):
         """
@@ -816,7 +852,7 @@ class Mesh:
                         if len(nodes) != 3:
                             raise Exception('Internal error')
                         for n in nodes:
-                            self.add_face_node_link(face, n)
+                            self.link(n, face)
                 else:
                     raise Exception('Unexpected line : {0}.'.format(line))
 
