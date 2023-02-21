@@ -12,25 +12,6 @@ NODE_COORDINATES_VALUABLE_DIGITS_COUNT = 10
 EXPORT_FORMAT_STRING = '{0:.18e}'
 
 
-def find_common_faces(n1, n2):
-    """
-    finds common faces between nodes and return them in sorted order
-
-    Parameters
-    ----------
-    n1, n2: Node
-
-    Returns
-    -------
-    [Face]
-    """
-    faces = []
-    for f in n1.faces:
-        if f in n2.faces:
-            faces.append(f)
-    return faces
-
-
 class Node:
     """
     Node - container for coordinates.
@@ -110,9 +91,6 @@ class Edge:
 
         self.faces = []
         self.nodes = []
-
-    def __eq__(self, other):
-        return (self.nodes == other.nodes)
 
     def __repr__(self):
         """
@@ -366,7 +344,7 @@ class Face:
 
         a, b, c = self.points()
 
-        self.area = 0.5 * LA.norm(np.cross(b - a, c - b))
+        self.area = geom.points_area(a, b, c)
 
     def calculate_normal(self):
         """
@@ -1078,9 +1056,13 @@ class Mesh:
             Face to delete.
         """
 
-        # Remove from nodes.
+        # Unlink from nodes.
         while f.nodes:
-            self.delete_face_node_link(f, f.nodes[0])
+            self.unlink(f.nodes[0], f)
+
+        # Unlink from edges.
+        while f.edges:
+            self.unlink(f.edges[0], f)
 
         # Remove from zones.
         for z in self.zones:
@@ -1089,6 +1071,27 @@ class Mesh:
 
         # Remove from mesh.
         self.faces.remove(f)
+
+    def delete_edge(self, e):
+        """
+        Delete edge.
+
+        Parameters
+        ----------
+        e : Edge
+            Edge to delete.
+        """
+
+        # First we must to delete incident faces.
+        while e.faces:
+            self.delete_face(e.faces[0])
+
+        # Unlink edge from nodes.
+        while e.nodes:
+            self.unlink(e.nodes[0], e)
+
+        # Remove from mesh.
+        self.edges.remove(e)
 
     def delete_node(self, n):
         """
@@ -1100,9 +1103,9 @@ class Mesh:
             Node to be deleted.
         """
 
-        # First we must delete all adjacent faces.
-        while n.faces:
-            self.delete_face(n.faces[0])
+        # First we must delete all adjacent edges
+        while n.edges:
+            self.delete_edge(n.edges[0])
 
         # Remove node from zones.
         for z in self.zones:
@@ -1121,18 +1124,6 @@ class Mesh:
 
         for n in nodes_to_delete:
             self.delete_node(n)
-
-    def delete_edge(self, e):
-        """
-        Delete edge.
-
-        Parameters
-        ----------
-        e : Edge
-            Edge to be deleted.
-        """
-        # Remove node from mesh.
-        self.edges.remove(e)
 
     def reduce_edge(self, e):
         """
@@ -1226,25 +1217,31 @@ class Mesh:
 
         # Data from old face.
         a, b, c = f.nodes[0], f.nodes[1], f.nodes[2]
-        f1, f2, f3 = f.copy(), f.copy(), f.copy()
+        fab, fbc, fca = f.copy(), f.copy(), f.copy()
         z = f.zone
+
         # New node.
-        n = Node(p)
-        n = self.add_node(n, z)
+        n = self.add_node(Node(p), z)
+
         # Delete old face.
         self.delete_face(f)
 
         # Add new faces.
-        self.add_face(f1, z)
-        self.add_face_nodes_links(f1, [a, b, n])
-        self.add_face(f2, z)
-        self.add_face_nodes_links(f2, [b, c, n])
-        self.add_face(f3, z)
-        self.add_face_nodes_links(f3, [c, a, n])
+        self.add_face(fab, z)
+        self.links([(a, fab), (b, fab), (n, fab)])
+        self.add_face(fbc, z)
+        self.links([(b, fbc), (c, fbc), (n, fbc)])
+        self.add_face(fca, z)
+        self.links([(c, fca), (a, fca), (n, fca)])
 
-        self.add_edge(Edge([b,n], [f1, f2]))
-        self.add_edge(Edge([a,n], [f1, f3]))
-        self.add_edge(Edge([c,n], [f2, f3]))
+        # Add new edges.
+        ea, eb, ec = Edge(), Edge(), Edge()
+        self.add_edge(ea)
+        self.links([(a, ea), (n, ea), (ea, fab), (ea, fca)])
+        self.add_edge(eb)
+        self.links([(b, eb), (n, eb), (eb, fab), (eb, fbc)])
+        self.add_edge(ec)
+        self.links([(c, ec), (n, ec), (ec, fbc), (ec, fca)])
 
     def multisplit_face(self, f, ps):
         """
