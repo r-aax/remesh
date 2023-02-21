@@ -144,10 +144,6 @@ def case_02_self_intersections_elimination():
     mesh.multisplit_by_intersection_points()
     store_and_say(mesh, f'../{c}_ph_02_cut.dat')
 
-    for f in mesh.faces:
-        print(f.triangle().area())
-
-
 def case_04_triangle_multisplit():
     """
     Case 04.

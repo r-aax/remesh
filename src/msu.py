@@ -325,6 +325,14 @@ class Face:
 
         return (a == b) or (b == c) or (a == c)
 
+    def is_thin(self):
+        """
+        Check face for thin.
+        """
+
+        return (not self.is_pseudo()) and (self.triangle().area() < mth.EPS**2)
+
+
     def copy(self):
         """
         Get copy of face.
@@ -362,6 +370,18 @@ class Face:
         """
 
         return (self.nodes[0].p + self.nodes[1].p + self.nodes[2].p) / 3.0
+
+    def big_edge(self):
+        """
+        Get biggestr edge.
+
+        Returns
+        -------
+        Edge
+            Edge with maximum length.
+        """
+
+        return self.edges[np.argmax([e.length() for e in self.edges])]
 
     def normals(self):
         """
@@ -428,6 +448,28 @@ class Face:
 
         return geom.Triangle(self.nodes[0].p, self.nodes[1].p, self.nodes[2].p)
 
+    def third_node(self, e):
+        """
+        Third node (not e.nodes[0], e.nodes[1]).
+
+        Parameters
+        ----------
+        e : Edge
+            Edge.
+
+        Returns
+        -------
+        Node
+            Third node.
+        """
+
+        ns = [self.nodes[0], self.nodes[1], self.nodes[2]]
+        ns.remove(e.nodes[0])
+        ns.remove(e.nodes[1])
+
+        assert len(ns) == 1
+
+        return ns[0]
 
 class Zone:
     """
@@ -554,9 +596,9 @@ class Mesh:
         """
 
         print('[MESH]')
-        print('Nodes:\n  ', self.nodes)
-        print('Edges:\n  ', self.edges)
-        print('Faces:\n  ', self.faces)
+        print(f'Nodes ({len(self.nodes)}):\n  ', self.nodes)
+        print(f'Edges ({len(self.edges)}):\n  ', self.edges)
+        print(f'Faces ({len(self.faces)}):\n  ', self.faces)
 
     def find_near_node(self, node):
         """
@@ -1143,6 +1185,7 @@ class Mesh:
         """
 
         # First we must to delete incident faces.
+        print(e.faces)
         while e.faces:
             self.delete_face(e.faces[0])
 
@@ -1216,6 +1259,62 @@ class Mesh:
             self.delete_node(b)
         self.delete_edge(e)
 
+    def split_edge(self, e, p=None):
+        """
+        Split edge by point.
+
+        Parameters
+        ----------
+        e : Edge
+            Edge to split.
+        p : Point | None
+            Point (it is in None then split by center).
+        """
+
+        # Check for pseudo edge.
+        assert not e.is_pseudo()
+
+        # Split by default.
+        if p is None:
+            p = e.center()
+
+        # New node.
+        n = Node(p)
+
+        # Split all incident faces.
+        print(e.faces)
+        for f in e.faces:
+            assert not f.is_pseudo()
+
+            # Old data from face.
+            f0, f1 = f.copy(), f.copy()
+            a, b, c = f.nodes[0], f.nodes[1], f.nodes[2]
+            th = f.third_node(e)
+            z = f.zone
+
+            # Add node.
+            n = self.add_node(n, z)
+
+            # Add edges.
+            e0 = self.add_edge_if_not(e.nodes[0], n)
+            e1 = self.add_edge_if_not(e.nodes[1], n)
+            eth = self.add_edge_if_not(th, n)
+
+            # Add faces.
+            self.add_face(f0, z)
+            li = [a, b, c]
+            li[li.index(e.nodes[1])] = n
+            self.links([(li[0], f0), (li[1], f0), (li[2], f0), (e0, f0), (eth, f0),
+                        (self.find_edge(e.nodes[0], th), f0)])
+            self.add_face(f1, z)
+            li = [a, b, c]
+            li[li.index(e.nodes[0])] = n
+            self.links([(li[0], f1), (li[1], f1), (li[2], f1), (e1, f1), (eth, f1),
+                        (self.find_edge(e.nodes[1], th), f1)])
+
+        # Delete edge.
+        self.delete_edge(e)
+
     def split_face(self, f, p=None):
         """
         Split face with point.
@@ -1245,20 +1344,17 @@ class Mesh:
 
         # Add new faces.
         self.add_face(fab, z)
-        self.links([(a, fab), (b, fab), (n, fab)])
+        self.links([(a, fab), (b, fab), (n, fab), (self.find_edge(a, b), fab)])
         self.add_face(fbc, z)
-        self.links([(b, fbc), (c, fbc), (n, fbc)])
+        self.links([(b, fbc), (c, fbc), (n, fbc), (self.find_edge(b, c), fbc)])
         self.add_face(fca, z)
-        self.links([(c, fca), (a, fca), (n, fca)])
+        self.links([(c, fca), (a, fca), (n, fca), (self.find_edge(c, a), fca)])
 
         # Add new edges.
-        ea, eb, ec = Edge(), Edge(), Edge()
-        self.add_edge(ea)
-        self.links([(a, ea), (n, ea), (ea, fab), (ea, fca)])
-        self.add_edge(eb)
-        self.links([(b, eb), (n, eb), (eb, fab), (eb, fbc)])
-        self.add_edge(ec)
-        self.links([(c, ec), (n, ec), (ec, fbc), (ec, fca)])
+        ea, eb, ec = self.add_edge_if_not(a, n), self.add_edge_if_not(b, n), self.add_edge_if_not(c, n)
+        self.links([(ea, fab), (ea, fca)])
+        self.links([(eb, fab), (eb, fbc)])
+        self.links([(ec, fbc), (ec, fca)])
 
     def multisplit_face(self, f, ps):
         """
@@ -1494,6 +1590,26 @@ class Mesh:
         """
 
         faces_to_delete = [f for f in self.faces if f['M'] == c]
+
+        for f in faces_to_delete:
+            self.delete_face(f)
+
+    def delete_pseudo_edges(self):
+        """
+        Delete all pseudo edges.
+        """
+
+        edges_to_delete = [e for e in self.edges if e.is_pseudo()]
+
+        for e in edges_to_delete:
+            self.delete_edge(e)
+
+    def delete_pseudo_faces(self):
+        """
+        Delete all pseudo faces.
+        """
+
+        faces_to_delete = [f for f in self.faces if f.is_pseudo()]
 
         for f in faces_to_delete:
             self.delete_face(f)
