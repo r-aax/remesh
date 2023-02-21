@@ -101,26 +101,15 @@ class Edge:
     Edge - border between two faces
     """
 
-    def __init__(self, nodes, faces = None):
+    def __init__(self):
         """
         Initialization.
-
-        Parameters
-        ----------
-
-        nodes: [Node]
-            first and second node
-        faces: [Face]
-            first and second face
         """
 
         self.glo_id = -1
 
-        if len(nodes) == 2:
-            self.faces = faces
-            self.nodes = sorted(nodes, key=lambda n: n.glo_id)
-        else:
-            raise Exception('Nodes count must be 2, got {}'.format(len(nodes)))
+        self.faces = []
+        self.nodes = []
 
     def __eq__(self, other):
         return (self.nodes == other.nodes)
@@ -189,6 +178,28 @@ class Edge:
             self.faces[1] = new_f
         else:
             raise Exception('No such face')
+
+    def neighbour(self, a):
+        """
+        Get neighbour node.
+
+        Parameters
+        ----------
+        a : Node
+            Node.
+
+        Returns
+        -------
+        Node | None
+            Neighbour node.
+        """
+
+        if a == self.nodes[0]:
+            return self.nodes[1]
+        elif a == self.nodes[1]:
+            return self.nodes[0]
+        else:
+            return None
 
     def flip_nodes(self):
         """
@@ -559,6 +570,30 @@ class Mesh:
 
         raise Exception('Internal error')
 
+    def find_edge(self, a, b):
+        """
+        Find edge with two nodes.
+
+        Parameters
+        ----------
+        a : Node
+            First node.
+        b : Node.
+            Second node.
+
+        Returns
+        -------
+        Edge | None
+            Found edge or None.
+        """
+
+        for e in a.edges:
+            if e.neighbour(a) == b:
+                return e
+
+        # Not found.
+        return None
+
     def max_node_glo_id(self):
         """
         Get maximum node global id
@@ -642,6 +677,20 @@ class Mesh:
 
         return node_to_zone
 
+    def add_edge(self, edge):
+        """
+        Add edge to mesh.
+
+        Parameters
+        ----------
+        edge : Edge
+            Edge to add.
+        """
+
+        max_glo_id = self.max_edge_glo_id()
+        edge.glo_id = max_glo_id + 1
+        self.edges.append(edge)
+
     def add_face(self, face, zone):
         """
         Add face to mesh.
@@ -659,18 +708,6 @@ class Mesh:
         self.faces.append(face)
         zone.faces.append(face)
         face.zone = zone
-
-    def add_edge(self, edge):
-        """
-        Add edge to mesh.
-
-        Parameters
-        ----------
-        edge : Edge
-            Edge to add.
-        """
-
-        self.edges.append(edge)
 
     def link(self, obj1, obj2):
         """
@@ -706,6 +743,19 @@ class Mesh:
         else:
             raise Exception('msu.Mesh : wrong object type in link')
 
+    def links(self, li):
+        """
+        Multiple links.
+
+        Parameters
+        ----------
+        li : [(object, object]
+            List of pairs for link.
+        """
+
+        for obj1, obj2 in li:
+            self.link(obj1, obj2)
+
     def unlink(self, obj1, obj2):
         """
         Unlink two objects.
@@ -736,6 +786,19 @@ class Mesh:
         else:
             raise Exception('msu.Mesh : wrong object type in unlink')
 
+    def unlinks(self, li):
+        """
+        Multiple unlink.
+
+        Parameters
+        ----------
+        li : [(object, object)]
+            List  of pairs for unlink.
+        """
+
+        for obj1, obj2 in li:
+            self.unlink(obj1, obj2)
+
     def replace_face_node_link(self, f, n, new_n):
         """
         Replace node in face-node link.
@@ -754,6 +817,34 @@ class Mesh:
         f.nodes[i] = new_n
         n.faces.remove(f)
         new_n.faces.append(f)
+
+    def delete_all_edges(self):
+        """
+        Delete all edges.
+        """
+
+        for n in self.nodes:
+            n.edges = []
+        for f in self.faces:
+            f.edges = []
+        self.edges = []
+
+    def create_edges(self):
+        """
+        Delete all edges and create them.
+        """
+
+        self.delete_all_edges()
+
+        for f in self.faces:
+            a, b, c = f.nodes[0], f.nodes[1], f.nodes[2]
+            for first, second in [(a, b), (b, c), (a, c)]:
+                e = self.find_edge(first, second)
+                if e is None:
+                    e = Edge()
+                    self.add_edge(e)
+                    self.links([(first, e), (second, e)])
+                self.link(e, f)
 
     def load(self, filename):
         """
@@ -859,13 +950,15 @@ class Mesh:
                 line = f.readline()
             f.close()
 
+        # Create edges.
+        self.create_edges()
+
         # Set identifiers.
         for i, f in enumerate(self.faces):
             f['Id'] = i
         for n in self.nodes:
             if len(n.faces) == 0:
                 self.nodes.remove(n)
-
 
     def store(self, filename):
         """
