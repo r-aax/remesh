@@ -339,7 +339,6 @@ class Face:
 
         return (not self.is_pseudo()) and (self.triangle().area() < mth.EPS**2)
 
-
     def copy(self):
         """
         Get copy of face.
@@ -477,6 +476,7 @@ class Face:
         assert len(ns) == 1
 
         return ns[0]
+
 
 class Zone:
     """
@@ -710,31 +710,34 @@ class Mesh:
         else:
             return -1
 
-    def add_node(self, node, zone):
+    def add_node(self, p, zone):
         """
         Add node to mesh.
+        This is only way to add node into mesh.
 
         Parameters
         ----------
-        node : Node
-            Node to add.
+        p : Point
+            Point.
         zone : Zone
             Zone to add node to.
 
         Returns
         -------
         Node
-            Added node.
+            Added node
+            (it may be new node or found near node).
         """
 
-        found_node = self.find_near_node(node)
+        n = Node(p)
+        found_node = self.find_near_node(n)
 
         if found_node is None:
             max_glo_id = self.max_node_glo_id()
-            node.glo_id = max_glo_id + 1
-            self.nodes.append(node)
-            self.rounded_coordinates_bag.add(node.rounded_coordinates())
-            node_to_zone = node
+            n.glo_id = max_glo_id + 1
+            self.nodes.append(n)
+            self.rounded_coordinates_bag.add(n.rounded_coordinates())
+            node_to_zone = n
         else:
             node_to_zone = found_node
 
@@ -1009,8 +1012,7 @@ class Mesh:
                         line = f.readline()
                         c.append([float(xi) for xi in line.split()])
                     for i in range(nodes_to_read):
-                        node = Node(np.array([c[0][i], c[1][i], c[2][i]]))
-                        self.add_node(node, zone)
+                        self.add_node(np.array([c[0][i], c[1][i], c[2][i]]), zone)
 
                     # Read data for faces.
                     d = []
@@ -1284,9 +1286,6 @@ class Mesh:
         if p is None:
             p = e.center()
 
-        # New node.
-        n = Node(p)
-
         # Split all incident faces.
         for f in e.faces:
             assert not f.is_pseudo()
@@ -1298,7 +1297,7 @@ class Mesh:
             z = f.zone
 
             # Add node.
-            n = self.add_node(n, z)
+            n = self.add_node(p, z)
 
             # Add edges.
             e0 = self.add_edge_if_not(e.nodes[0], n)
@@ -1342,7 +1341,7 @@ class Mesh:
         z = f.zone
 
         # New node.
-        n = self.add_node(Node(p), z)
+        n = self.add_node(p, z)
 
         # Delete old face.
         self.delete_face(f)
@@ -1422,7 +1421,7 @@ class Mesh:
 
         # Add nodes and faces to new zone.
         for n in m.nodes:
-            self.add_node(n, z)
+            self.add_node(n.p, z)
         for f in m.faces:
             self.add_face(f, z)
 
