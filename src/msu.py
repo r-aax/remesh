@@ -745,23 +745,9 @@ class Mesh:
 
         return node_to_zone
 
-    def add_edge(self, edge):
+    def add_edge(self, a, b):
         """
-        Add edge to mesh.
-
-        Parameters
-        ----------
-        edge : Edge
-            Edge to add.
-        """
-
-        max_glo_id = self.max_edge_glo_id()
-        edge.glo_id = max_glo_id + 1
-        self.edges.append(edge)
-
-    def add_edge_if_not(self, a, b):
-        """
-        Add edge if there is no such edge.
+        Add edge or return already existing one.
 
         Parameters
         ----------
@@ -780,7 +766,9 @@ class Mesh:
 
         if e is None:
             e = Edge()
-            self.add_edge(e)
+            max_glo_id = self.max_edge_glo_id()
+            e.glo_id = max_glo_id + 1
+            self.edges.append(e)
             self.links([(a, e), (b, e)])
 
         return e
@@ -933,7 +921,7 @@ class Mesh:
         for f in self.faces:
             a, b, c = f.nodes[0], f.nodes[1], f.nodes[2]
             for first, second in [(a, b), (b, c), (a, c)]:
-                e = self.add_edge_if_not(first, second)
+                e = self.add_edge(first, second)
                 self.link(e, f)
 
     def load(self, filename):
@@ -1300,9 +1288,9 @@ class Mesh:
             n = self.add_node(p, z)
 
             # Add edges.
-            e0 = self.add_edge_if_not(e.nodes[0], n)
-            e1 = self.add_edge_if_not(e.nodes[1], n)
-            eth = self.add_edge_if_not(th, n)
+            e0 = self.add_edge(e.nodes[0], n)
+            e1 = self.add_edge(e.nodes[1], n)
+            eth = self.add_edge(th, n)
 
             # Add faces.
             self.add_face(f0, z)
@@ -1355,7 +1343,7 @@ class Mesh:
         self.links([(c, fca), (a, fca), (n, fca), (self.find_edge(c, a), fca)])
 
         # Add new edges.
-        ea, eb, ec = self.add_edge_if_not(a, n), self.add_edge_if_not(b, n), self.add_edge_if_not(c, n)
+        ea, eb, ec = self.add_edge(a, n), self.add_edge(b, n), self.add_edge(c, n)
         self.links([(ea, fab), (ea, fca)])
         self.links([(eb, fab), (eb, fbc)])
         self.links([(ec, fbc), (ec, fca)])
