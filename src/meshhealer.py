@@ -131,8 +131,8 @@ def case_02_self_intersections_elimination():
     """
 
     c = 'case_02_sie'
+    #f = '../cases/sphere_2.dat'
     f = '../cases/pseudogrids/ex2.dat'
-    #f = '../cases/bunny_2.dat'
 
     # Load.
     mesh = msu.Mesh()
@@ -145,9 +145,8 @@ def case_02_self_intersections_elimination():
     store_and_say(mesh, f'../{c}_ph_02_cut.dat')
 
     # Delete bad triangles.
-    mesh.print()
     mesh.split_thin_triangles()
-    mesh.print()
+    mesh.delete_pseudo_edges()
     store_and_say(mesh, f'../{c}_ph_03_del.dat')
 
 
