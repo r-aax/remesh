@@ -4,8 +4,6 @@ import numpy as np
 from numpy import linalg as LA
 from scipy import linalg as sLA
 from remesher import Remesher
-import time
-from msu import find_common_faces
 
 def node_calculate_A_and_b(node):
     """
@@ -221,10 +219,6 @@ class RemesherTong(Remesher):
         mesh.calculate_faces_normals()
         self.remesh_prepare(mesh)
         self.generate_accretion_rate(mesh)
-        calculate_edges_time = time.time()
-        mesh.calculate_edges()
-        calculate_edges_time = time.time() - calculate_edges_time
-        print(f'calculate edges time = {calculate_edges_time}, edges count = {len(mesh.edges)}')
         step_i = 0
 
         while True:
@@ -529,9 +523,9 @@ class RemesherTong(Remesher):
         for f in mesh.faces:
             neighbour_faces = []
             for i in range(3):
-                faces = find_common_faces(f.nodes[i], f.nodes[(i+1)%3])
+                faces = f.edges[i].faces
                 if len(faces) == 2:
-                    if faces[0]!=f:
+                    if faces[0] != f:
                         neighbour_faces.append(faces[0])
                     else:
                         neighbour_faces.append(faces[1])

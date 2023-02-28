@@ -900,6 +900,25 @@ class Mesh:
         n.faces.remove(f)
         new_n.faces.append(f)
 
+    def replace_edge_face_link(self, e, f, new_f):
+        """
+        Replace node in face-node link.
+
+        Parameters
+        ----------
+        e : Edge
+            Edge.
+        f : Face
+            Old Face.
+        new_f : Face
+            New Face.
+        """
+
+        i = e.faces.index(f)
+        e.faces[i] = new_f
+        f.edges.remove(e)
+        new_f.edges.append(e)
+
     def delete_all_edges(self):
         """
         Delete all edges.
@@ -1239,21 +1258,46 @@ class Mesh:
 
         # Replace b node with a node in all faces.
         delete_faces = []
+        change_faces = []
+        contour_edges = []
         tmp = [f for f in b.faces]
         for f in tmp:
             if f in a.faces:
                 delete_faces.append(f)
+                contour_edges+=f.edges
             else:
-                self.replace_face_node_link(f, b, a)
+                change_faces.append(f)
+
+        # change edges with b node
+        for f in change_faces:
+            self.replace_face_node_link(f, b, a)
+            for edge in b.edges:
+                if edge not in contour_edges:
+                    self.unlink(b, edge)
+                    edge.nodes.append(a)
+                    a.edges.append(edge)
 
         # Delete extra node and faces.
         for f in delete_faces:
-            self.delete_face(f)
+            c = f.third_node(e)
+            bc_edge = self.find_edge(b, c)
+            if len(bc_edge.faces) == 2:
+                if bc_edge.faces[0] != f:
+                    external_face = bc_edge.faces[0]
+                else:
+                    external_face = bc_edge.faces[1]
+                ac_edge = self.find_edge(a, c)
+                self.unlink(bc_edge, external_face)
+                self.replace_edge_face_link(ac_edge, f, external_face)
+            self.delete_edge(bc_edge)#f will be also deleted
+            if len(c.faces) == 2:#if c is just point on edge, it should be deleted
+                for cf in c.faces:
+                    self.delete_face(cf)
+                self.delete_node(c)
 
         # We need no b node anymore if it is isolated.
         if not b.faces:
             self.delete_node(b)
-        self.delete_edge(e)
 
     def split_edge(self, e, p=None):
         """

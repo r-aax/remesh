@@ -150,14 +150,11 @@ def case_02_self_intersections_elimination():
     store_and_say(mesh, f'../{c}_ph_03_del.dat')
 
 
-def case_04_triangle_multisplit():
+def case_04_triangle_multisplit(c='case_04_triangle_multisplit', f='../cases/pseudogrids/ex1.dat', cnt = 10):
     """
     Case 04.
     Split face with multiple points.
     """
-    c = 'case_04_triangle_multisplit'
-    f = '../cases/pseudogrids/ex1.dat'
-
     # Load.
     mesh = msu.Mesh()
     mesh.load(f)
@@ -167,13 +164,29 @@ def case_04_triangle_multisplit():
     f = mesh.faces[0]
     t = f.triangle()
     random_points = []
-    for _ in range(10):
+    for _ in range(cnt):
         random_points.append(t.random_point())
     mesh.multisplit_face(mesh.faces[0], random_points)
     store_and_say(mesh, f'../{c}_ph_02_multisplit.dat')
+    return mesh
 
+def case_05_triangle_multisplit_and_reduce():
+    c = 'case_05_triangle_multisplit_and_reduce'
+    f = '../cases/pseudogrids/ex1.dat'
+    mesh = case_04_triangle_multisplit(c, f, 20)
+    #mesh = msu.Mesh()
+    #mesh.load('../case_05_triangle_multisplit_and_reduce_ph_02_multisplit.dat')
+    min_length = 0.2
+    reduce_counter = 0
+    store_and_say(mesh, f'../{c}_ph_03_reduce_{reduce_counter}.dat')
+    for e in mesh.edges:
+        if e.length() < min_length:
+            mesh.reduce_edge(e)
+            reduce_counter+=1
+            store_and_say(mesh, f'../{c}_ph_03_reduce_{reduce_counter}.dat')
+    print(f'{reduce_counter} edges reduced')
 
 if __name__ == '__main__':
     #case_01_zip()
-    case_02_self_intersections_elimination()
-    #case_04_triangle_multisplit()
+    #case_02_self_intersections_elimination()
+    case_05_triangle_multisplit_and_reduce()
