@@ -76,16 +76,6 @@ class Node:
 
         return len(self.edges) == 0
 
-    def neighbour_nodes(self):
-        """
-        List of neighbour nodes
-
-        Returns
-        -------
-        [Node]
-        """
-        return [e.neighbour(self) for e in self.edges]
-
     def neighbour(self, e):
         """
         Get neighbour by edge.
@@ -107,6 +97,19 @@ class Node:
             return e.nodes[0]
         else:
             return None
+
+    def neighbourhood(self):
+        """
+        Get heighbourhood.
+
+        Returns
+        -------
+        [Node]
+            List of neighbour nodes.
+        """
+
+        return [self.neighbour(e) for e in self.edges]
+
 
 class Edge:
     """
@@ -421,6 +424,18 @@ class Face:
             return e.faces[0]
         else:
             return None
+
+    def neighbourhood(self):
+        """
+        Get neighbourhood.
+
+        Returns
+        -------
+        [Face]
+            List of neighbour faces.
+        """
+
+        return [self.neighbour(e) for e in self.edges if len(e.faces) == 2]
 
     def normals(self):
         """
@@ -1097,6 +1112,10 @@ class Mesh:
         filename : str
             Name of file.
         """
+
+        # Save faces glo_id.
+        for f in self.faces:
+            f['Id'] = f.glo_id
 
         variables = ['X', 'Y', 'Z'] + list(self.faces[0].data.keys())
 
@@ -1793,6 +1812,21 @@ class Mesh:
         """
 
         return any(map(lambda f: f.is_thin(), self.faces))
+
+    def has_pseudo_edges_faces(self):
+        """
+        Check if mesh has pseudo edges or faces.
+
+        Returns
+        -------
+        True - if mesh has pseudo objects,
+        False - if mesh has no pseudo objects.
+        """
+
+        has_edges = any(map(lambda e: e.is_pseudo(), self.edges))
+        has_faces = any(map(lambda f: f.is_pseudo(), self.faces))
+
+        return has_edges or has_faces
 
     def split_thin_triangles(self):
         """
