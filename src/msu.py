@@ -1454,7 +1454,13 @@ class Mesh:
         for n in m.nodes:
             self.add_node(n.p, z)
         for f in m.faces:
-            self.add_face(f, z)
+            new_f = f.copy()
+            self.add_face(new_f, z)
+            self.links([(z.nodes[m.nodes.index(f.nodes[0])], new_f),
+                        (z.nodes[m.nodes.index(f.nodes[1])], new_f),
+                        (z.nodes[m.nodes.index(f.nodes[2])], new_f)])
+
+        self.create_edges()
 
     def triangles_list(self):
         """
