@@ -1258,24 +1258,10 @@ class Mesh:
 
         # Replace b node with a node in all faces.
         delete_faces = []
-        change_faces = []
-        contour_edges = []
         tmp = [f for f in b.faces]
         for f in tmp:
             if f in a.faces:
                 delete_faces.append(f)
-                contour_edges+=f.edges
-            else:
-                change_faces.append(f)
-
-        # change edges with b node
-        for f in change_faces:
-            self.replace_face_node_link(f, b, a)
-            for edge in b.edges:
-                if edge not in contour_edges:
-                    self.unlink(b, edge)
-                    edge.nodes.append(a)
-                    a.edges.append(edge)
 
         # Delete extra node and faces.
         for f in delete_faces:
@@ -1289,11 +1275,24 @@ class Mesh:
                 ac_edge = self.find_edge(a, c)
                 self.unlink(bc_edge, external_face)
                 self.replace_edge_face_link(ac_edge, f, external_face)
+                if b in external_face.nodes:
+                    self.replace_face_node_link(external_face, b, a)
             self.delete_edge(bc_edge)#f will be also deleted
-            if len(c.faces) == 2:#if c is just point on edge, it should be deleted
-                for cf in c.faces:
-                    self.delete_face(cf)
+            if len(c.edges) == 2:#if c is just point on edge, it should be deleted
+                unnecesary_faces = [f for f in c.faces]
+                for uf in unnecesary_faces:
+                    self.delete_face(uf)
                 self.delete_node(c)
+
+        change_faces = [f for f in b.faces]
+        change_edges = set([e for cf in change_faces for e in cf.edges if b in e.nodes])
+        # change edges with b node
+        for f in change_faces:
+            self.replace_face_node_link(f, b, a)
+        for edge in change_edges:
+                    self.unlink(b, edge)
+                    edge.nodes.append(a)
+                    a.edges.append(edge)
 
         # We need no b node anymore if it is isolated.
         if not b.faces:

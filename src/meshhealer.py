@@ -173,14 +173,15 @@ def case_04_triangle_multisplit(c='case_04_triangle_multisplit', f='../cases/pse
 def case_05_triangle_multisplit_and_reduce():
     c = 'case_05_triangle_multisplit_and_reduce'
     f = '../cases/pseudogrids/ex1.dat'
-    mesh = case_04_triangle_multisplit(c, f, 20)
-    #mesh = msu.Mesh()
-    #mesh.load('../case_05_triangle_multisplit_and_reduce_ph_02_multisplit.dat')
+    #mesh = case_04_triangle_multisplit(c, f, 10)
+    mesh = msu.Mesh()
+    mesh.load('../case_05_triangle_multisplit_and_reduce_ph_02_multisplit.dat')
     min_length = 0.2
     reduce_counter = 0
     store_and_say(mesh, f'../{c}_ph_03_reduce_{reduce_counter}.dat')
     for e in mesh.edges:
         if e.length() < min_length:
+            print(e)
             mesh.reduce_edge(e)
             reduce_counter+=1
             store_and_say(mesh, f'../{c}_ph_03_reduce_{reduce_counter}.dat')
@@ -189,4 +190,5 @@ def case_05_triangle_multisplit_and_reduce():
 if __name__ == '__main__':
     #case_01_zip()
     #case_02_self_intersections_elimination()
-    case_05_triangle_multisplit_and_reduce()
+    for i in range(100):
+        case_05_triangle_multisplit_and_reduce()
