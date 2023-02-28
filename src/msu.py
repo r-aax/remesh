@@ -76,7 +76,6 @@ class Node:
 
         return len(self.edges) == 0
 
-<<<<<<< HEAD
     def neighbour_nodes(self):
         """
         List of neighbour nodes
@@ -86,7 +85,7 @@ class Node:
         [Node]
         """
         return [e.neighbour(self) for e in self.edges]
-=======
+
     def neighbour(self, e):
         """
         Get neighbour by edge.
@@ -108,7 +107,6 @@ class Node:
             return e.nodes[0]
         else:
             return None
->>>>>>> 577ac40df27257c955661b793ac1554e4f7f90c2
 
 class Edge:
     """

@@ -181,9 +181,9 @@ def case_04_triangle_multisplit(c='case_04_triangle_multisplit', f='../cases/pse
 def case_05_triangle_multisplit_and_reduce():
     c = 'case_05_triangle_multisplit_and_reduce'
     f = '../cases/pseudogrids/ex1.dat'
-    mesh = case_04_triangle_multisplit(c, f, 5)
-    #mesh = msu.Mesh()
-    #mesh.load('../case_05_triangle_multisplit_and_reduce_ph_02_multisplit.dat')
+    #mesh = case_04_triangle_multisplit(c, f, 5)
+    mesh = msu.Mesh()
+    mesh.load('../case_05_triangle_multisplit_and_reduce_ph_02_multisplit.dat')
     mesh.calculate_faces_areas()
     min_area = 0.06
     reduce_counter = 0
