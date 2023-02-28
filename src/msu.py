@@ -231,22 +231,15 @@ class Face:
     Face - container for physical data.
     """
 
-    def __init__(self, variables, values):
+    def __init__(self):
         """
         Initialization.
-
-        Parameters
-        ----------
-        variables : list(str)
-            List of variables names.
-        values : list
-            List of values.
         """
 
         # Global identifier.
         self.glo_id = -1
 
-        self.data = dict(zip(variables, values))
+        self.data = None
         self.nodes = []
         self.edges = []
         self.zone = None
@@ -282,6 +275,33 @@ class Face:
 
         # Diverging or contracting face.
         self.is_contracting = False
+
+    def set_data(self, variables, values):
+        """
+        Set data.
+
+        Parameters
+        ----------
+        variables : [str]
+            Variables names.
+        values : [object]
+            List of values.
+
+        """
+
+        self.data = dict(zip(variables, values))
+
+    def copy_data_from(self, f):
+        """
+        Copy data from another face.
+
+        Parameters
+        ----------
+        f : Face
+            Another face.
+        """
+
+        self.set_data(f.data.keys(), f.data.values())
 
     def __repr__(self):
         """
@@ -350,20 +370,6 @@ class Face:
         """
 
         return (not self.is_pseudo()) and (self.triangle().area() < mth.EPS**2)
-
-    def copy(self):
-        """
-        Get copy of face.
-        Copy with the same data.
-        But copy doesn't contain links.
-
-        Returns
-        -------
-        Face
-            Copy.
-        """
-
-        return Face(self.data.keys(), self.data.values())
 
     def points(self):
         """
@@ -1074,8 +1080,9 @@ class Mesh:
                         line = f.readline()
                         d.append([float(xi) for xi in line.split()])
                     for i in range(faces_to_read):
-                        face = Face(face_variables,
-                                    [d[j][i] for j in range(face_variables_count)])
+                        face = Face()
+                        face.set_data(face_variables,
+                                      [d[j][i] for j in range(face_variables_count)])
                         self.add_face(face, zone)
                     # Read connectivity lists.
                     for i in range(faces_to_read):
@@ -1406,7 +1413,9 @@ class Mesh:
             assert not f.is_pseudo()
 
             # Old data from face.
-            f0, f1 = f.copy(), f.copy()
+            f0, f1 = Face(), Face()
+            f0.copy_data_from(f)
+            f1.copy_data_from(f)
             a, b, c = f.nodes[0], f.nodes[1], f.nodes[2]
             th = f.third_node(e)
             z = f.zone
@@ -1452,7 +1461,10 @@ class Mesh:
 
         # Data from old face.
         a, b, c = f.nodes[0], f.nodes[1], f.nodes[2]
-        fab, fbc, fca = f.copy(), f.copy(), f.copy()
+        fab, fbc, fca = Face(), Face(), Face()
+        fab.copy_data_from(f)
+        fbc.copy_data_from(f)
+        fca.copy_data_from(f)
         z = f.zone
 
         # New node.
@@ -1538,7 +1550,8 @@ class Mesh:
         for n in m.nodes:
             self.add_node(n.p, z)
         for f in m.faces:
-            new_f = f.copy()
+            new_f = Face()
+            new_f.copy_data_from(f)
             self.add_face(new_f, z)
             self.links([(z.nodes[m.nodes.index(f.nodes[0])], new_f),
                         (z.nodes[m.nodes.index(f.nodes[1])], new_f),
