@@ -76,6 +76,15 @@ class Node:
 
         return len(self.edges) == 0
 
+    def neighbour_nodes(self):
+        """
+        List of neighbour nodes
+
+        Returns
+        -------
+        [Node]
+        """
+        return [e.neighbour(self) for e in self.edges]
 
 class Edge:
     """
@@ -468,7 +477,6 @@ class Face:
         Node
             Third node.
         """
-
         ns = [self.nodes[0], self.nodes[1], self.nodes[2]]
         ns.remove(e.nodes[0])
         ns.remove(e.nodes[1])
@@ -1243,7 +1251,42 @@ class Mesh:
         for n in nodes_to_delete:
             self.delete_node(n)
 
-    def reduce_edge(self, e):
+    def delete_double_face(self, delete_faces):
+        """
+        Delete double face.
+        """
+        double_edge = None
+        useful_nodes = None
+        # search for double edge
+        for n in delete_faces[0].nodes:
+            edge_counter = {}
+            for e in n.edges:
+                # edge can be reverced
+                edge_nodes = tuple(sorted(e.nodes, key=lambda n: n.glo_id))
+                if edge_nodes not in edge_counter:
+                    edge_counter[edge_nodes] = 1
+                else:
+                    edge_counter[edge_nodes] += 1
+            max_count = max(edge_counter.values())
+            if max_count > 1:
+                # nodes pair what contains double edge
+                useful_nodes = list(edge_counter.keys())[list(edge_counter.values()).index(max_count)]
+                double_edge = self.find_edge(useful_nodes[0], useful_nodes[1])
+                break
+        assert double_edge is not None
+        unuseful_node = delete_faces[0].third_node(double_edge)
+        self.delete_node(unuseful_node)
+        while double_edge.faces:
+            self.unlink(double_edge, double_edge.faces[0])
+        self.delete_edge(double_edge)
+        # local restore edge neigbour faces
+        a, b = useful_nodes[0], useful_nodes[1]
+        useful_edge = self.find_edge(a, b)
+        for f in a.faces:
+            if f in b.faces and f not in useful_edge.faces:
+                self.link(useful_edge, f)
+
+    def reduce_edge(self, e, move=True):
         """
         Reduce edge.
 
@@ -1254,14 +1297,16 @@ class Mesh:
         """
 
         a, b = e.nodes[0], e.nodes[1]
-        a.p = 0.5 * (a.p + b.p)
+        if move:
+            a.p = 0.5 * (a.p + b.p)
 
         # Replace b node with a node in all faces.
-        delete_faces = []
-        tmp = [f for f in b.faces]
-        for f in tmp:
-            if f in a.faces:
-                delete_faces.append(f)
+        delete_faces = [f for f in e.faces]
+
+        #check if this is double triangle
+        if len(delete_faces) == 2 and set(delete_faces[0].nodes) == set(delete_faces[1].nodes):
+            self.delete_double_face(delete_faces)
+            return
 
         # Delete extra node and faces.
         for f in delete_faces:
@@ -1273,19 +1318,15 @@ class Mesh:
                 else:
                     external_face = bc_edge.faces[1]
                 ac_edge = self.find_edge(a, c)
+                #print(ac_edge, ac_edge.faces)
                 self.unlink(bc_edge, external_face)
                 self.replace_edge_face_link(ac_edge, f, external_face)
                 if b in external_face.nodes:
                     self.replace_face_node_link(external_face, b, a)
             self.delete_edge(bc_edge)#f will be also deleted
-            if len(c.edges) == 2:#if c is just point on edge, it should be deleted
-                unnecesary_faces = [f for f in c.faces]
-                for uf in unnecesary_faces:
-                    self.delete_face(uf)
-                self.delete_node(c)
 
         change_faces = [f for f in b.faces]
-        change_edges = set([e for cf in change_faces for e in cf.edges if b in e.nodes])
+        change_edges = [be for be in b.edges if be!=e]
         # change edges with b node
         for f in change_faces:
             self.replace_face_node_link(f, b, a)
