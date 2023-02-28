@@ -76,6 +76,27 @@ class Node:
 
         return len(self.edges) == 0
 
+    def neighbour(self, e):
+        """
+        Get neighbour by edge.
+
+        Parameters
+        ----------
+        e : Edge
+            Edge.
+
+        Returns
+        -------
+        Node
+            Neighbour node or None.
+        """
+
+        if self == e.nodes[0]:
+            return e.nodes[1]
+        elif self == e.nodes[1]:
+            return e.nodes[0]
+        else:
+            return None
 
 class Edge:
     """
@@ -183,28 +204,6 @@ class Edge:
             self.faces[1] = new_f
         else:
             raise Exception('No such face')
-
-    def neighbour(self, a):
-        """
-        Get neighbour node.
-
-        Parameters
-        ----------
-        a : Node
-            Node.
-
-        Returns
-        -------
-        Node | None
-            Neighbour node.
-        """
-
-        if a == self.nodes[0]:
-            return self.nodes[1]
-        elif a == self.nodes[1]:
-            return self.nodes[0]
-        else:
-            return None
 
     def flip_nodes(self):
         """
@@ -388,6 +387,30 @@ class Face:
         """
 
         return self.edges[np.argmax([e.length() for e in self.edges])]
+
+    def neighbour(self, e):
+        """
+        Get neighbour by edge.
+
+        Parameters
+        ----------
+        e : Edge
+            Edge.
+
+        Returns
+        -------
+        Node
+            Neighbour face or None.
+        """
+
+        assert len(e.faces) == 2
+
+        if self == e.faces[0]:
+            return e.faces[1]
+        elif self == e.faces[1]:
+            return e.faces[0]
+        else:
+            return None
 
     def normals(self):
         """
@@ -653,7 +676,7 @@ class Mesh:
         """
 
         for e in a.edges:
-            if e.neighbour(a) == b:
+            if a.neighbour(e) == b:
                 return e
 
         # Not found.
@@ -1620,6 +1643,36 @@ class Mesh:
                 for f1 in n.faces:
                     li.append(f1)
 
+    def walk_surface(self, start, mark_color):
+        """
+        Walk mesh surface.
+
+        Parameters
+        ----------
+        start : Face
+            Start face.
+        mark_color : int
+            Mark color.
+        """
+
+        for f in self.faces:
+            f['M'] = Mesh.ColorCommon
+
+        li = [start]
+
+        while li:
+            f = li.pop()
+            if f['M'] == mark_color:
+                continue
+            f['M'] = mark_color
+            for e in f.edges:
+                if len(e.faces) == 2:
+                    li.append(f.neighbour(e))
+
+        for f in self.faces:
+            if f['M'] == Mesh.ColorCommon:
+                f['M'] = Mesh.ColorToDelete
+
     def delete_faces(self, c):
         """
         Delete faces of the color.
@@ -1686,6 +1739,18 @@ class Mesh:
         ff = [f for f in self.faces]
         for f in ff:
             self.multisplit_face(f, f.int_points)
+
+    def has_thin_triangles(self):
+        """
+        Check if mesh has thin triangles.
+
+        Returns
+        -------
+        True - if mesh has thin triangles,
+        False - if mesh has not thin triangles.
+        """
+
+        return any(map(lambda f: f.is_thin(), self.faces))
 
     def split_thin_triangles(self):
         """

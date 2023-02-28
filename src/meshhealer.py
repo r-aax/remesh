@@ -28,7 +28,7 @@ def case_01_zip():
     """
 
     c = 'case_01_zip'
-    f = '../cases/sphere_2.dat'
+    f = '../cases/triangle_sphere_2.dat'
 
     #
     # Without split faces.
@@ -131,8 +131,8 @@ def case_02_self_intersections_elimination():
     """
 
     c = 'case_02_sie'
-    #f = '../cases/sphere_2.dat'
-    f = '../cases/pseudogrids/ex2.dat'
+    f = '../cases/triangle_sphere_2.dat'
+    #f = '../cases/pseudogrids/ex2.dat'
 
     # Load.
     mesh = msu.Mesh()
@@ -147,7 +147,14 @@ def case_02_self_intersections_elimination():
     # Delete bad triangles.
     mesh.split_thin_triangles()
     mesh.delete_pseudo_edges()
+    assert not mesh.has_thin_triangles()
+    mesh.print()
     store_and_say(mesh, f'../{c}_ph_03_del.dat')
+
+    # Delete all inner triangles.
+    mesh.walk_surface(mesh.lo_face(0), msu.Mesh.ColorFree)
+    mesh.delete_faces(msu.Mesh.ColorToDelete)
+    store_and_say(mesh, f'../{c}_ph_04_del2.dat')
 
 
 def case_04_triangle_multisplit(c='case_04_triangle_multisplit', f='../cases/pseudogrids/ex1.dat', cnt = 10):
@@ -170,6 +177,7 @@ def case_04_triangle_multisplit(c='case_04_triangle_multisplit', f='../cases/pse
     store_and_say(mesh, f'../{c}_ph_02_multisplit.dat')
     return mesh
 
+
 def case_05_triangle_multisplit_and_reduce():
     c = 'case_05_triangle_multisplit_and_reduce'
     f = '../cases/pseudogrids/ex1.dat'
@@ -187,8 +195,10 @@ def case_05_triangle_multisplit_and_reduce():
             store_and_say(mesh, f'../{c}_ph_03_reduce_{reduce_counter}.dat')
     print(f'{reduce_counter} edges reduced')
 
+
 if __name__ == '__main__':
     #case_01_zip()
-    #case_02_self_intersections_elimination()
-    for i in range(100):
-        case_05_triangle_multisplit_and_reduce()
+    case_02_self_intersections_elimination()
+    #for i in range(100):
+    #    case_05_triangle_multisplit_and_reduce()
+
