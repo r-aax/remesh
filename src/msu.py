@@ -1126,7 +1126,7 @@ class Mesh:
                         nodes = [zone.nodes[int(ss) - 1] for ss in line.split()]
                         assert len(nodes) == 3
                         face = self.add_face(nodes[0], nodes[1], nodes[2], zone)
-                        face.set_data(variables, values[i])
+                        face.set_data(face_variables, values[i])
                 else:
                     raise Exception('Unexpected line : {0}.'.format(line))
 
@@ -1501,11 +1501,8 @@ class Mesh:
 
         # Add new faces.
         fab = self.add_face(a, b, n, z)
-        print('fab = ', fab)
         fbc = self.add_face(b, c, n, z)
-        print('fbc = ', fbc)
         fca = self.add_face(c, a, n, z)
-        print('fca = ', fca)
         fab.copy_data_from(f)
         fbc.copy_data_from(f)
         fca.copy_data_from(f)
