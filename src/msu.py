@@ -712,6 +712,33 @@ class Mesh:
         # Not found.
         return None
 
+    def find_face(self, a, b, c):
+        """
+        Find face with given nodes.
+
+        Parameters
+        ----------
+        a : Node
+            First node.
+        b : Node
+            Second node.
+        c : Node
+            Third node.
+
+        Returns
+        -------
+        Face | None
+        """
+
+        ids = sorted([a.glo_id, b.glo_id, c.glo_id])
+
+        for f in a.faces:
+            lids = sorted([n.glo_id for n in f.nodes])
+            if ids == lids:
+                return f
+
+        return None
+
     def max_node_glo_id(self):
         """
         Get maximum node global id
@@ -826,23 +853,35 @@ class Mesh:
 
         return e
 
-    def add_face(self, face, zone):
+    def add_face(self, a, b, c, zone):
         """
         Add face to mesh.
 
         Parameters
         ----------
-        face : Face
-            Face to add.
+        a : Node
+            First node.
+        b : Node
+            Second node.
+        c : Node
+            Third node.
         zone : Zone
             Zone to add to.
         """
 
-        max_glo_id = self.max_face_glo_id()
-        face.glo_id = max_glo_id + 1
-        self.faces.append(face)
-        zone.faces.append(face)
-        face.zone = zone
+        f = self.find_face(a, b, c)
+
+        if f is None:
+            f = Face()
+            max_glo_id = self.max_face_glo_id()
+            f.glo_id = max_glo_id + 1
+            self.faces.append(f)
+            zone.faces.append(f)
+            f.zone = zone
+            ab, bc, ac = self.add_edge(a, b), self.add_edge(b, c), self.add_edge(a, c)
+            self.links([(a, f), (b, f), (c, f), (ab, f), (bc, f), (ac, f)])
+
+        return f
 
     def link(self, obj1, obj2):
         """
@@ -1079,21 +1118,15 @@ class Mesh:
                     for i in range(face_variables_count):
                         line = f.readline()
                         d.append([float(xi) for xi in line.split()])
-                    for i in range(faces_to_read):
-                        face = Face()
-                        face.set_data(face_variables,
-                                      [d[j][i] for j in range(face_variables_count)])
-                        self.add_face(face, zone)
+                    values = [[d[j][i] for j in range(face_variables_count)] for i in range(faces_to_read)]
+
                     # Read connectivity lists.
                     for i in range(faces_to_read):
                         line = f.readline()
-                        face = zone.faces[i]
                         nodes = [zone.nodes[int(ss) - 1] for ss in line.split()]
-
-                        if len(nodes) != 3:
-                            raise Exception('Internal error')
-                        for n in nodes:
-                            self.link(n, face)
+                        assert len(nodes) == 3
+                        face = self.add_face(nodes[0], nodes[1], nodes[2], zone)
+                        face.set_data(variables, values[i])
                 else:
                     raise Exception('Unexpected line : {0}.'.format(line))
 
@@ -1461,31 +1494,24 @@ class Mesh:
 
         # Data from old face.
         a, b, c = f.nodes[0], f.nodes[1], f.nodes[2]
-        fab, fbc, fca = Face(), Face(), Face()
-        fab.copy_data_from(f)
-        fbc.copy_data_from(f)
-        fca.copy_data_from(f)
         z = f.zone
 
         # New node.
         n = self.add_node(p, z)
 
+        # Add new faces.
+        fab = self.add_face(a, b, n, z)
+        print('fab = ', fab)
+        fbc = self.add_face(b, c, n, z)
+        print('fbc = ', fbc)
+        fca = self.add_face(c, a, n, z)
+        print('fca = ', fca)
+        fab.copy_data_from(f)
+        fbc.copy_data_from(f)
+        fca.copy_data_from(f)
+
         # Delete old face.
         self.delete_face(f)
-
-        # Add new faces.
-        self.add_face(fab, z)
-        self.links([(a, fab), (b, fab), (n, fab), (self.find_edge(a, b), fab)])
-        self.add_face(fbc, z)
-        self.links([(b, fbc), (c, fbc), (n, fbc), (self.find_edge(b, c), fbc)])
-        self.add_face(fca, z)
-        self.links([(c, fca), (a, fca), (n, fca), (self.find_edge(c, a), fca)])
-
-        # Add new edges.
-        ea, eb, ec = self.add_edge(a, n), self.add_edge(b, n), self.add_edge(c, n)
-        self.links([(ea, fab), (ea, fca)])
-        self.links([(eb, fab), (eb, fbc)])
-        self.links([(ec, fbc), (ec, fca)])
 
     def multisplit_face(self, f, ps):
         """
@@ -1840,6 +1866,21 @@ class Mesh:
         has_faces = any(map(lambda f: f.is_pseudo(), self.faces))
 
         return has_edges or has_faces
+
+    def delete_thin_triangles(self):
+        """
+        Delete thin triangles if big side has only one faces.
+        """
+
+        faces_to_delete = []
+        for f in self.faces:
+            if f.is_thin():
+                e = f.big_edge()
+                if len(e.faces) == 1:
+                    faces_to_delete.append(f)
+
+        for f in faces_to_delete:
+            self.delete_face(f)
 
     def split_thin_triangles(self):
         """
