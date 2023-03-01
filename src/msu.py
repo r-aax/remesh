@@ -1039,24 +1039,20 @@ class Mesh:
         f.edges.remove(e)
         new_f.edges.append(e)
 
-    def delete_all_edges(self):
+    def create_edges(self):
         """
-        Delete all edges.
+        Delete all edges and create them.
         """
 
+        # Delete all edgs manually.
+        # After this action the mesh is not consistent.
         for n in self.nodes:
             n.edges = []
         for f in self.faces:
             f.edges = []
         self.edges = []
 
-    def create_edges(self):
-        """
-        Delete all edges and create them.
-        """
-
-        self.delete_all_edges()
-
+        # Construct edges.
         for f in self.faces:
             a, b, c = f.nodes[0], f.nodes[1], f.nodes[2]
             for first, second in [(a, b), (b, c), (a, c)]:
