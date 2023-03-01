@@ -1323,6 +1323,10 @@ class Mesh:
             Face to delete.
         """
 
+        # Copy old links.
+        ns = [n for n in f.nodes]
+        es = [e for e in f.edges]
+
         # Unlink from nodes.
         while f.nodes:
             self.unlink(f.nodes[0], f)
@@ -1338,6 +1342,14 @@ class Mesh:
 
         # Remove from mesh.
         self.faces.remove(f)
+
+        # Delete faces_free edges and isolated nodes.
+        es = [e for e in es if e.is_faces_free()]
+        for e in es:
+            self.delete_edge(e)
+        ns = [n for n in ns if n.is_isolated()]
+        for n in ns:
+            self.delete_node(n)
 
     def delete_faces(self, p):
         """
