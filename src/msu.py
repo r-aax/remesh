@@ -141,6 +141,18 @@ class Edge:
 
         return f'Edge{ps_str} {self.glo_id} ({id0} - {id1})'
 
+    def is_faces_free(self):
+        """
+        Check if edge is without incident faces.
+
+        Returns
+        -------
+        True - if edge is without faces,
+        False - otherwise.
+        """
+
+        return len(self.faces) == 0
+
     def is_pseudo(self):
         """
         Check edge for pseudoedge.

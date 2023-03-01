@@ -138,7 +138,7 @@ def case_02_self_intersections_elimination():
     ff = [f for f in mesh.faces if f.glo_id not in [60, 91]]
     for f in ff:
         mesh.delete_face(f)
-    mesh.delete_edges(lambda e: len(e.faces) == 0)
+    mesh.delete_edges(lambda e: e.is_faces_free())
     mesh.delete_nodes(lambda n: n.is_isolated())
     store_and_say(mesh, f'../{c}_ph_01_orig.dat')
 
@@ -209,4 +209,3 @@ if __name__ == '__main__':
     #case_01_zip()
     #case_05_triangle_multisplit_and_reduce()
     case_02_self_intersections_elimination()
-
