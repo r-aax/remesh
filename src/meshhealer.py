@@ -47,9 +47,9 @@ def case_01_zip():
     store_and_say(mesh, f'../{c}_ph_02_del_intersections.dat')
 
     # Del extra regions.
-    mesh.delete_faces(msu.Mesh.ColorCommon)
-    mesh.delete_faces(msu.Mesh.ColorBorder)
-    mesh.delete_isolated_nodes()
+    mesh.delete_faces(lambda f: f['M'] == msu.Mesh.ColorCommon)
+    mesh.delete_faces(lambda f: f['M'] == msu.Mesh.ColorBorder)
+    mesh.delete_nodes(lambda n: n.is_isolated())
     store_and_say(mesh, f'../{c}_ph_03_del_extra.dat')
 
     # Zip.
@@ -78,9 +78,9 @@ def case_01_zip():
     store_and_say(mesh, f'../{c}_ph_07_del_intersections_2.dat')
 
     # Del extra regions.
-    mesh.delete_faces(msu.Mesh.ColorCommon)
-    mesh.delete_faces(msu.Mesh.ColorBorder)
-    mesh.delete_isolated_nodes()
+    mesh.delete_faces(lambda f: f['M'] == msu.Mesh.ColorCommon)
+    mesh.delete_faces(lambda f: f['M'] == msu.Mesh.ColorBorder)
+    mesh.delete_nodes(lambda n: n.is_isolated())
     store_and_say(mesh, f'../{c}_ph_08_del_extra_2.dat')
 
     # Zip.
@@ -111,9 +111,9 @@ def case_01_zip():
     store_and_say(mesh, f'../{c}_ph_13_del_intersections_3.dat')
 
     # Del extra regions.
-    mesh.delete_faces(msu.Mesh.ColorCommon)
-    mesh.delete_faces(msu.Mesh.ColorBorder)
-    mesh.delete_isolated_nodes()
+    mesh.delete_faces(lambda f: f['M'] == msu.Mesh.ColorCommon)
+    mesh.delete_faces(lambda f: f['M'] == msu.Mesh.ColorBorder)
+    mesh.delete_nodes(lambda n: n.is_isolated())
     store_and_say(mesh, f'../{c}_ph_14_del_extra_3.dat')
 
     # Zip.
@@ -135,6 +135,11 @@ def case_02_self_intersections_elimination():
 
     # Load.
     mesh = msu.Mesh(f)
+    ff = [f for f in mesh.faces if f.glo_id not in [60, 91]]
+    for f in ff:
+        mesh.delete_face(f)
+    mesh.delete_edges(lambda e: len(e.faces) == 0)
+    mesh.delete_nodes(lambda n: n.is_isolated())
     store_and_say(mesh, f'../{c}_ph_01_orig.dat')
 
     # Find intersections.
@@ -143,15 +148,16 @@ def case_02_self_intersections_elimination():
     store_and_say(mesh, f'../{c}_ph_02_cut.dat')
 
     # Delete bad triangles.
-    mesh.delete_thin_faces()
+    mesh.delete_faces(lambda f: f.is_thin_with_border_big_edge())
     mesh.split_thin_faces()
-    mesh.delete_pseudo_edges()
+    mesh.delete_edges(lambda e: e.is_pseudo())
     assert not mesh.has_thin_triangles()
     store_and_say(mesh, f'../{c}_ph_03_del.dat')
 
     # Delete all inner triangles.
     mesh.walk_surface(mesh.lo_face(0), msu.Mesh.ColorFree)
-    mesh.delete_faces(msu.Mesh.ColorToDelete)
+    mesh.print(print_edges_with_incident_faces=True)
+    #mesh.delete_faces(msu.Mesh.ColorToDelete)
     store_and_say(mesh, f'../{c}_ph_04_del2.dat')
 
 
@@ -203,3 +209,4 @@ if __name__ == '__main__':
     #case_01_zip()
     #case_05_triangle_multisplit_and_reduce()
     case_02_self_intersections_elimination()
+
