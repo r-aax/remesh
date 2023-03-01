@@ -143,8 +143,8 @@ def case_02_self_intersections_elimination():
     store_and_say(mesh, f'../{c}_ph_02_cut.dat')
 
     # Delete bad triangles.
-    mesh.delete_thin_triangles()
-    mesh.split_thin_triangles()
+    mesh.delete_thin_faces()
+    mesh.split_thin_faces()
     mesh.delete_pseudo_edges()
     assert not mesh.has_thin_triangles()
     store_and_say(mesh, f'../{c}_ph_03_del.dat')

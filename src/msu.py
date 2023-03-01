@@ -1513,8 +1513,9 @@ class Mesh:
             Point (it is in None then split by center).
         """
 
-        # Check for pseudo edge.
+        # Check for pseudo edge and edge without faces.
         assert not e.is_pseudo()
+        assert len(e.faces) > 0
 
         # Split by default.
         if p is None:
@@ -1525,9 +1526,6 @@ class Mesh:
             assert not f.is_pseudo()
 
             # Old data from face.
-            f0, f1 = Face(), Face()
-            f0.copy_data_from(f)
-            f1.copy_data_from(f)
             a, b, c = f.nodes[0], f.nodes[1], f.nodes[2]
             th = f.third_node(e)
             z = f.zone
@@ -1535,22 +1533,24 @@ class Mesh:
             # Add node.
             n = self.add_node(p, z)
 
+            # If node is in edge's nodes then we don't split it.
+            if n in e.nodes:
+                return
+
             # Add edges.
             e0 = self.add_edge(e.nodes[0], n)
             e1 = self.add_edge(e.nodes[1], n)
             eth = self.add_edge(th, n)
 
             # Add faces.
-            self.add_face(f0, z)
             li = [a, b, c]
             li[li.index(e.nodes[1])] = n
-            self.links([(li[0], f0), (li[1], f0), (li[2], f0), (e0, f0), (eth, f0),
-                        (self.find_edge(e.nodes[0], th), f0)])
-            self.add_face(f1, z)
+            f0 = self.add_face(li[0], li[1], li[2], z)
+            f0.copy_data_from(f)
             li = [a, b, c]
             li[li.index(e.nodes[0])] = n
-            self.links([(li[0], f1), (li[1], f1), (li[2], f1), (e1, f1), (eth, f1),
-                        (self.find_edge(e.nodes[1], th), f1)])
+            f1 = self.add_face(li[0], li[1], li[2], z)
+            f1.copy_data_from(f)
 
         # Delete edge.
         self.delete_edge(e)
