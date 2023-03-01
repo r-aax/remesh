@@ -135,9 +135,9 @@ def case_02_self_intersections_elimination():
 
     # Load.
     mesh = msu.Mesh(f)
-    ff = [f for f in mesh.faces if f.glo_id not in [60, 91]]
-    for f in ff:
-        mesh.delete_face(f)
+    #ff = [f for f in mesh.faces if f.glo_id not in [60, 91]]
+    #for f in ff:
+    #    mesh.delete_face(f)
     mesh.delete_edges(lambda e: e.is_faces_free())
     mesh.delete_nodes(lambda n: n.is_isolated())
     store_and_say(mesh, f'../{c}_ph_01_orig.dat')
@@ -157,7 +157,7 @@ def case_02_self_intersections_elimination():
     # Delete all inner triangles.
     mesh.walk_surface(mesh.lo_face(0), msu.Mesh.ColorFree)
     mesh.print(print_edges_with_incident_faces=True)
-    #mesh.delete_faces(msu.Mesh.ColorToDelete)
+    mesh.delete_faces(lambda f: f['M'] == msu.Mesh.ColorToDelete)
     store_and_say(mesh, f'../{c}_ph_04_del2.dat')
 
 

@@ -1385,7 +1385,8 @@ class Mesh:
             self.unlink(e.nodes[0], e)
 
         # Remove from mesh.
-        self.edges.remove(e)
+        if e in self.edges:
+            self.edges.remove(e)
 
     def delete_edges(self, p):
         """
@@ -1553,7 +1554,6 @@ class Mesh:
 
             # Old data from face.
             a, b, c = f.nodes[0], f.nodes[1], f.nodes[2]
-            th = f.third_node(e)
             z = f.zone
 
             # Add node.
@@ -1562,11 +1562,6 @@ class Mesh:
             # If node is in edge's nodes then we don't split it.
             if n in e.nodes:
                 return
-
-            # Add edges.
-            e0 = self.add_edge(e.nodes[0], n)
-            e1 = self.add_edge(e.nodes[1], n)
-            eth = self.add_edge(th, n)
 
             # Add faces.
             li = [a, b, c]
