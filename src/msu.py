@@ -1669,7 +1669,7 @@ class Mesh:
 
         # Find indices from triangulator.
         tr = triangulator.Triangulator([n.p for n in ns])
-        idx = tr.find_indices_for_triangulation()
+        idx = tr.find_triangulation_indices()
 
         # New faces.
         for ai, bi, ci in idx:
