@@ -100,6 +100,31 @@ def is_ab_intersects_pq(a, b, p, q):
     return (s1 < 0.0) and (s2 < 0.0)
 
 
+def if_ab_intersects_any_segment(a, b, ss):
+    """
+    Check if ab segment intersects any segment from the list.
+
+    Parameters
+    ----------
+    a : Point
+        First point.
+    b : Point
+        Second point.
+    ss : [(Point, Point)]
+        List of segments.
+
+    Returns
+    -------
+    True - if there is intersection,
+    False - otherwise.
+    """
+
+    if not ss:
+        return False
+
+    return any(map(lambda s: is_ab_intersects_pq(a, b, s[0], s[1]), ss))
+
+
 def is_points_near(a, b):
     """
     Check if points are near.
