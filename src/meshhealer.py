@@ -156,16 +156,20 @@ def case_02_self_intersections_elimination():
 
     # Delete all inner triangles.
     mesh.walk_surface(mesh.lo_face(0), msu.Mesh.ColorFree)
-    mesh.print(print_edges_with_incident_faces=True)
     mesh.delete_faces(lambda f: f['M'] == msu.Mesh.ColorToDelete)
+    mesh.print(print_faces_neighbourhood=True, print_edges_with_incident_faces=True)
     store_and_say(mesh, f'../{c}_ph_04_del2.dat')
 
 
-def case_04_triangle_multisplit(c='case_04_triangle_multisplit', f='../cases/pseudogrids/ex1.dat', cnt = 10):
+def case_04_triangle_multisplit(cnt=10):
     """
     Case 04.
     Split face with multiple points.
     """
+
+    c = 'case_04_ms'
+    f = '../cases/pseudogrids/ex1.dat'
+
     # Load.
     mesh = msu.Mesh(f)
     store_and_say(mesh, f'../{c}_ph_01_orig.dat')
@@ -207,5 +211,6 @@ def case_05_triangle_multisplit_and_reduce():
 
 if __name__ == '__main__':
     #case_01_zip()
+    #case_02_self_intersections_elimination()
+    case_04_triangle_multisplit(cnt=1)
     #case_05_triangle_multisplit_and_reduce()
-    case_02_self_intersections_elimination()

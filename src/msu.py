@@ -3,6 +3,7 @@ import numpy as np
 from numpy import linalg as LA
 import mth
 import geom
+import triangulator
 
 # Count of valuable digits (after dot) in node coordinates.
 # If coordinates of nodes doesn't differ in valuable digits we consider them equal.
@@ -1616,6 +1617,44 @@ class Mesh:
         self.delete_face(f)
 
     def multisplit_face(self, f, ps):
+        """
+        Split face with multiple points.
+
+        Parameters
+        ----------
+        f : Face
+            Face to split.
+        ps : [Point]
+            List of points.
+        """
+
+        # No points - no splits.
+        if not ps:
+            return
+
+        # Form nodes for split.
+        ns = []
+        for n in f.nodes:
+            if not n in ns:
+                ns.append(n)
+        for p in ps:
+            n = self.add_node(p, f.zone)
+            if not n in ns:
+                ns.append(n)
+
+        # Find indices from triangulator.
+        tr = triangulator.Triangulator([n.p for n in ns])
+        idx = tr.find_indices_for_triangulation()
+
+        # New faces.
+        for ai, bi, ci in idx:
+            nf = self.add_face(ns[ai], ns[bi], ns[ci], f.zone)
+            nf.copy_data_from(f)
+
+        # Finally delete the face.
+        self.delete_face(f)
+
+    def bad_multisplit_face(self, f, ps):
         """
         Split with several points.
 
