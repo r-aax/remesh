@@ -1305,29 +1305,19 @@ class Mesh:
         # Remove from mesh.
         self.faces.remove(f)
 
-    def delete_faces(self, c):
+    def delete_faces(self, p):
         """
-        Delete faces of the color.
+        Delete faces with predicate.
 
         Parameters
         ----------
-        c : int
-            Color.
+        p : lambda
+            Predicate for delete face.
         """
 
-        faces_to_delete = [f for f in self.faces if f['M'] == c]
+        fs = [f for f in self.faces if p(f)]
 
-        for f in faces_to_delete:
-            self.delete_face(f)
-
-    def delete_pseudo_faces(self):
-        """
-        Delete all pseudo faces.
-        """
-
-        faces_to_delete = [f for f in self.faces if f.is_pseudo()]
-
-        for f in faces_to_delete:
+        for f in fs:
             self.delete_face(f)
 
     def delete_thin_faces(self):
@@ -1366,24 +1356,19 @@ class Mesh:
         # Remove from mesh.
         self.edges.remove(e)
 
-    def delete_edges_without_faces(self):
+    def delete_edges(self, p):
         """
-        Delete edges without faces.
-        """
+        Delete all edges with predicate.
 
-        edges_to_delete = [e for e in self.edges if len(e.faces) == 0]
-
-        for e in edges_to_delete:
-            self.delete_edge(e)
-
-    def delete_pseudo_edges(self):
-        """
-        Delete all pseudo edges.
+        Parameters
+        ----------
+        p : lambda
+            Predicate for edge delete.
         """
 
-        edges_to_delete = [e for e in self.edges if e.is_pseudo()]
+        es = [e for e in self.edges if p(e)]
 
-        for e in edges_to_delete:
+        for e in es:
             self.delete_edge(e)
 
     def delete_node(self, n):
@@ -1408,14 +1393,19 @@ class Mesh:
         # Remove node from mesh.
         self.nodes.remove(n)
 
-    def delete_isolated_nodes(self):
+    def delete_nodes(self, p):
         """
-        Delete isolated nodes.
+        Delete nodes with predicate.
+
+        Parameters
+        ----------
+        p : lambda
+            Predicate for delete.
         """
 
-        nodes_to_delete = [n for n in self.nodes if n.is_isolated()]
+        ns = [n for n in self.nodes if p(n)]
 
-        for n in nodes_to_delete:
+        for n in ns:
             self.delete_node(n)
 
     def delete_double_face(self, delete_faces):
