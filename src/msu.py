@@ -369,7 +369,7 @@ class Face:
         Check face for thin.
         """
 
-        return (not self.is_pseudo()) and (self.triangle().area() < mth.EPS**2)
+        return (not self.is_pseudo()) and (self.triangle().area() < mth.EPS)
 
     def points(self):
         """
@@ -659,15 +659,25 @@ class Mesh:
         self.zones.clear()
         self.rounded_coordinates_bag.clear()
 
-    def print(self):
+    def print(self, print_faces_neighbourhood=False):
         """
         Print information.
+
+        Parameters
+        ---------
+        print_faces_neighbourhood : bool
+            Flag for print faces with neighbourhood.
         """
 
         print('[MESH]')
         print(f'Nodes ({len(self.nodes)}):\n  ', self.nodes)
         print(f'Edges ({len(self.edges)}):\n  ', self.edges)
         print(f'Faces ({len(self.faces)}):\n  ', self.faces)
+
+        if print_faces_neighbourhood:
+            print('[FACES WITH NEIGHBOURHOOD]')
+            for f in self.faces:
+                print(f, ' --- ', f.triangle().area(), ' --- ', f.neighbourhood())
 
     def find_near_node(self, node):
         """
