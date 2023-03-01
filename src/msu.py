@@ -367,9 +367,31 @@ class Face:
     def is_thin(self):
         """
         Check face for thin.
+
+        Results
+        -------
+        True - if face is thin,
+        False - if it's not.
         """
 
         return (not self.is_pseudo()) and (self.triangle().area() < mth.EPS)
+
+    def is_thin_with_border_big_edge(self):
+        """
+        Check if face thin, and its big side is border of the scope.
+
+        Returns
+        -------
+        True - if face is thin and its big side is a border,
+        False - otherwise.
+        """
+
+        if not self.is_thin():
+            return False
+
+        s = self.big_edge()
+
+        return len(s.faces) == 1
 
     def points(self):
         """
@@ -1318,21 +1340,6 @@ class Mesh:
         fs = [f for f in self.faces if p(f)]
 
         for f in fs:
-            self.delete_face(f)
-
-    def delete_thin_faces(self):
-        """
-        Delete thin triangles if big side has only one faces.
-        """
-
-        faces_to_delete = []
-        for f in self.faces:
-            if f.is_thin():
-                e = f.big_edge()
-                if len(e.faces) == 1:
-                    faces_to_delete.append(f)
-
-        for f in faces_to_delete:
             self.delete_face(f)
 
     def delete_edge(self, e):

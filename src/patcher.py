@@ -477,24 +477,20 @@ class Zipper(BorderCollector):
             z.nodes.append(n_i)
             z.nodes.append(n_j)
 
-            # Do not care about faces phys data.
-            f = self.mesh.faces[0].copy()
-            self.mesh.add_face(f, z)
-            eij = self.mesh.find_edge(n_i, n_j)
+            # Do not care about phys data.
+            f0 = self.mesh.faces[0]
 
             if len_i < len_j:
                 # Move i path.
                 z.nodes.append(nx_i)
-                e = self.mesh.add_edge(nx_i, n_j)
-                self.mesh.links([(n_i, f), (n_j, f), (nx_i, f), (e, f), (eij, f),
-                                 (self.mesh.find_edge(n_i, nx_i), f)])
+                f = self.mesh.add_face(n_i, n_j, nx_i, z)
+                f.copy_data_from(f0)
                 path_i.rot(1)
             else:
                 # Move j path.
                 z.nodes.append(nx_j)
-                e = self.mesh.add_edge(n_i, nx_j)
-                self.mesh.links([(n_i, f), (n_j, f), (nx_j, f), (e, f), (eij, f),
-                                 (self.mesh.find_edge(n_j, nx_j), f)])
+                f = self.mesh.add_face(n_i, n_j, nx_j, z)
+                f.copy_data_from(f0)
                 path_j.rot(1)
 
             n_i, n_j = path_i.els[0].obj.nodes[0], path_j.els[0].obj.nodes[0]
