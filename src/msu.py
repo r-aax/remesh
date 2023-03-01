@@ -1290,6 +1290,46 @@ class Mesh:
         # Remove from mesh.
         self.faces.remove(f)
 
+    def delete_faces(self, c):
+        """
+        Delete faces of the color.
+
+        Parameters
+        ----------
+        c : int
+            Color.
+        """
+
+        faces_to_delete = [f for f in self.faces if f['M'] == c]
+
+        for f in faces_to_delete:
+            self.delete_face(f)
+
+    def delete_pseudo_faces(self):
+        """
+        Delete all pseudo faces.
+        """
+
+        faces_to_delete = [f for f in self.faces if f.is_pseudo()]
+
+        for f in faces_to_delete:
+            self.delete_face(f)
+
+    def delete_thin_faces(self):
+        """
+        Delete thin triangles if big side has only one faces.
+        """
+
+        faces_to_delete = []
+        for f in self.faces:
+            if f.is_thin():
+                e = f.big_edge()
+                if len(e.faces) == 1:
+                    faces_to_delete.append(f)
+
+        for f in faces_to_delete:
+            self.delete_face(f)
+
     def delete_edge(self, e):
         """
         Delete edge.
@@ -1310,6 +1350,26 @@ class Mesh:
 
         # Remove from mesh.
         self.edges.remove(e)
+
+    def delete_edges_without_faces(self):
+        """
+        Delete edges without faces.
+        """
+
+        edges_to_delete = [e for e in self.edges if len(e.faces) == 0]
+
+        for e in edges_to_delete:
+            self.delete_edge(e)
+
+    def delete_pseudo_edges(self):
+        """
+        Delete all pseudo edges.
+        """
+
+        edges_to_delete = [e for e in self.edges if e.is_pseudo()]
+
+        for e in edges_to_delete:
+            self.delete_edge(e)
 
     def delete_node(self, n):
         """
@@ -1784,41 +1844,6 @@ class Mesh:
             if f['M'] == Mesh.ColorCommon:
                 f['M'] = Mesh.ColorToDelete
 
-    def delete_faces(self, c):
-        """
-        Delete faces of the color.
-
-        Parameters
-        ----------
-        c : int
-            Color.
-        """
-
-        faces_to_delete = [f for f in self.faces if f['M'] == c]
-
-        for f in faces_to_delete:
-            self.delete_face(f)
-
-    def delete_pseudo_edges(self):
-        """
-        Delete all pseudo edges.
-        """
-
-        edges_to_delete = [e for e in self.edges if e.is_pseudo()]
-
-        for e in edges_to_delete:
-            self.delete_edge(e)
-
-    def delete_pseudo_faces(self):
-        """
-        Delete all pseudo faces.
-        """
-
-        faces_to_delete = [f for f in self.faces if f.is_pseudo()]
-
-        for f in faces_to_delete:
-            self.delete_face(f)
-
     def throw_intersection_points_to_faces(self):
         """
         Find all self-intersections of the faces.
@@ -1878,22 +1903,7 @@ class Mesh:
 
         return has_edges or has_faces
 
-    def delete_thin_triangles(self):
-        """
-        Delete thin triangles if big side has only one faces.
-        """
-
-        faces_to_delete = []
-        for f in self.faces:
-            if f.is_thin():
-                e = f.big_edge()
-                if len(e.faces) == 1:
-                    faces_to_delete.append(f)
-
-        for f in faces_to_delete:
-            self.delete_face(f)
-
-    def split_thin_triangles(self):
+    def split_thin_faces(self):
         """
         Split thin triangles.
         """
