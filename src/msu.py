@@ -659,12 +659,16 @@ class Mesh:
         self.zones.clear()
         self.rounded_coordinates_bag.clear()
 
-    def print(self, print_faces_neighbourhood=False):
+    def print(self,
+              print_edges_with_incident_faces=False,
+              print_faces_neighbourhood=False):
         """
         Print information.
 
         Parameters
         ---------
+        print_edges_with_incident_faces : bool
+            Flag for print edges with incident faces.
         print_faces_neighbourhood : bool
             Flag for print faces with neighbourhood.
         """
@@ -673,6 +677,11 @@ class Mesh:
         print(f'Nodes ({len(self.nodes)}):\n  ', self.nodes)
         print(f'Edges ({len(self.edges)}):\n  ', self.edges)
         print(f'Faces ({len(self.faces)}):\n  ', self.faces)
+
+        if print_edges_with_incident_faces:
+            print('[EDGES WITH INCIDENT FACES]')
+            for e in self.edges:
+                print(e, ' --- ', e.faces)
 
         if print_faces_neighbourhood:
             print('[FACES WITH NEIGHBOURHOOD]')
