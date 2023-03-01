@@ -50,7 +50,7 @@ class Node:
             String.
         """
 
-        return f'Node {self.glo_id}'
+        return f'Node {self.glo_id} ({self.p})'
 
     def rounded_coordinates(self):
         """
@@ -1494,7 +1494,7 @@ class Mesh:
         f : Face
             Face to be splitted.
         p : Point
-            Point for spllit of None (in this case we split by center).
+            Point for split or None (in this case we split by center).
         """
 
         # Center point by default.
@@ -1507,6 +1507,11 @@ class Mesh:
 
         # New node.
         n = self.add_node(p, z)
+
+        # issue #7
+        # If node in face's nodes then it's nothing to split.
+        if n in f.nodes:
+            return
 
         # Add new faces.
         fab = self.add_face(a, b, n, z)
