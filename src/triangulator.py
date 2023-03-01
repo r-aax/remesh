@@ -1,4 +1,5 @@
-import numpy
+import numpy as np
+import geom
 
 
 class Triangulator:

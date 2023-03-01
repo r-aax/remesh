@@ -25,6 +25,28 @@ def points_dist(a, b):
     return la.norm(a - b)
 
 
+def points_sarea(a, b, c):
+    """
+    Signed area based on points.
+
+    Parameters
+    ----------
+    a : Point
+        First point.
+    b : Point
+        Second point.
+    c : Point
+        Third point.
+
+    Returns
+    -------
+    Vector
+        Signed area.
+    """
+
+    return np.cross(b - a, c - a)
+
+
 def points_area(a, b, c):
     """
     Area between points.
@@ -44,7 +66,38 @@ def points_area(a, b, c):
         Area between points.
     """
 
-    return 0.5 * la.norm(np.cross(b - a, c - a))
+    return 0.5 * la.norm(points_sarea(a, b, c))
+
+
+def is_ab_intersects_pq(a, b, p, q):
+    """
+    Check is ab segments intersects pq.
+
+    Parameters
+    ----------
+    a : Point
+        First point of first segment.
+    b : Point
+        Second point of first segment.
+    p : Point
+        First point of second segment.
+    q : Point
+        Second point of second segment.
+
+    Returns
+    -------
+    True - if segments intersect,
+    False - otherwise.
+    """
+
+    # If segments intersect then:
+    # 1) a and b lay in different sides of pq
+    # 2) p and q lay in different sides of ab
+
+    s1 = np.dot(points_sarea(p, q, a), points_sarea(p, q, b))
+    s2 = np.dot(points_sarea(a, b, p), points_sarea(a, b, q))
+
+    return (s1 < 0.0) and (s2 < 0.0)
 
 
 def is_points_near(a, b):
