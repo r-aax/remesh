@@ -617,9 +617,14 @@ class Mesh:
     ColorBorder = 2
     ColorFree = 3
 
-    def __init__(self):
+    def __init__(self, filename=None):
         """
         Initialization.
+
+        Parameters
+        ----------
+        filename : str
+            File for load.
         """
 
         # Comment and title - save for store.
@@ -636,6 +641,10 @@ class Mesh:
 
         # Target ice in the beginning of remeshing.
         self.initial_target_ice = 0.0
+
+        # Load.
+        if not filename is None:
+            self.load(filename)
 
     def clear(self):
         """
