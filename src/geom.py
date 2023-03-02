@@ -171,6 +171,39 @@ def delete_near_points(ps):
     return [ps[i] for i in range(l) if not delete_flags[i]]
 
 
+def rotation_matrix_from_vectors(vec1, vec2):
+    """
+    Get rotation matrix from vec1 to vec2.
+    Source:
+        https://stackoverflow.com/questions/45142959/calculate-rotation-matrix-to-align-two-vectors-in-3d-space
+
+    Parameters
+    ----------
+    vec1 : Vector
+        Vector from.
+    vec2 : Vector
+        Vector to.
+
+    Returns
+    -------
+    Matrix
+        Rotation matrix.
+    """
+
+    a, b = (vec1 / la.norm(vec1)).reshape(3), (vec2 / la.norm(vec2)).reshape(3)
+    v = np.cross(a, b)
+
+    if any(v):
+        c = np.dot(a, b)
+        s = la.norm(v)
+        kmat = np.array([[0.0, -v[2], v[1]],
+                         [v[2], 0.0, -v[0]],
+                         [-v[1], v[0], 0.0]])
+        return np.eye(3) + kmat + kmat.dot(kmat) * ((1.0 - c) / s**2)
+    else:
+        return np.eye(3)
+
+
 class Triangle:
     """
     Triangle - locus of points P:
