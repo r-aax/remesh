@@ -130,8 +130,8 @@ def case_02_self_intersections_elimination():
     """
 
     c = 'case_02_sie'
+    #f = '../cases/sphere_2.dat'
     f = '../cases/triangle_sphere_2.dat'
-    #f = '../cases/pseudogrids/ex2.dat'
 
     # Load.
     mesh = msu.Mesh(f)

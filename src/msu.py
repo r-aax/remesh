@@ -478,6 +478,13 @@ class Face:
 
         return [self.neighbour(e) for e in self.edges if len(e.faces) == 2]
 
+    def reverse_normal(self):
+        """
+        Reverse normal.
+        """
+
+        self.nodes[0], self.nodes[1] = self.nodes[1], self.nodes[0]
+
     def normals(self):
         """
         Get normals.
@@ -1646,10 +1653,18 @@ class Mesh:
         tr = triangulator.Triangulator([n.p for n in ns])
         idx = tr.find_triangulation_indices()
 
+        # Normal of face.
+        f_normal = f.triangle().normal()
+
         # New faces.
         for ai, bi, ci in idx:
             nf = self.add_face(ns[ai], ns[bi], ns[ci], f.zone)
             nf.copy_data_from(f)
+            nf_normal = nf.triangle().normal()
+
+            # If f_normal and nf_normal are not codirectional, then flip normal.
+            if np.dot(f_normal, nf_normal) < 0.0:
+                nf.reverse_normal()
 
         # Finally delete the face.
         self.delete_face(f)

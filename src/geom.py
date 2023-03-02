@@ -285,6 +285,21 @@ class Triangle:
 
         return points_area(self.points[0], self.points[1], self.points[2])
 
+    def normal(self):
+        """
+        Get normal.
+
+        Returns
+        -------
+        Vector
+            Normal.
+        """
+
+        n = np.cross(self.points[1] - self.points[0], self.points[2] - self.points[0])
+        n = n / la.norm(n)
+
+        return n
+
     def areas_difference(self, p):
         """
         Measure for p in triagle.
