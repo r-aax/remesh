@@ -1582,6 +1582,7 @@ class Mesh:
             p = e.center()
 
         # Split all incident faces.
+        print('FACES : ', e.faces)
         for f in e.faces:
             assert not f.is_pseudo()
 
@@ -1605,6 +1606,8 @@ class Mesh:
             li[li.index(e.nodes[0])] = n
             f1 = self.add_face(li[0], li[1], li[2], z)
             f1.copy_data_from(f)
+
+            print('split : ', f, f.triangle().area(), ' -> ', f0, f1)
 
         # Delete edge.
         self.delete_edge(e)

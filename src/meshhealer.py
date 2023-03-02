@@ -130,8 +130,8 @@ def case_02_self_intersections_elimination():
     """
 
     c = 'case_02_sie'
-    #f = '../cases/sphere_2.dat'
     f = '../cases/triangle_sphere_2.dat'
+    # f = '../cases/bunny_2.dat'
 
     # Load.
     mesh = msu.Mesh(f)
@@ -145,17 +145,14 @@ def case_02_self_intersections_elimination():
     store_and_say(mesh, f'../{c}_ph_02_cut.dat')
 
     # Delete bad triangles.
-    mesh.delete_faces(lambda f: f.is_thin_with_border_big_edge())
-    mesh.split_thin_faces()
-    mesh.delete_edges(lambda e: e.is_pseudo())
-    assert not mesh.has_thin_triangles()
-    store_and_say(mesh, f'../{c}_ph_03_del.dat')
+    mesh.walk_surface(mesh.lo_face(0), msu.Mesh.ColorFree)
+    store_and_say(mesh, f'../{c}_ph_03_walk.dat')
 
     # Delete all inner triangles.
-    mesh.walk_surface(mesh.lo_face(0), msu.Mesh.ColorFree)
     mesh.delete_faces(lambda f: f['M'] == msu.Mesh.ColorToDelete)
     mesh.print(print_faces_neighbourhood=True, print_edges_with_incident_faces=True)
     store_and_say(mesh, f'../{c}_ph_04_del2.dat')
+
 
 def case_04_triangle_multisplit(cnt=10):
     """
