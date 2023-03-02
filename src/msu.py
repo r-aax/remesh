@@ -454,7 +454,7 @@ class Face:
 
         Returns
         -------
-        Node
+        Face | None
             Neighbour face or None.
         """
 
@@ -466,6 +466,36 @@ class Face:
             return e.faces[0]
         else:
             return None
+
+    def outer_neighbour(self, e):
+        """
+        Outer neighbour.
+
+        Parameters
+        ----------
+        e : Edge
+            Edge.
+
+        Returns
+        -------
+        Face | None
+        """
+
+        # Take all pretenders faces.
+        pretenders = [f for f in e.faces if f != self]
+
+        if not pretenders:
+            return None
+
+        n = self.triangle().normal()
+
+        # Take pretenders center position factors and choose max.
+        factors = [np.dot(n, f.center() - e.center()) for f in pretenders]
+        i = np.argmax(factors)
+
+        assert factors[i] > 0.0
+
+        return pretenders[i]
 
     def neighbourhood(self):
         """
@@ -1976,8 +2006,13 @@ class Mesh:
                 continue
             f['M'] = mark_color
             for e in f.edges:
-                if len(e.faces) == 2:
+                neighbours_count = len(e.faces)
+                if neighbours_count == 2:
                     li.append(f.neighbour(e))
+                elif neighbours_count > 2:
+                    on = f.outer_neighbour(e)
+                    if on:
+                        li.append(on)
 
         for f in self.faces:
             if f['M'] == Mesh.ColorCommon:
