@@ -1,5 +1,7 @@
 import numpy as np
+import numpy.linalg as la
 import geom
+import scipy
 
 
 class Triangulator:
@@ -19,34 +21,6 @@ class Triangulator:
 
         self.ps = ps
 
-    def find_pairs_indices(self):
-        """
-        Find indices for pairs.
-
-        Returns
-        -------
-        [(int, int)]
-            List of tuples.
-        """
-
-        # Create a, b pairs with distance and indixes.
-        pairs = []
-        for i, a in enumerate(self.ps):
-            for j, b in enumerate(self.ps):
-                if j > i:
-                    pairs.append((geom.points_dist(a, b), i, a, j, b))
-        pairs.sort(key=lambda x: x[0])
-
-        # Create pairs without intersections.
-        ss = []
-        ind = []
-        for _, i, a, j, b in pairs:
-            if not geom.if_ab_intersects_any_segment(a, b, ss):
-                ss.append((a, b))
-                ind.append((i, j))
-
-        return ind
-
     def find_triangulation_indices(self):
         """
         Find indices for triangulation.
@@ -57,32 +31,41 @@ class Triangulator:
             List of indices for triangulation.
         """
 
-        l = len(self.ps)
-        a = np.zeros((l, l, l))
+        # Parallel move all points to [0] point.
+        v = self.ps[0].copy()
+        ps2 = [p - v for p in self.ps]
 
-        # Get pairs indices.
-        pinds = self.find_pairs_indices()
-        for i, j in pinds:
-            for k in range(l):
-                a[k, i, j] += 1
-                a[i, k, j] += 1
-                a[i, j, k] += 1
+        # Find normal of tri and target normal.
+        n = np.cross(ps2[1], ps2[2])
+        n = n / la.norm(n)
+        nxy = np.array([0.0, 0.0, 1.0])
 
-        # Get triangulation indices.
-        tri = []
-        for i in range(l):
-            for j in range(i + 1, l):
-                for k in range(j + 1, l):
-                    if a[i, j, k] == 3:
-                        tri.append((i, j, k))
+        # Rotate all points to 0XY.
+        m = geom.rotation_matrix_from_vectors(n, nxy)
+        ps2 = [m.dot(p) for p in ps2]
 
-        if (0, 1, 2) in tri:
-            tri.remove((0, 1, 2))
+        # Triangulation.
+        ps2 = [[p[0], p[1]] for p in ps2]
+        tri = scipy.spatial.Delaunay(ps2)
+        simp = tri.simplices
 
-        return tri
+        return [(s[0], s[1], s[2]) for s in simp]
 
 
 if __name__ == '__main__':
+
+    # Simple case: 1 point in triangle.
     tr = Triangulator([np.array([0, 0, 0]), np.array([1, 0, 0]), np.array([0, 1, 0]), np.array([0.2, 0.2, 0])])
     idx = tr.find_triangulation_indices()
-    assert idx == [(0, 1, 3), (0, 2, 3), (1, 2, 3)]
+    assert idx == [(1, 3, 0), (3, 2, 0), (2, 3, 1)]
+
+    # Point on side.
+    tr = Triangulator([np.array([0, 0, 0]), np.array([2, 0, 0]), np.array([1, 1, 0]), np.array([1, 0, 0])])
+    idx = tr.find_triangulation_indices()
+    assert idx == [(3, 2, 0), (2, 3, 1)]
+
+    # "False triangle". 2 points.
+    tr = Triangulator([np.array([0, 0, 0]), np.array([2, 0, 0]), np.array([1, 1, 0]),
+                       np.array([0.8, 0.2, 0]), np.array([1.2, 0.4, 0])])
+    idx = tr.find_triangulation_indices()
+    assert idx == [(1, 3, 0), (3, 2, 0), (2, 4, 1), (4, 3, 1), (3, 4, 2)]
