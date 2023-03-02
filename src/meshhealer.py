@@ -150,6 +150,7 @@ def case_02_self_intersections_elimination():
 
     # Delete bad triangles.
     mesh.walk_surface(mesh.lo_face(0), msu.Mesh.ColorFree)
+    mesh.add_additional_data_for_analysis()
     store_and_say(mesh, f'../{c}_ph_03_walk.dat')
 
     # Delete all inner triangles.

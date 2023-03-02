@@ -1306,26 +1306,38 @@ class Mesh:
 
         # Additional data for analyzis.
         for f in self.faces:
+
+            # Face normal.
+            f.calculate_normal()
             v = f.normal
             f['NX'] = v[0]
             f['NY'] = v[1]
             f['NZ'] = v[2]
             f['NMod'] = LA.norm(v)
+
+            # First node normal.
             v = f.nodes[0].normal
-            f['N1X'] = v[0]
-            f['N1Y'] = v[1]
-            f['N1Z'] = v[2]
-            f['N1Mod'] = LA.norm(v)
+            if v:
+                f['N1X'] = v[0]
+                f['N1Y'] = v[1]
+                f['N1Z'] = v[2]
+                f['N1Mod'] = LA.norm(v)
+
+            # Second node normal.
             v = f.nodes[1].normal
-            f['N2X'] = v[0]
-            f['N2Y'] = v[1]
-            f['N2Z'] = v[2]
-            f['N2Mod'] = LA.norm(v)
+            if v:
+                f['N2X'] = v[0]
+                f['N2Y'] = v[1]
+                f['N2Z'] = v[2]
+                f['N2Mod'] = LA.norm(v)
+
+            # Third node normal.
             v = f.nodes[2].normal
-            f['N3X'] = v[0]
-            f['N3Y'] = v[1]
-            f['N3Z'] = v[2]
-            f['N3Mod'] = LA.norm(v)
+            if v:
+                f['N3X'] = v[0]
+                f['N3Y'] = v[1]
+                f['N3Z'] = v[2]
+                f['N3Mod'] = LA.norm(v)
 
     def calculate_nodes_normals(self):
         """
