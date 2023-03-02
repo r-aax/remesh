@@ -300,6 +300,33 @@ class Triangle:
 
         return n
 
+    def min_height(self):
+        """
+        Min height.
+
+        Returns
+        -------
+        float
+            Min height.
+        """
+
+        a, b, c = self.points[0], self.points[1], self.points[2]
+        bs = max([points_dist(a, b), points_dist(b, c), points_dist(a, c)])
+
+        return self.area() / (0.5 * bs)
+
+    def is_thin(self):
+        """
+        Check if triangle thin.
+
+        Returns
+        -------
+        True - if it is this,
+        False - otherwise.
+        """
+
+        return self.min_height() < mth.EPS
+
     def areas_difference(self, p):
         """
         Measure for p in triagle.

@@ -378,6 +378,18 @@ class Face:
 
         return (a == b) or (b == c) or (a == c)
 
+    def min_height(self):
+        """
+        Minimal height.
+
+        Returns
+        -------
+        float
+            Minimal height.
+        """
+
+        return self.triangle().area() / (0.5 * self.big_edge().length())
+
     def is_thin(self):
         """
         Check face for thin.
@@ -388,7 +400,7 @@ class Face:
         False - if it's not.
         """
 
-        return (not self.is_pseudo()) and (self.triangle().area() < mth.EPS)
+        return (not self.is_pseudo()) and self.triangle().is_thin()
 
     def is_thin_with_border_big_edge(self):
         """
@@ -474,10 +486,17 @@ class Face:
         Returns
         -------
         [Face]
-            List of neighbour faces.
+            List of neighbour faces (by all edges).
         """
 
-        return [self.neighbour(e) for e in self.edges if len(e.faces) == 2]
+        nh = []
+
+        for e in self.edges:
+            for f in e.faces:
+                if f != self:
+                    nh.append(f)
+
+        return nh
 
     def reverse_normal(self):
         """
@@ -724,12 +743,13 @@ class Mesh:
         if print_edges_with_incident_faces:
             print('[EDGES WITH INCIDENT FACES]')
             for e in self.edges:
-                print(e, ' --- ', e.faces)
+                print(f'{e} --- [l = {e.length()}] --- {len(e.faces)}/{e.faces}')
 
         if print_faces_neighbourhood:
             print('[FACES WITH NEIGHBOURHOOD]')
             for f in self.faces:
-                print(f, ' --- ', f.triangle().area(), ' --- ', f.neighbourhood())
+                nh = f.neighbourhood()
+                print(f'{f} --- [s = {f.triangle().area()}] --- {len(nh)}/{nh}')
 
     def find_near_node(self, node):
         """
@@ -1237,6 +1257,10 @@ class Mesh:
             # Store zones.
             for zone in self.zones:
 
+                # Do not store empty zones.
+                if len(zone.nodes) == 0:
+                    continue
+
                 # Store zone head.
                 f.write(f'ZONE T="{zone.name}"\n')
                 f.write(f'NODES={len(zone.nodes)}\n')
@@ -1683,6 +1707,11 @@ class Mesh:
 
         # New faces.
         for ai, bi, ci in idx:
+
+            triangle = geom.Triangle(ns[ai].p, ns[bi].p, ns[ci].p)
+            if triangle.is_thin():
+                continue
+
             nf = self.add_face(ns[ai], ns[bi], ns[ci], f.zone)
             nf.copy_data_from(f)
             nf_normal = nf.triangle().normal()
