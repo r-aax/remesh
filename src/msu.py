@@ -127,6 +127,7 @@ class Edge:
         self.faces = []
         self.nodes = []
 
+
     def __repr__(self):
         """
         String representation.
@@ -758,7 +759,7 @@ class Mesh:
 
         raise Exception('Internal error')
 
-    def find_edge(self, a, b):
+    def find_edge(self, a, b, except_edge=None):
         """
         Find edge with two nodes.
 
@@ -768,7 +769,8 @@ class Mesh:
             First node.
         b : Node.
             Second node.
-
+        except_edge: Edge
+        parameter for searching double edges
         Returns
         -------
         Edge | None
@@ -776,7 +778,7 @@ class Mesh:
         """
 
         for e in a.edges:
-            if a.neighbour(e) == b:
+            if a.neighbour(e) == b and e != except_edge:
                 return e
 
         # Not found.
@@ -1448,14 +1450,32 @@ class Mesh:
         for n in ns:
             self.delete_node(n)
 
-    def delete_double_face(self, delete_faces):
+    def delete_face_group(self, f):
+        """
+        e: Edge
+        Delete all edges that can be reached from e
+        """
+        face_group = []
+        queue = []
+        face_group.append(f)
+        queue.append(f)
+        while queue:
+            m = queue.pop(0)
+            for neighbour in m.neighbourhood():
+                if neighbour not in face_group:
+                    face_group.append(neighbour)
+                    queue.append(neighbour)
+        for face in face_group:
+                self.delete_face(face)
+
+    def delete_double_face(self, double_faces):
         """
         Delete double face.
         """
         double_edge = None
         useful_nodes = None
         # search for double edge
-        for n in delete_faces[0].nodes:
+        for n in double_faces[0].nodes:
             edge_counter = {}
             for e in n.edges:
                 # edge can be reverced
@@ -1471,17 +1491,24 @@ class Mesh:
                 double_edge = self.find_edge(useful_nodes[0], useful_nodes[1])
                 break
         assert double_edge is not None
-        unuseful_node = delete_faces[0].third_node(double_edge)
-        self.delete_node(unuseful_node)
-        while double_edge.faces:
-            self.unlink(double_edge, double_edge.faces[0])
-        self.delete_edge(double_edge)
-        # local restore edge neigbour faces
-        a, b = useful_nodes[0], useful_nodes[1]
-        useful_edge = self.find_edge(a, b)
-        for f in a.faces:
-            if f in b.faces and f not in useful_edge.faces:
+        self.find_and_delete_double_edge(double_edge)
+
+    def find_and_delete_double_edge(self, double_edge):
+        useful_edge = self.find_edge(double_edge.nodes[0], double_edge.nodes[1], except_edge=double_edge)
+        if useful_edge is None:
+            return
+        faces_to_check = [f for f in double_edge.faces]
+        useful_edge_face_sets = [set(f.nodes) for f in useful_edge.faces]
+        for f in faces_to_check:
+            if set(f.nodes) in useful_edge_face_sets:
+                f_to_delete = useful_edge.faces[useful_edge_face_sets.index(set(f.nodes))]
+                self.unlink(useful_edge, f_to_delete)
+            else:
                 self.link(useful_edge, f)
+                self.unlink(double_edge, f)
+        assert len(double_edge.faces) == 1
+        self.delete_face_group(double_edge.faces[0])
+
 
     def reduce_edge(self, e, move=True):
         """
@@ -1499,12 +1526,14 @@ class Mesh:
 
         # Replace b node with a node in all faces.
         delete_faces = [f for f in e.faces]
-
         #check if this is double triangle
         if len(delete_faces) == 2 and set(delete_faces[0].nodes) == set(delete_faces[1].nodes):
             self.delete_double_face(delete_faces)
             return
-
+        #deleting contour must be good
+        for f in delete_faces:
+            for fe in f.edges:
+                self.find_and_delete_double_edge(fe)
         # Delete extra node and faces.
         for f in delete_faces:
             c = f.third_node(e)
@@ -1531,10 +1560,6 @@ class Mesh:
                     self.unlink(b, edge)
                     edge.nodes.append(a)
                     a.edges.append(edge)
-
-        # We need no b node anymore if it is isolated.
-        if not b.faces:
-            self.delete_node(b)
 
     def split_edge(self, e, p=None):
         """
@@ -1699,7 +1724,7 @@ class Mesh:
             i = np.argmin(areas_diffs)
             pps[i].append(p)
         for i in range(3):
-            self.multisplit_face(fs[i], pps[i])
+            self.bad_multisplit_face(fs[i], pps[i])
 
     def parallel_move(self, v):
         """

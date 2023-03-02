@@ -157,7 +157,6 @@ def case_02_self_intersections_elimination():
     mesh.print(print_faces_neighbourhood=True, print_edges_with_incident_faces=True)
     store_and_say(mesh, f'../{c}_ph_04_del2.dat')
 
-
 def case_04_triangle_multisplit(cnt=10):
     """
     Case 04.
@@ -177,7 +176,7 @@ def case_04_triangle_multisplit(cnt=10):
     random_points = []
     for _ in range(cnt):
         random_points.append(t.random_point())
-    mesh.multisplit_face(mesh.faces[0], random_points)
+    mesh.bad_multisplit_face(mesh.faces[0], random_points)
     store_and_say(mesh, f'../{c}_ph_02_multisplit.dat')
     return mesh
 
@@ -185,10 +184,10 @@ def case_04_triangle_multisplit(cnt=10):
 def case_05_triangle_multisplit_and_reduce():
     c = 'case_05_triangle_multisplit_and_reduce'
     f = '../cases/pseudogrids/ex1.dat'
-    #mesh = case_04_triangle_multisplit(c, f, 5)
-    mesh = msu.Mesh('../case_05_triangle_multisplit_and_reduce_ph_02_multisplit.dat')
+    #mesh = case_04_triangle_multisplit(cnt=10)
+    mesh = msu.Mesh('../case_05_triangle_multisplit_and_reduce_ph_03_reduce_0.dat')
     mesh.calculate_faces_areas()
-    min_area = 0.06
+    min_area = 0.03
     reduce_counter = 0
     store_and_say(mesh, f'../{c}_ph_03_reduce_{reduce_counter}.dat')
     flag = True
