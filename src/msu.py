@@ -378,18 +378,6 @@ class Face:
 
         return (a == b) or (b == c) or (a == c)
 
-    def min_height(self):
-        """
-        Minimal height.
-
-        Returns
-        -------
-        float
-            Minimal height.
-        """
-
-        return self.triangle().area() / (0.5 * self.big_edge().length())
-
     def is_thin(self):
         """
         Check face for thin.

@@ -139,7 +139,6 @@ def case_02_self_intersections_elimination():
 
     # Load.
     mesh = msu.Mesh(f)
-    # mesh.delete_faces(lambda f: f.glo_id not in [301, 2927, 5778])
     mesh.delete_edges(lambda e: e.is_faces_free())
     mesh.delete_nodes(lambda n: n.is_isolated())
     store_and_say(mesh, f'../{c}_ph_01_orig.dat')
