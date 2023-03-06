@@ -1808,22 +1808,15 @@ class Mesh:
             Mesh.
         """
 
-        # Create new zone and add united mesh to it.
-        z = Zone('unite')
-        self.zones.append(z)
+        # Correct m zones names.
+        for z in m.zones:
+            z.name = z.name + ' (unite)'
 
-        # Add nodes and faces to new zone.
-        for n in m.nodes:
-            self.add_node(n.p, z)
-        for f in m.faces:
-            new_f = Face()
-            new_f.copy_data_from(f)
-            self.add_face(new_f, z)
-            self.links([(z.nodes[m.nodes.index(f.nodes[0])], new_f),
-                        (z.nodes[m.nodes.index(f.nodes[1])], new_f),
-                        (z.nodes[m.nodes.index(f.nodes[2])], new_f)])
-
-        self.create_edges()
+        # Dumb direct merge (may be incorrect).
+        self.zones = self.zones + m.zones
+        self.nodes = self.nodes + m.nodes
+        self.edges = self.edges + m.edges
+        self.faces = self.faces + m.faces
 
     def triangles_list(self):
         """
