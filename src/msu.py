@@ -697,7 +697,7 @@ class Mesh:
     ColorBorder = 2
     ColorFree = 3
 
-    def __init__(self, filename=None):
+    def __init__(self, filename=None, is_merge_nodes=True):
         """
         Initialization.
 
@@ -705,6 +705,8 @@ class Mesh:
         ----------
         filename : str
             File for load.
+        is_merge_nodes : bool
+            Is merge nodes flag.
         """
 
         # Comment and title - save for store.
@@ -724,7 +726,7 @@ class Mesh:
 
         # Load.
         if not filename is None:
-            self.load(filename)
+            self.load(filename, is_merge_nodes=is_merge_nodes)
 
     def clear(self):
         """
@@ -900,7 +902,7 @@ class Mesh:
         else:
             return -1
 
-    def add_node(self, p, zone):
+    def add_node(self, p, zone, is_merge_nodes=True):
         """
         Add node to mesh.
         This is only way to add node into mesh.
@@ -911,6 +913,8 @@ class Mesh:
             Point.
         zone : Zone
             Zone to add node to.
+        is_merge_nodes : bool
+            Is merge nodes flag.
 
         Returns
         -------
@@ -920,7 +924,11 @@ class Mesh:
         """
 
         n = Node(p)
-        found_node = self.find_near_node(n)
+
+        if is_merge_nodes:
+            found_node = self.find_near_node(n)
+        else:
+            found_node = None
 
         if found_node is None:
             max_glo_id = self.max_node_glo_id()
@@ -1141,7 +1149,7 @@ class Mesh:
                 e = self.add_edge(first, second)
                 self.link(e, f)
 
-    def load(self, filename):
+    def load(self, filename, is_merge_nodes=True):
         """
         Load mesh.
 
@@ -1149,6 +1157,8 @@ class Mesh:
         ----------
         filename : str
             Name of file.
+        is_merge_nodes : bool
+            Is merge nodes flag.
         """
 
         variables = []
@@ -1217,7 +1227,7 @@ class Mesh:
                         line = f.readline()
                         c.append([float(xi) for xi in line.split()])
                     for i in range(nodes_to_read):
-                        self.add_node(np.array([c[0][i], c[1][i], c[2][i]]), zone)
+                        self.add_node(np.array([c[0][i], c[1][i], c[2][i]]), zone, is_merge_nodes=is_merge_nodes)
 
                     # Read data for faces.
                     d = []

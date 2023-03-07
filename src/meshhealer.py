@@ -136,6 +136,8 @@ def case_02_self_intersections_elimination():
     # f = '../cases/sphere_2.dat'
     # Hard case.
     # f = '../cases/bunny_2.dat'
+    # Extra case.
+    # f = '../cases/dragon_2.dat'
 
     # Load.
     mesh = msu.Mesh(f)
