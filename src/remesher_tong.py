@@ -5,6 +5,13 @@ from numpy import linalg as LA
 from scipy import linalg as sLA
 from remesher import Remesher
 
+def is_face_thin(f, min_angle = 0.26, max_angle = 2.6):
+    """
+    Returns True if face trianle is thin
+    """
+    angle = f.inner_angle(f.nodes[0])
+    return angle < min_angle or angle > max_angle
+
 def node_calculate_A_and_b(node):
     """
     Calculate martrices for equation Ax=b for primary and null space calculation
@@ -49,6 +56,28 @@ def face_calculate_jiao_coefs(face):
     face.jiao_coef_b = c0 @ (np.cross(p21, u31) - np.cross(p31,u21))
     face.jiao_coef_c = c0 @ np.cross(u21, u31)
 
+def find_min_faces(mesh, threshold):
+    """
+    calculation of faces with minimal tsf
+
+    Parameters
+    ----------
+    mesh : Mesh
+        Mesh with faces
+    threshold : float
+        threshold to separate minimal faces
+
+    Returns
+    -------
+    [Face]
+        minimal faces
+    """
+    min_faces = []
+    for f in mesh.faces:
+        if f.tsf < threshold:
+            min_faces.append(f)
+    return min_faces
+
 
 def face_calculate_v_coefs(face):
     """
@@ -84,6 +113,8 @@ def primary_and_null_space(A, threshold):
     float matrix, float matrix, float vector, int
         primary space, null space, eigen values of A, rank of primary space
     """
+    if len(A.shape)!=2:
+        print(A)
     eigen_values_original, eigen_vectors_original = sLA.eig(A)
     eigen_values_original = eigen_values_original.real
     eigen_vectors_original = eigen_vectors_original.real
@@ -164,11 +195,11 @@ class RemesherTong(Remesher):
 
     def inner_remesh(self,
                      mesh,
-                     steps=1,
+                     steps=6,
                      is_simple_tsf=False,
                      normal_smoothing_steps=30, normal_smoothing_s=10.0, normal_smoothing_k=0.15,
                      height_smoothing_steps=20, time_step_fraction_k=0.25, null_space_smoothing_steps=10,
-                     threshold_for_null_space=0.03, height_smoothing_alpha=0.2, height_smoothing_b=0.2):
+                     threshold_for_null_space=0.03, height_smoothing_alpha=0.2, height_smoothing_b=0.2, eps_for_edge_reduce = 1e-02):
         """
         Remesh.
 
@@ -253,10 +284,25 @@ class RemesherTong(Remesher):
                 print(f'break on tsf = 1.0')
                 break
 
+            if tsf <= eps_for_edge_reduce:
+                min_faces = find_min_faces(mesh, eps_for_edge_reduce)
+                all_cnt = len(min_faces)
+                del_cnt = 0
+                while min_faces:
+                    current_face = min_faces.pop()
+                    if current_face and is_face_thin(current_face):
+                        current_edges = current_face.edges
+                        edge_to_del = sorted(current_edges, key=lambda e: e.length())[-1]
+                        mesh.reduce_edge(edge_to_del)
+                        del_cnt += 1
+                if del_cnt>0:
+                    print(f'Checked {all_cnt} faces, deleted {del_cnt} thin triangles')
+
             # Break on maximum steps number.
             if step_i == steps:
                 print(f'break on max_steps ({steps})')
                 break
+
 
             # Recalculate areas and normals for next iteration.
             mesh.calculate_faces_areas()

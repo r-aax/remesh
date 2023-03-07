@@ -7,6 +7,8 @@ import triangulator
 
 # Count of valuable digits (after dot) in node coordinates.
 # If coordinates of nodes doesn't differ in valuable digits we consider them equal.
+from src.meshhealer import store_and_say
+
 NODE_COORDINATES_VALUABLE_DIGITS_COUNT = 10
 
 # String of export.
@@ -1563,6 +1565,19 @@ class Mesh:
         assert len(double_edge.faces) == 1
         self.delete_face_group(double_edge.faces[0])
 
+    def new_reduce_edge(self, e):
+        """
+        Reduce edge.
+
+        Parameters
+        ----------
+        e : Edge
+        Edge.
+        """
+        connections = {}
+        e.nodes[0].p = 0.5 * (e.nodes[0].p + e.nodes[1].p)
+        # work in process
+
 
     def reduce_edge(self, e, move=True):
         """
@@ -1588,6 +1603,7 @@ class Mesh:
         for f in delete_faces:
             for fe in f.edges:
                 self.find_and_delete_double_edge(fe)
+        delete_faces = [f for f in e.faces]
         # Delete extra node and faces.
         for f in delete_faces:
             c = f.third_node(e)
@@ -1614,6 +1630,8 @@ class Mesh:
                     self.unlink(b, edge)
                     edge.nodes.append(a)
                     a.edges.append(edge)
+        if b is not None:
+            self.delete_node(b)
 
     def split_edge(self, e, p=None):
         """
@@ -1976,7 +1994,7 @@ class Mesh:
                 for f1 in n.faces:
                     li.append(f1)
 
-    def walk_surface(self, start, mark_color):
+    def walk_surface(self, start, mark_color, log = False):
         """
         Walk mesh surface.
 
@@ -1986,14 +2004,19 @@ class Mesh:
             Start face.
         mark_color : int
             Mark color.
+        log : Bool
+            Logging intermediate states
         """
 
         for f in self.faces:
             f['M'] = Mesh.ColorCommon
 
         li = [start]
-
+        iter = 0
         while li:
+            iter += 1
+            if log and iter % 100 == 0:
+                store_and_say(self, f'../coloring_{iter}.dat')
             f = li.pop()
             if f['M'] == mark_color:
                 continue

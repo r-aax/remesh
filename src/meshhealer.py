@@ -131,11 +131,11 @@ def case_02_self_intersections_elimination():
 
     c = 'case_02_sie'
     # Light case.
-    f = '../cases/triangle_sphere_2.dat'
+    #f = '../cases/triangle_sphere_2.dat'
     # Medium case.
     # f = '../cases/sphere_2.dat'
     # Hard case.
-    # f = '../cases/bunny_2.dat'
+    f = '../cases/bunny_2.dat'
 
     # Load.
     mesh = msu.Mesh(f)
@@ -186,8 +186,8 @@ def case_04_triangle_multisplit(cnt=10):
 def case_05_triangle_multisplit_and_reduce():
     c = 'case_05_triangle_multisplit_and_reduce'
     f = '../cases/pseudogrids/ex1.dat'
-    #mesh = case_04_triangle_multisplit(cnt=10)
-    mesh = msu.Mesh('../case_05_triangle_multisplit_and_reduce_ph_03_reduce_0.dat')
+    mesh = case_04_triangle_multisplit(cnt=5)
+    #mesh = msu.Mesh('../case_05_triangle_multisplit_and_reduce_ph_03_reduce_0.dat')
     mesh.calculate_faces_areas()
     min_area = 0.03
     reduce_counter = 0
