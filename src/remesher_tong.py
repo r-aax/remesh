@@ -164,7 +164,7 @@ class RemesherTong(Remesher):
 
     def inner_remesh(self,
                      mesh,
-                     steps=10,
+                     steps=1,
                      is_simple_tsf=False,
                      normal_smoothing_steps=30, normal_smoothing_s=10.0, normal_smoothing_k=0.15,
                      height_smoothing_steps=20, time_step_fraction_k=0.25, null_space_smoothing_steps=10,

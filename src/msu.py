@@ -1347,7 +1347,7 @@ class Mesh:
 
             # First node normal.
             v = f.nodes[0].normal
-            if v:
+            if v is not None:
                 f['N1X'] = v[0]
                 f['N1Y'] = v[1]
                 f['N1Z'] = v[2]
@@ -1355,7 +1355,7 @@ class Mesh:
 
             # Second node normal.
             v = f.nodes[1].normal
-            if v:
+            if v is not None:
                 f['N2X'] = v[0]
                 f['N2Y'] = v[1]
                 f['N2Z'] = v[2]
@@ -1363,7 +1363,7 @@ class Mesh:
 
             # Third node normal.
             v = f.nodes[2].normal
-            if v:
+            if v is not None:
                 f['N3X'] = v[0]
                 f['N3Y'] = v[1]
                 f['N3Z'] = v[2]
