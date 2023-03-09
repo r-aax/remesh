@@ -2067,14 +2067,36 @@ class Mesh:
         for f in self.faces:
             f.int_points = geom.delete_near_points(f.int_points)
 
-    def multisplit_by_intersection_points(self):
+    def multisplit_by_intersection_points(self, is_collect_stat=False):
         """
         Multisplit faces by intersection points.
+
+        Parameters
+        ----------
+        is_collect_stat : bool
+            Flag for collecting statistics.
         """
+
+        # Init stat.
+        if is_collect_stat:
+            d = dict()
 
         ff = [f for f in self.faces]
         for f in ff:
-            self.multisplit_face(f, f.int_points)
+            ps = f.int_points
+
+            if is_collect_stat:
+                l = len(ps)
+                if l in d:
+                    d[l] = d[l] + 1
+                else:
+                    d[l] = 1
+
+            self.multisplit_face(f, ps)
+
+        # Print stat.
+        if is_collect_stat:
+            print(f'multisplit_by_intersection_points stat : {d}')
 
     def has_thin_triangles(self):
         """
