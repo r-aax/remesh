@@ -135,9 +135,9 @@ def case_02_self_intersections_elimination():
     # Medium case.
     # f = '../cases/sphere_2.dat'
     # Hard case.
-    f = '../cases/bunny_2.dat'
+    #f = '../cases/bunny_2.dat'
     # Extra case.
-    # f = '../cases/dragon_2.dat'
+    f = '../cases/dragon_2.dat'
 
     # Load.
     mesh = msu.Mesh(f)
@@ -188,10 +188,10 @@ def case_04_triangle_multisplit(cnt=10):
 def case_05_triangle_multisplit_and_reduce():
     c = 'case_05_triangle_multisplit_and_reduce'
     f = '../cases/pseudogrids/ex1.dat'
-    mesh = case_04_triangle_multisplit(cnt=5)
+    mesh = case_04_triangle_multisplit(cnt=10)
     #mesh = msu.Mesh('../case_05_triangle_multisplit_and_reduce_ph_03_reduce_0.dat')
     mesh.calculate_faces_areas()
-    min_area = 0.03
+    min_area = 0.05
     reduce_counter = 0
     store_and_say(mesh, f'../{c}_ph_03_reduce_{reduce_counter}.dat')
     flag = True
@@ -203,7 +203,7 @@ def case_05_triangle_multisplit_and_reduce():
                 f = faces[0]
                 fedges = sorted(f.edges, key=lambda e: e.length())
                 print(f, fedges[0])
-                mesh.reduce_edge(fedges[0], move=False)
+                mesh.reduce_edge(fedges[0])
                 reduce_counter+=1
                 store_and_say(mesh, f'../{c}_ph_03_reduce_{reduce_counter}.dat')
     print(f'{reduce_counter} edges reduced')
@@ -213,4 +213,3 @@ if __name__ == '__main__':
     #case_01_zip()
     case_02_self_intersections_elimination()
     #case_04_triangle_multisplit()
-    #case_05_triangle_multisplit_and_reduce()

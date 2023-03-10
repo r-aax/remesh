@@ -293,7 +293,9 @@ class RemesherTong(Remesher):
                     if current_face and is_face_thin(current_face):
                         current_edges = current_face.edges
                         edge_to_del = sorted(current_edges, key=lambda e: e.length())[-1]
-                        mesh.reduce_edge(edge_to_del)
+                        changed_faces = mesh.reduce_edge(edge_to_del)
+                        #for cf in changed_faces:
+                        #    min_faces.append(cf)
                         del_cnt += 1
                 if del_cnt>0:
                     print(f'Checked {all_cnt} faces, deleted {del_cnt} thin triangles')

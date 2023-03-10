@@ -1389,7 +1389,7 @@ class Mesh:
         for n in self.nodes:
             n.normal = sum(map(lambda f: f.normal, n.faces)) / len(n.faces)
 
-    def delete_face(self, f):
+    def delete_face(self, f, delete_isolated = True):
         """
         Delete face.
 
@@ -1397,6 +1397,8 @@ class Mesh:
         ----------
         f : Face
             Face to delete.
+        delete_isolated : Bool
+            delete_isolated nodes or not
         """
 
         # Copy old links.
@@ -1423,9 +1425,10 @@ class Mesh:
         es = [e for e in es if e.is_faces_free()]
         for e in es:
             self.delete_edge(e)
-        ns = [n for n in ns if n.is_isolated()]
-        for n in ns:
-            self.delete_node(n)
+        if delete_isolated:
+            ns = [n for n in ns if n.is_isolated()]
+            for n in ns:
+                self.delete_node(n)
 
     def delete_faces(self, p):
         """
@@ -1442,7 +1445,7 @@ class Mesh:
         for f in fs:
             self.delete_face(f)
 
-    def delete_edge(self, e):
+    def delete_edge(self, e, delete_isolated=True):
         """
         Delete edge.
 
@@ -1450,11 +1453,13 @@ class Mesh:
         ----------
         e : Edge
             Edge to delete.
+        delete_isolated : Bool
+            delete_isolated nodes or not
         """
 
         # First we must to delete incident faces.
         while e.faces:
-            self.delete_face(e.faces[0])
+            self.delete_face(e.faces[0], delete_isolated=delete_isolated)
 
         # Unlink edge from nodes.
         while e.nodes:
@@ -1479,7 +1484,7 @@ class Mesh:
         for e in es:
             self.delete_edge(e)
 
-    def delete_node(self, n):
+    def delete_node(self, n, delete_isolated=True):
         """
         Delete node.
 
@@ -1487,19 +1492,22 @@ class Mesh:
         ----------
         n : Node
             Node to be deleted.
+        delete_isolated : Bool
+            delete_isolated nodes or not
         """
 
         # First we must delete all adjacent edges
         while n.edges:
-            self.delete_edge(n.edges[0])
+            self.delete_edge(n.edges[0], delete_isolated=delete_isolated)
 
         # Remove node from zones.
         for z in self.zones:
             if n in z.nodes:
                 z.nodes.remove(n)
 
-        # Remove node from mesh.
-        self.nodes.remove(n)
+        # Remove node from mesh if it still there.
+        if n in self.nodes:
+            self.nodes.remove(n)
 
     def delete_nodes(self, p):
         """
@@ -1575,7 +1583,7 @@ class Mesh:
         assert len(double_edge.faces) == 1
         self.delete_face_group(double_edge.faces[0])
 
-    def new_reduce_edge(self, e):
+    def reduce_edge(self, e):
         """
         Reduce edge.
 
@@ -1583,65 +1591,23 @@ class Mesh:
         ----------
         e : Edge
         Edge.
+
+        Returns
+        -------
+        all changed faces
         """
-        connections = {}
-        e.nodes[0].p = 0.5 * (e.nodes[0].p + e.nodes[1].p)
-        # work in process
-
-
-    def reduce_edge(self, e, move=True):
-        """
-        Reduce edge.
-
-        Parameters
-        ----------
-        e : Edge
-            Edge.
-        """
-
         a, b = e.nodes[0], e.nodes[1]
-        if move:
-            a.p = 0.5 * (a.p + b.p)
+        a.p = 0.5 * (a.p + a.p)
+        for f in b.faces:
+            nodes = [n if n!=b else a for n in f.nodes]
+            if nodes.count(a) == 1:
+                nf = self.add_face(nodes[0], nodes[1], nodes[2], f.zone)
+                nf.copy_data_from(f)
+                nf.calculate_area()
+                nf.calculate_normal()
 
-        # Replace b node with a node in all faces.
-        delete_faces = [f for f in e.faces]
-        #check if this is double triangle
-        if len(delete_faces) == 2 and set(delete_faces[0].nodes) == set(delete_faces[1].nodes):
-            self.delete_double_face(delete_faces)
-            return
-        #deleting contour must be good
-        for f in delete_faces:
-            for fe in f.edges:
-                self.find_and_delete_double_edge(fe)
-        delete_faces = [f for f in e.faces]
-        # Delete extra node and faces.
-        for f in delete_faces:
-            c = f.third_node(e)
-            bc_edge = self.find_edge(b, c)
-            if len(bc_edge.faces) == 2:
-                if bc_edge.faces[0] != f:
-                    external_face = bc_edge.faces[0]
-                else:
-                    external_face = bc_edge.faces[1]
-                ac_edge = self.find_edge(a, c)
-                #print(ac_edge, ac_edge.faces)
-                self.unlink(bc_edge, external_face)
-                self.replace_edge_face_link(ac_edge, f, external_face)
-                if b in external_face.nodes:
-                    self.replace_face_node_link(external_face, b, a)
-            self.delete_edge(bc_edge)#f will be also deleted
-
-        change_faces = [f for f in b.faces]
-        change_edges = [be for be in b.edges if be!=e]
-        # change edges with b node
-        for f in change_faces:
-            self.replace_face_node_link(f, b, a)
-        for edge in change_edges:
-                    self.unlink(b, edge)
-                    edge.nodes.append(a)
-                    a.edges.append(edge)
-        if b is not None:
-            self.delete_node(b)
+        self.delete_node(b)
+        return a.faces
 
     def split_edge(self, e, p=None):
         """
