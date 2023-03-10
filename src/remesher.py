@@ -43,7 +43,7 @@ class Remesher:
 
         mesh.initial_target_ice = mesh.target_ice()
 
-    def remesh(self, name_in, name_out):
+    def remesh(self, name_in, name_out, steps=10):
         """
         Remesh.
 
@@ -53,9 +53,11 @@ class Remesher:
             Name of in file.
         name_out : str
             Name of out file.
+        steps : int
+            Steps count.
         """
 
-        self.log.info(f'remesh_{self.name} start : {name_in} -> {name_out}')
+        self.log.info(f'remesh_{self.name} start : {name_in} -> {name_out}, {steps} steps')
 
         # Load mesh.
         mesh = msu.Mesh()
@@ -63,7 +65,7 @@ class Remesher:
 
         # Remesh with time calculation.
         self.remesh_time = time.time()
-        self.inner_remesh(mesh)
+        self.inner_remesh(mesh, steps=steps)
         self.remesh_time = time.time() - self.remesh_time
 
         # Calculate indicator.
