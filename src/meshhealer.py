@@ -129,36 +129,24 @@ def case_02_self_intersections_elimination():
     Self-intersections elimination.
     """
 
-    c = 'case_02_sie'
+    c = '../case_02_sie'
     # Light case.
     # f = '../cases/triangle_sphere_2.dat'
     # Medium case.
-    # f = '../cases/sphere_2.dat'
+    f = '../cases/sphere_2.dat'
     # Hard case.
-    #f = '../cases/bunny_2.dat'
+    # f = '../cases/bunny_2.dat'
     # Extra case.
-    f = '../cases/dragon_2.dat'
+    # f = '../cases/dragon_2.dat'
 
     # Load.
     mesh = msu.Mesh(f)
     mesh.delete_edges(lambda e: e.is_faces_free())
     mesh.delete_nodes(lambda n: n.is_isolated())
-    store_and_say(mesh, f'../{c}_ph_01_orig.dat')
+    store_and_say(mesh, f'{c}_ph_01_orig.dat')
 
-    # Find intersections.
-    mesh.throw_intersection_points_to_faces()
-    mesh.multisplit_by_intersection_points()
-    store_and_say(mesh, f'../{c}_ph_02_cut.dat')
-
-    # Delete bad triangles.
-    mesh.walk_surface(mesh.lo_face(0), msu.Mesh.ColorFree)
-    mesh.add_additional_data_for_analysis()
-    store_and_say(mesh, f'../{c}_ph_03_walk.dat')
-
-    # Delete all inner triangles.
-    mesh.delete_faces(lambda f: f['M'] == msu.Mesh.ColorToDelete)
-    # mesh.print(print_faces_neighbourhood=True, print_edges_with_incident_faces=True)
-    store_and_say(mesh, f'../{c}_ph_04_del.dat')
+    # SIE.
+    mesh.self_intersections_elimination(is_debug=True, debug_file_name=c)
 
 
 def case_04_triangle_multisplit(cnt=10):

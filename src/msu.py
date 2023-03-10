@@ -2124,6 +2124,32 @@ class Mesh:
         for e in edges_to_split:
             self.split_edge(e, e.split_points[0])
 
+    def self_intersections_elimination(self, is_debug=False, debug_file_name='sie'):
+        """
+        Self-intersections elimination.
+
+        Parameters
+        ----------
+        is_debug : bool
+            Debug flag.
+        debug_file_name : str
+            Debug file name.
+        """
+
+        # Find intersections.
+        self.throw_intersection_points_to_faces()
+        self.multisplit_by_intersection_points()
+        if is_debug:
+            self.store(f'{debug_file_name}_ph_02_cut.dat')
+
+        # Walk.
+        self.walk_surface(self.lo_face(0), Mesh.ColorFree)
+        self.store(f'{debug_file_name}_ph_03_walk.dat')
+
+        # Delete all inner triangles.
+        self.delete_faces(lambda f: f['M'] == Mesh.ColorToDelete)
+        self.store(f'{debug_file_name}_ph_04_del.dat')
+
 
 if __name__ == '__main__':
     pass
