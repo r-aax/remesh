@@ -2026,7 +2026,6 @@ class Mesh:
         for pair in pairs:
             [t1, t2] = pair
             ps = t1.find_intersection_with_triangle(t2)
-            ps = geom.delete_near_points(ps)
             t1.back_ref.int_points = t1.back_ref.int_points + ps
             t2.back_ref.int_points = t2.back_ref.int_points + ps
 

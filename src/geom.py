@@ -613,6 +613,9 @@ class Triangle:
                  + t.find_intersection_with_segment(self.points[0], self.points[1]) \
                  + t.find_intersection_with_segment(self.points[1], self.points[2]) \
                  + t.find_intersection_with_segment(self.points[2], self.points[0])
+        points = delete_near_points(points)
+
+        assert len(points) <= 2
 
         return points
 
