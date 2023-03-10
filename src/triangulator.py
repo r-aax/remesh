@@ -21,6 +21,31 @@ class Triangulator:
 
         self.ps = ps
 
+    def scipy_triangulation_indices(self, ps2, fixed):
+        """
+        Calculate indices with scipy.
+
+        Parameters
+        ----------
+        ps2 : list
+            List of 2D points.
+        fixed : [(ai, bi)]
+            List of pairs of fixed segments.
+
+        Returns
+        -------
+        [(int, int, int)]
+            List of indices for triangulation.
+        """
+
+        # No fixed segments in scipy.
+        assert fixed == []
+
+        tri = scipy.spatial.Delaunay(ps2)
+        simp = tri.simplices
+
+        return [(s[0], s[1], s[2]) for s in simp]
+
     def find_triangulation_indices(self):
         """
         Find indices for triangulation.
@@ -46,10 +71,7 @@ class Triangulator:
 
         # Triangulation.
         ps2 = [[p[0], p[1]] for p in ps2]
-        tri = scipy.spatial.Delaunay(ps2)
-        simp = tri.simplices
-
-        return [(s[0], s[1], s[2]) for s in simp]
+        return self.scipy_triangulation_indices(ps2, [])
 
 
 if __name__ == '__main__':
