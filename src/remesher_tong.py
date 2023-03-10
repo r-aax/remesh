@@ -195,11 +195,11 @@ class RemesherTong(Remesher):
 
     def inner_remesh(self,
                      mesh,
-                     steps=6,
+                     steps=40,
                      is_simple_tsf=False,
                      normal_smoothing_steps=30, normal_smoothing_s=10.0, normal_smoothing_k=0.15,
                      height_smoothing_steps=20, time_step_fraction_k=0.25, null_space_smoothing_steps=10,
-                     threshold_for_null_space=0.03, height_smoothing_alpha=0.2, height_smoothing_b=0.2, eps_for_edge_reduce = 1e-02):
+                     threshold_for_null_space=0.03, height_smoothing_alpha=0.8, height_smoothing_b=0.2, eps_for_edge_reduce = 1e-02):
         """
         Remesh.
 
