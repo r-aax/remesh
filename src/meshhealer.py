@@ -168,7 +168,7 @@ def case_04_triangle_multisplit(cnt=10):
     random_points = []
     for _ in range(cnt):
         random_points.append(t.random_point())
-    mesh.bad_multisplit_face(mesh.faces[0], random_points)
+    mesh.multisplit_face(mesh.faces[0], random_points)
     store_and_say(mesh, f'../{c}_ph_02_multisplit.dat')
     return mesh
 
@@ -198,6 +198,6 @@ def case_05_triangle_multisplit_and_reduce():
 
 
 if __name__ == '__main__':
-    #case_01_zip()
+    # case_01_zip()
     case_02_self_intersections_elimination()
-    #case_04_triangle_multisplit()
+    # case_04_triangle_multisplit()
