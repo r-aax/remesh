@@ -22,53 +22,6 @@ class Triangulator:
 
         self.ps = ps
 
-    def triangulation_indices_scipy(self, ps2, fixed):
-        """
-        Calculate indices with scipy.
-
-        Parameters
-        ----------
-        ps2 : list
-            List of 2D points.
-        fixed : [(ai, bi)]
-            List of pairs of fixed segments.
-
-        Returns
-        -------
-        [(int, int, int)]
-            List of indices for triangulation.
-        """
-
-        # No fixed segments in scipy.
-        assert fixed == []
-
-        tri = scipy.spatial.Delaunay(ps2)
-        simp = tri.simplices
-
-        return [(s[0], s[1], s[2]) for s in simp]
-
-    def triangulation_indices_inner(self, ps2, fixed):
-        """
-        Calculate indices (inner triangulation).
-
-        Parameters
-        ----------
-        ps2 : list
-            List of 2D points.
-        fixed : [(ai, bi)]
-            List of pairs of fixed segments.
-
-        Returns
-        -------
-        [(int, int, int)]
-            List of indices for triangulation.
-        """
-
-        # No fixed segments in scipy.
-        assert fixed == []
-
-        return geom2d.triangulation(ps2, [])
-
     def find_triangulation_indices(self):
         """
         Find indices for triangulation.
@@ -94,8 +47,10 @@ class Triangulator:
 
         # Triangulation.
         ps2 = [[p[0], p[1]] for p in ps2]
-        # ps2 = [geom2d.Vect(p[0], p[1]) for p in ps2]
-        return self.triangulation_indices_scipy(ps2, [])
+        tri = scipy.spatial.Delaunay(ps2)
+        simp = tri.simplices
+
+        return [(s[0], s[1], s[2]) for s in simp]
 
 
 if __name__ == '__main__':
