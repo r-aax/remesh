@@ -271,7 +271,16 @@ def is_ab_strong_intersects_pq(a, b, p, q):
         False - otherwise.
     """
 
-    return (a not in [p, q]) and (b not in [p, q]) and is_ab_intersects_pq(a, b, p, q)
+    # Same segments intersect.
+    if ((a == p) and (b == q)) or ((a == q) and (b == p)):
+        return True
+
+    # Segments intersect by one node do not intersect.
+    if (a in [p, q]) or (b in [p, q]):
+        return False
+
+    # Common intersect.
+    return is_ab_intersects_pq(a, b, p, q)
 
 
 def is_ab_strong_intersects_any_segment(a, b, ss):
@@ -321,6 +330,10 @@ def is_p_strong_in_abc(p, a, b, c):
         True - if point in triangle,
         False - otherwise.
     """
+
+    # Triangle vertex not strong in abc.
+    if (p == a) or (p == b) or (p == c):
+        return False
 
     da = vect_direction(a, b, p)
     db = vect_direction(b, c, p)
