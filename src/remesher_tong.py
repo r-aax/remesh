@@ -56,7 +56,7 @@ def face_calculate_jiao_coefs(face):
     face.jiao_coef_b = c0 @ (np.cross(p21, u31) - np.cross(p31,u21))
     face.jiao_coef_c = c0 @ np.cross(u21, u31)
 
-def find_min_faces(mesh, threshold):
+def find_min_faces_ids(mesh, threshold):
     """
     calculation of faces with minimal tsf
 
@@ -72,11 +72,11 @@ def find_min_faces(mesh, threshold):
     [Face]
         minimal faces
     """
-    min_faces = []
+    min_faces_ids = []
     for f in mesh.faces:
         if f.tsf < threshold:
-            min_faces.append(f)
-    return min_faces
+            min_faces_ids.append(f.glo_id)
+    return min_faces_ids
 
 
 def face_calculate_v_coefs(face):
@@ -96,6 +96,9 @@ def face_calculate_v_coefs(face):
     # If a > 0 then the face is contracting, otherwise diverging.
     face.is_contracting = face.v_coef_a > 0.0
 
+def calculate_all_v_coefs(mesh):
+    for f in mesh.faces:
+        face_calculate_v_coefs(f)
 
 def primary_and_null_space(A, threshold):
     """
@@ -185,14 +188,14 @@ class RemesherTong(Remesher):
     Tong remesher.
     """
 
-    def __init__(self):
+    def __init__(self, tracking_evolution=False):
         """
         Constant.
         """
 
         Remesher.__init__(self)
         self.name = 'tong'
-
+        self.tracking_evolution = tracking_evolution
     def inner_remesh(self,
                      mesh,
                      steps=40,
@@ -244,6 +247,8 @@ class RemesherTong(Remesher):
             Coefficient for height_smoothing, 0 < alpha < 1
         height_smoothing_b : float
             Coefficient for height_smoothing, 0 < b < 0.5
+        tracking_evolution: bool
+            flag to save all intermediate models
         """
 
         mesh.calculate_faces_areas()
@@ -267,9 +272,12 @@ class RemesherTong(Remesher):
 
             max_face_height = self.define_height_field(mesh)
             for _ in range(height_smoothing_steps):
+                mesh.calculate_faces_areas()
+                mesh.calculate_faces_normals()
                 self.height_smoothing(mesh, max_face_height, height_smoothing_alpha, height_smoothing_b)
                 max_face_height = self.define_height_field(mesh)
 
+            calculate_all_v_coefs(mesh)
             self.update_surface_nodal_positions(mesh)
             self.redistribute_remaining_volume(mesh)
 
@@ -277,6 +285,7 @@ class RemesherTong(Remesher):
                 self.null_space_smoothing(mesh, threshold_for_null_space)
                 mesh.calculate_faces_areas()
                 mesh.calculate_faces_normals()
+                calculate_all_v_coefs(mesh)
                 self.null_space_smoothing_accretion_volume_interpolation(mesh)
 
             # Break on total successfull remesh.
@@ -285,17 +294,20 @@ class RemesherTong(Remesher):
                 break
 
             if tsf <= eps_for_edge_reduce:
-                min_faces = find_min_faces(mesh, eps_for_edge_reduce)
-                all_cnt = len(min_faces)
+                min_faces_ids = find_min_faces_ids(mesh, eps_for_edge_reduce)
+                all_cnt = len(min_faces_ids)
                 del_cnt = 0
-                while min_faces:
-                    current_face = min_faces.pop()
-                    if current_face and is_face_thin(current_face):
+                while min_faces_ids:
+                    current_face = mesh.find_face_by_id(min_faces_ids.pop())
+                    if current_face is None:
+                        continue
+                    if is_face_thin(current_face):
                         current_edges = current_face.edges
                         edge_to_del = sorted(current_edges, key=lambda e: e.length())[-1]
-                        changed_faces = mesh.reduce_edge(edge_to_del)
-                        #for cf in changed_faces:
-                        #    min_faces.append(cf)
+                        deleted_faces_ids = mesh.reduce_edge(edge_to_del)
+                        for id in deleted_faces_ids:
+                            if id in min_faces_ids:
+                                min_faces_ids.remove(id)
                         del_cnt += 1
                 if del_cnt>0:
                     print(f'Checked {all_cnt} faces, deleted {del_cnt} thin triangles')
@@ -309,6 +321,9 @@ class RemesherTong(Remesher):
             # Recalculate areas and normals for next iteration.
             mesh.calculate_faces_areas()
             mesh.calculate_faces_normals()
+
+            if (self.tracking_evolution):
+                mesh.store(f"../Tong_step_{step_i}.dat")
 
         self.final_volume_correction_step(mesh)
         mesh.add_additional_data_for_analysis()
