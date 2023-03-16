@@ -4,6 +4,7 @@ from numpy import linalg as LA
 import mth
 import geom
 import triangulator
+from bisect import bisect_left
 
 # Count of valuable digits (after dot) in node coordinates.
 # If coordinates of nodes doesn't differ in valuable digits we consider them equal.
@@ -853,6 +854,13 @@ class Mesh:
 
         return None
 
+    def find_face_by_id(self, id):
+        index = bisect_left(self.faces, id, key=lambda f:f.glo_id)
+        if index != len(self.faces) and self.faces[index].glo_id == id:
+            return self.faces[index]
+        else:
+            return None
+
     def max_node_glo_id(self):
         """
         Get maximum node global id
@@ -1594,11 +1602,13 @@ class Mesh:
 
         Returns
         -------
-        all changed faces
+        all deleted faces ids
         """
         a, b = e.nodes[0], e.nodes[1]
         a.p = 0.5 * (a.p + a.p)
+        ids = []
         for f in b.faces:
+            ids.append(f.glo_id)
             nodes = [n if n!=b else a for n in f.nodes]
             if nodes.count(a) == 1:
                 nf = self.add_face(nodes[0], nodes[1], nodes[2], f.zone)
@@ -1607,7 +1617,7 @@ class Mesh:
                 nf.calculate_normal()
 
         self.delete_node(b)
-        return a.faces
+        return ids
 
     def split_edge(self, e, p=None):
         """
