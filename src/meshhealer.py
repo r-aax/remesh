@@ -199,5 +199,5 @@ def case_05_triangle_multisplit_and_reduce():
 
 if __name__ == '__main__':
     # case_01_zip()
-    case_02_self_intersections_elimination()
-    # case_04_triangle_multisplit()
+    # case_02_self_intersections_elimination()
+    case_04_triangle_multisplit()

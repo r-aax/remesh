@@ -6,6 +6,29 @@ import numpy as np
 EPS = 1.0e-10
 
 
+def intervals_intersect(a, b):
+    """
+    Check intervals intersection.
+
+    Parameters
+    ----------
+    a : (float, float)
+        First interval.
+    b : (float, float)
+        Second interval.
+
+    Returns
+    -------
+    bool
+        True - if intervals intersect,
+        False - if intervals do not intersect.
+    """
+
+    not_intersect = (a[1] < b[0]) or (b[1] < a[0])
+
+    return not not_intersect
+
+
 def solve_linear_equation(a, b):
     """
     Solve equation a * x + b = 0

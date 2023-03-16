@@ -22,6 +22,46 @@ class Triangulator:
 
         self.ps = ps
 
+    def delaunay_triangulation(self, ps2):
+        """
+        Delaunay triangulation
+
+        Parameters
+        ----------
+        ps2 : [Point]
+            List of points for which we have to ignore 3rd coordinate.
+
+        Returns
+        -------
+        [(int, int, int)]
+            List of indices for triangulation.
+        """
+
+        points = [[p[0], p[1]] for p in ps2]
+        tri = scipy.spatial.Delaunay(points)
+        simp = tri.simplices
+
+        return [(s[0], s[1], s[2]) for s in simp]
+
+    def bruteforce_triangulation(self, ps2):
+        """
+        Bruteforce triangulation
+
+        Parameters
+        ----------
+        ps2 : [Point]
+            List of points for which we have to ignore 3rd coordinate.
+
+        Returns
+        -------
+        [(int, int, int)]
+            List of indices for triangulation.
+        """
+
+        points = [geom2d.Vect(p[0], p[1]) for p in ps2]
+
+        return geom2d.triangulation(points)
+
     def find_triangulation_indices(self):
         """
         Find indices for triangulation.
@@ -46,11 +86,8 @@ class Triangulator:
         ps2 = [m.dot(p) for p in ps2]
 
         # Triangulation.
-        ps2 = [[p[0], p[1]] for p in ps2]
-        tri = scipy.spatial.Delaunay(ps2)
-        simp = tri.simplices
-
-        return [(s[0], s[1], s[2]) for s in simp]
+        return self.delaunay_triangulation(ps2)
+        # return self.bruteforce_triangulation(ps2)
 
 
 if __name__ == '__main__':
