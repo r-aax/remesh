@@ -315,7 +315,7 @@ class Triangle:
 
         return self.area() / (0.5 * bs)
 
-    def is_thin(self):
+    def is_thin(self, local_eps=None):
         """
         Check if triangle thin.
 
@@ -325,7 +325,7 @@ class Triangle:
         False - otherwise.
         """
 
-        return self.min_height() < mth.EPS
+        return self.min_height() < mth.EPS if local_eps is None else self.min_height() < local_eps
 
     def areas_difference(self, p):
         """

@@ -381,7 +381,7 @@ class Face:
 
         return (a == b) or (b == c) or (a == c)
 
-    def is_thin(self):
+    def is_thin(self, local_eps=None):
         """
         Check face for thin.
 
@@ -391,7 +391,7 @@ class Face:
         False - if it's not.
         """
 
-        return (not self.is_pseudo()) and self.triangle().is_thin()
+        return (not self.is_pseudo()) and self.triangle().is_thin(local_eps)
 
     def is_thin_with_border_big_edge(self):
         """

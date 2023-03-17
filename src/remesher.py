@@ -43,7 +43,7 @@ class Remesher:
 
         mesh.initial_target_ice = mesh.target_ice()
 
-    def remesh(self, name_in, name_out, steps=10):
+    def remesh(self, name_in, name_out, steps=10, **kwargs):
         """
         Remesh.
 
@@ -65,7 +65,7 @@ class Remesher:
 
         # Remesh with time calculation.
         self.remesh_time = time.time()
-        self.inner_remesh(mesh, steps=steps)
+        self.inner_remesh(mesh, steps=steps, **kwargs)
         self.remesh_time = time.time() - self.remesh_time
 
         # Calculate indicator.
@@ -76,3 +76,4 @@ class Remesher:
         mesh.store(name_out)
 
         self.log.info(f'remesh_{self.name} end : time = {self.remesh_time:.5f} s, target_ice = {t_ice} ({t_perc}%)')
+        return t_perc

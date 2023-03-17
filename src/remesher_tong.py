@@ -5,13 +5,6 @@ from numpy import linalg as LA
 from scipy import linalg as sLA
 from remesher import Remesher
 
-def is_face_thin(f, min_angle = 0.26, max_angle = 2.6):
-    """
-    Returns True if face trianle is thin
-    """
-    angle = f.inner_angle(f.nodes[0])
-    return angle < min_angle or angle > max_angle
-
 def node_calculate_A_and_b(node):
     """
     Calculate martrices for equation Ax=b for primary and null space calculation
@@ -301,7 +294,7 @@ class RemesherTong(Remesher):
                     current_face = mesh.find_face_by_id(min_faces_ids.pop())
                     if current_face is None:
                         continue
-                    if is_face_thin(current_face):
+                    if current_face.is_thin(eps_for_edge_reduce):
                         current_edges = current_face.edges
                         edge_to_del = sorted(current_edges, key=lambda e: e.length())[-1]
                         deleted_faces_ids = mesh.reduce_edge(edge_to_del)
