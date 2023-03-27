@@ -68,7 +68,7 @@ def case_01_zip():
     store_and_say(mesh, f'../{c}_ph_05_orig_2.dat')
 
     # Delete intersections.
-    mesh.split_self_intersected_faces()
+    mesh.refine_self_intersected_faces()
     store_and_say(mesh, f'../{c}_ph_06_split_intersections_2.dat')
     mesh.delete_self_intersected_faces()
     c1 = mesh.ColorFree
@@ -99,9 +99,9 @@ def case_01_zip():
     store_and_say(mesh, f'../{c}_ph_10_orig_3.dat')
 
     # Delete intersections.
-    mesh.split_self_intersected_faces()
+    mesh.refine_self_intersected_faces()
     store_and_say(mesh, f'../{c}_ph_11_split_intersections_3.dat')
-    mesh.split_self_intersected_faces()
+    mesh.refine_self_intersected_faces()
     store_and_say(mesh, f'../{c}_ph_12_more_split_intersections_3.dat')
     mesh.delete_self_intersected_faces()
     c1 = mesh.ColorFree
@@ -117,10 +117,10 @@ def case_01_zip():
     store_and_say(mesh, f'../{c}_ph_14_del_extra_3.dat')
 
     # Zip.
-    #zipper = patcher.Zipper(mesh)
-    #zipper.collect_border()
-    #zipper.zip(0, 1, is_flip_path_j=True)
-    #store_and_say(mesh, f'../{c}_ph_15_zip_3.dat')
+    # zipper = patcher.Zipper(mesh)
+    # zipper.collect_border()
+    # zipper.zip(0, 1, is_flip_path_j=True)
+    # store_and_say(mesh, f'../{c}_ph_15_zip_3.dat')
 
 
 def case_02_self_intersections_elimination():
@@ -199,5 +199,5 @@ def case_05_triangle_multisplit_and_reduce():
 
 if __name__ == '__main__':
     # case_01_zip()
-    # case_02_self_intersections_elimination()
-    case_04_triangle_multisplit()
+    case_02_self_intersections_elimination()
+    # case_04_triangle_multisplit()
