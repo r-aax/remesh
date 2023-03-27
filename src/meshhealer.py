@@ -34,6 +34,7 @@ def case_01_zip():
     # Without split faces.
     #
 
+    """
     # Load.
     mesh = msu.Mesh(f)
     store_and_say(mesh, f'../{c}_ph_01_orig.dat')
@@ -57,11 +58,13 @@ def case_01_zip():
     zipper.collect_border()
     zipper.zip(0, 1, is_flip_path_j=True)
     store_and_say(mesh, f'../{c}_ph_04_zip.dat')
+    """
 
     #
     # With split faces.
     #
 
+    """
     # Load.
     mesh = msu.Mesh()
     mesh.load(f)
@@ -88,6 +91,7 @@ def case_01_zip():
     zipper.collect_border()
     zipper.zip(0, 1, is_flip_path_j=True)
     store_and_say(mesh, f'../{c}_ph_09_zip_2.dat')
+    """
 
     #
     # With double split faces.
@@ -102,7 +106,11 @@ def case_01_zip():
     mesh.refine_self_intersected_faces()
     store_and_say(mesh, f'../{c}_ph_11_split_intersections_3.dat')
     mesh.refine_self_intersected_faces()
-    store_and_say(mesh, f'../{c}_ph_12_more_split_intersections_3.dat')
+    store_and_say(mesh, f'../{c}_ph_12a_more_split_intersections_3.dat')
+    mesh.refine_self_intersected_faces()
+    store_and_say(mesh, f'../{c}_ph_12b_more_split_intersections_3.dat')
+    mesh.refine_self_intersected_faces()
+    store_and_say(mesh, f'../{c}_ph_12c_more_split_intersections_3.dat')
     mesh.delete_self_intersected_faces()
     c1 = mesh.ColorFree
     mesh.walk_until_border(mesh.lo_face(0), c1)
@@ -137,7 +145,7 @@ def case_02_self_intersections_elimination():
     # Hard case.
     # f = '../cases/bunny_2.dat'
     # Extra case.
-    f = '../cases/fat_bunny/fb_00.dat'
+    f = '../cases/bugs/bug16.dat'
 
     # Load.
     mesh = msu.Mesh(f)

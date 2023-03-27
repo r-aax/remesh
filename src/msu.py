@@ -2180,8 +2180,10 @@ class Mesh:
             self.multisplit_by_intersection_points()
             if is_debug:
                 self.store(f'{debug_file_name}_ph_02_cut_{points_count}.dat')
+            break
             points_count = self.throw_intersection_points_to_faces()
             print(f'intersection points count = {points_count}')
+
 
         # Walk.
         self.walk_surface(self.lo_face(0), Mesh.ColorFree)
@@ -2190,6 +2192,13 @@ class Mesh:
         # Delete all inner triangles.
         self.delete_faces(lambda f: f['M'] == Mesh.ColorToDelete)
         self.store(f'{debug_file_name}_ph_04_del.dat')
+
+    def check(self):
+        """
+        Check.
+        """
+
+        assert all([len(e.faces) == 2 for e in self.edges])
 
 
 if __name__ == '__main__':
