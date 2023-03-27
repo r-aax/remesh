@@ -117,10 +117,10 @@ def case_01_zip():
     store_and_say(mesh, f'../{c}_ph_14_del_extra_3.dat')
 
     # Zip.
-    # zipper = patcher.Zipper(mesh)
-    # zipper.collect_border()
-    # zipper.zip(0, 1, is_flip_path_j=True)
-    # store_and_say(mesh, f'../{c}_ph_15_zip_3.dat')
+    zipper = patcher.Zipper(mesh)
+    zipper.collect_border()
+    zipper.zip(0, 1, is_flip_path_j=False)
+    store_and_say(mesh, f'../{c}_ph_15_zip_3.dat')
 
 
 def case_02_self_intersections_elimination():
@@ -131,13 +131,13 @@ def case_02_self_intersections_elimination():
 
     c = '../case_02_sie'
     # Light case.
-    f = '../cases/triangle_sphere_2.dat'
+    # f = '../cases/triangle_sphere_2.dat'
     # Medium case.
     # f = '../cases/sphere_2.dat'
     # Hard case.
     # f = '../cases/bunny_2.dat'
     # Extra case.
-    # f = '../cases/dragon_2.dat'
+    f = '../cases/fat_bunny/fb_00.dat'
 
     # Load.
     mesh = msu.Mesh(f)

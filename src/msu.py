@@ -2045,6 +2045,11 @@ class Mesh:
         """
         Find all self-intersections of the faces.
         Throw intersection points to them.
+
+        Returns
+        -------
+        int
+            Count of points.
         """
 
         for f in self.faces:
@@ -2062,6 +2067,8 @@ class Mesh:
 
         for f in self.faces:
             f.int_points = geom.delete_near_points(f.int_points)
+
+        return sum([len(f.int_points) for f in self.faces])
 
     def multisplit_by_intersection_points(self, is_collect_stat=False):
         """
@@ -2167,10 +2174,14 @@ class Mesh:
         """
 
         # Find intersections.
-        self.throw_intersection_points_to_faces()
-        self.multisplit_by_intersection_points()
-        if is_debug:
-            self.store(f'{debug_file_name}_ph_02_cut.dat')
+        points_count = self.throw_intersection_points_to_faces()
+        print(f'intersection points count = {points_count}')
+        while points_count > 0:
+            self.multisplit_by_intersection_points()
+            if is_debug:
+                self.store(f'{debug_file_name}_ph_02_cut_{points_count}.dat')
+            points_count = self.throw_intersection_points_to_faces()
+            print(f'intersection points count = {points_count}')
 
         # Walk.
         self.walk_surface(self.lo_face(0), Mesh.ColorFree)

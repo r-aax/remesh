@@ -464,7 +464,7 @@ class Zipper(BorderCollector):
 
         # Watchdog.
         counter = 0
-        max_counter = 10000
+        max_counter = 1000
 
         # While it is possible, move i of j.
         # Moving is just rot on 1.
