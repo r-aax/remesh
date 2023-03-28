@@ -62,3 +62,18 @@ if __name__ == '__main__':
             for i in range(3):
                 s += f'{face[i]+1} '
             f.write(f'{s}\n')
+
+"""
+#'C:/Users/alexm/surface-evolution/cases/bunny_fixed.dat'
+sys.path.append('C:\\Users\\alexm\\surface-evolution\\src')
+import msu
+def compute_dat_volume(path):
+#compute volume of .dat
+    mesh = msu.Mesh()
+    mesh.load(path)
+    mesh_nodes = [n.p.tolist() for n in mesh.nodes]
+    ids_to_idx = {n.glo_id : mesh_nodes.index(n.p.tolist()) for n in mesh.nodes}
+    mesh_faces = [[ids_to_idx[n.glo_id] for n in f.nodes] for f in mesh.faces]
+    tmesh = trimesh.Trimesh(vertices=mesh_nodes, faces=mesh_faces)
+    return tmesh.volume
+"""

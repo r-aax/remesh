@@ -1,3 +1,5 @@
+import math
+
 import msu
 import patcher
 import geom
@@ -195,7 +197,6 @@ def case_05_triangle_multisplit_and_reduce():
                 reduce_counter+=1
                 store_and_say(mesh, f'../{c}_ph_03_reduce_{reduce_counter}.dat')
     print(f'{reduce_counter} edges reduced')
-
 
 if __name__ == '__main__':
     # case_01_zip()

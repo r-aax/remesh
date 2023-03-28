@@ -194,8 +194,8 @@ class RemesherTong(Remesher):
                      steps=40,
                      is_simple_tsf=False,
                      normal_smoothing_steps=30, normal_smoothing_s=10.0, normal_smoothing_k=0.15,
-                     height_smoothing_steps=20, time_step_fraction_k=0.25, null_space_smoothing_steps=10,
-                     threshold_for_null_space=0.03, height_smoothing_alpha=0.8, height_smoothing_b=0.2, eps_for_edge_reduce = 1e-02):
+                     height_smoothing_steps=20, time_step_fraction_k=0.25, null_space_smoothing_steps=5,
+                     threshold_for_null_space=0.06, height_smoothing_alpha=0.8, height_smoothing_b=0.2, eps_for_edge_reduce = 1e-02):
         """
         Remesh.
 
@@ -585,7 +585,7 @@ class RemesherTong(Remesher):
                         neighbour_faces.append(faces[0])
                     else:
                         neighbour_faces.append(faces[1])
-            if f.target_ice < 0:
+            if f.target_ice < 0 and len(neighbour_faces)>0:
                 f_max = max(neighbour_faces, key=lambda nf:nf.target_ice)
                 f_max.target_ice += f.target_ice
                 if f_max.target_ice < 0:

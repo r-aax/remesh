@@ -23,7 +23,13 @@ def grid_search(remesh_function, params_dictinary, savefile='./gridsearch.txt'):
                     new_param_enumeration.append(y)
             param_enumeration = new_param_enumeration
     results = []
-    for p in param_enumeration:
+
+    checkpoint = 0
+    with open(savefile, 'r') as f:
+        checkpoint = len(f.readlines())
+        print(f"Started from {checkpoint} set")
+
+    for p in param_enumeration[checkpoint:]:
         f = open(savefile, 'a')
         p_frozen = frozenset(p.items())
         res = None

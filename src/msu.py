@@ -1,7 +1,6 @@
 from typing import overload
 import numpy as np
 from numpy import linalg as LA
-import mth
 import geom
 import triangulator
 from bisect import bisect_left
@@ -1532,65 +1531,6 @@ class Mesh:
         for n in ns:
             self.delete_node(n)
 
-    def delete_face_group(self, f):
-        """
-        e: Edge
-        Delete all edges that can be reached from e
-        """
-        face_group = []
-        queue = []
-        face_group.append(f)
-        queue.append(f)
-        while queue:
-            m = queue.pop(0)
-            for neighbour in m.neighbourhood():
-                if neighbour not in face_group:
-                    face_group.append(neighbour)
-                    queue.append(neighbour)
-        for face in face_group:
-                self.delete_face(face)
-
-    def delete_double_face(self, double_faces):
-        """
-        Delete double face.
-        """
-        double_edge = None
-        useful_nodes = None
-        # search for double edge
-        for n in double_faces[0].nodes:
-            edge_counter = {}
-            for e in n.edges:
-                # edge can be reverced
-                edge_nodes = tuple(sorted(e.nodes, key=lambda n: n.glo_id))
-                if edge_nodes not in edge_counter:
-                    edge_counter[edge_nodes] = 1
-                else:
-                    edge_counter[edge_nodes] += 1
-            max_count = max(edge_counter.values())
-            if max_count > 1:
-                # nodes pair what contains double edge
-                useful_nodes = list(edge_counter.keys())[list(edge_counter.values()).index(max_count)]
-                double_edge = self.find_edge(useful_nodes[0], useful_nodes[1])
-                break
-        assert double_edge is not None
-        self.find_and_delete_double_edge(double_edge)
-
-    def find_and_delete_double_edge(self, double_edge):
-        useful_edge = self.find_edge(double_edge.nodes[0], double_edge.nodes[1], except_edge=double_edge)
-        if useful_edge is None:
-            return
-        faces_to_check = [f for f in double_edge.faces]
-        useful_edge_face_sets = [set(f.nodes) for f in useful_edge.faces]
-        for f in faces_to_check:
-            if set(f.nodes) in useful_edge_face_sets:
-                f_to_delete = useful_edge.faces[useful_edge_face_sets.index(set(f.nodes))]
-                self.unlink(useful_edge, f_to_delete)
-            else:
-                self.link(useful_edge, f)
-                self.unlink(double_edge, f)
-        assert len(double_edge.faces) == 1
-        self.delete_face_group(double_edge.faces[0])
-
     def reduce_edge(self, e):
         """
         Reduce edge.
@@ -1605,19 +1545,23 @@ class Mesh:
         all deleted faces ids
         """
         a, b = e.nodes[0], e.nodes[1]
-        a.p = 0.5 * (a.p + a.p)
+        a.p = 0.5 * (a.p + b.p)
         ids = []
+        tuples_set = set()
         for f in b.faces:
             ids.append(f.glo_id)
             nodes = [n if n!=b else a for n in f.nodes]
-            if nodes.count(a) == 1:
+            point_tuple = tuple(sorted([n.glo_id for n in nodes]))
+            if nodes.count(a) == 1 and point_tuple not in tuples_set:
                 nf = self.add_face(nodes[0], nodes[1], nodes[2], f.zone)
                 nf.copy_data_from(f)
                 nf.calculate_area()
                 nf.calculate_normal()
+                tuples_set.add(point_tuple)
 
         self.delete_node(b)
         return ids
+
 
     def split_edge(self, e, p=None):
         """

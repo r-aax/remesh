@@ -24,5 +24,5 @@ if __name__ == '__main__':
     #case = '../cases/blender_custom_meshes/plate.dat'
     case = '../cases/bunny_fixed.dat'
     #case = '../cases/pseudogrids/ex1.dat'
-    RemesherTong(tracking_evolution=True).remesh(case, '../res_tong.dat', steps=10)
+    RemesherTong(tracking_evolution=True).remesh(case, '../res_tong.dat', steps=150)
     case_isotropic_remesh(case, '../res_isotropic.dat')
