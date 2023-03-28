@@ -1819,9 +1819,22 @@ class Mesh:
         for f in faces_to_delete:
             self.delete_face(f)
 
-    def split_self_intersected_faces(self):
+    def reset_faces_colors(self):
         """
-        Split all self-intersected faces.
+        Reset colors.
+        """
+
+        for f in self.faces:
+            f['M'] = Mesh.ColorCommon
+
+    def mark_self_intersected_faces(self, c):
+        """
+        Mark self intersected faces.
+
+        Parameters
+        ----------
+        c : int
+            Color.
         """
 
         # Find self-intersected faces.
@@ -1829,27 +1842,35 @@ class Mesh:
         pairs = tc.intersection_with_triangles_cloud(tc)
         pairs = list(filter(lambda p: p[0].back_ref.glo_id < p[1].back_ref.glo_id, pairs))
 
-        #
-        # Mark faces
-        #
-
-        # First all faces are common.
-        for f in self.faces:
-            f['M'] = Mesh.ColorCommon
+        # Reset colors.
+        self.reset_faces_colors()
 
         # If face intersects any - mark it in 1.
         for p in pairs:
             for t in p:
-                t.back_ref['M'] = Mesh.ColorToDelete
+                t.back_ref['M'] = c
 
-        # Split faces.
-        faces_to_split = [f for f in self.faces if f['M'] == Mesh.ColorToDelete]
-        for f in faces_to_split:
-            self.split_face(f)
+    def refine_self_intersected_faces(self):
+        """
+        Refine facs.
+        """
 
-        # Reset colors.
+        self.mark_self_intersected_faces(Mesh.ColorToDelete)
+
+        es = []
         for f in self.faces:
-            f['M'] = Mesh.ColorCommon
+            f.int_points = []
+            if f['M'] == Mesh.ColorToDelete:
+                for e in f.edges:
+                    if e not in es:
+                        es.append(e)
+        for e in es:
+            for f in e.faces:
+                f.int_points.append(e.center())
+
+        self.multisplit_by_intersection_points()
+
+        self.reset_faces_colors()
 
     def lo_face(self, i):
         """
@@ -1968,6 +1989,11 @@ class Mesh:
         """
         Find all self-intersections of the faces.
         Throw intersection points to them.
+
+        Returns
+        -------
+        int
+            Count of points.
         """
 
         for f in self.faces:
@@ -1985,6 +2011,8 @@ class Mesh:
 
         for f in self.faces:
             f.int_points = geom.delete_near_points(f.int_points)
+
+        return sum([len(f.int_points) for f in self.faces])
 
     def multisplit_by_intersection_points(self, is_collect_stat=False):
         """
@@ -2090,10 +2118,16 @@ class Mesh:
         """
 
         # Find intersections.
-        self.throw_intersection_points_to_faces()
-        self.multisplit_by_intersection_points()
-        if is_debug:
-            self.store(f'{debug_file_name}_ph_02_cut.dat')
+        points_count = self.throw_intersection_points_to_faces()
+        print(f'intersection points count = {points_count}')
+        while points_count > 0:
+            self.multisplit_by_intersection_points()
+            if is_debug:
+                self.store(f'{debug_file_name}_ph_02_cut_{points_count}.dat')
+            break
+            points_count = self.throw_intersection_points_to_faces()
+            print(f'intersection points count = {points_count}')
+
 
         # Walk.
         self.walk_surface(self.lo_face(0), Mesh.ColorFree)
@@ -2102,6 +2136,13 @@ class Mesh:
         # Delete all inner triangles.
         self.delete_faces(lambda f: f['M'] == Mesh.ColorToDelete)
         self.store(f'{debug_file_name}_ph_04_del.dat')
+
+    def check(self):
+        """
+        Check.
+        """
+
+        assert all([len(e.faces) == 2 for e in self.edges])
 
 
 if __name__ == '__main__':
