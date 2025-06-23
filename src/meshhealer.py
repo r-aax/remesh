@@ -36,7 +36,6 @@ def case_01_zip():
     # Without split faces.
     #
 
-    """
     # Load.
     mesh = msu.Mesh(f)
     store_and_say(mesh, f'../{c}_ph_01_orig.dat')
@@ -93,7 +92,6 @@ def case_01_zip():
     zipper.collect_border()
     zipper.zip(0, 1, is_flip_path_j=True)
     store_and_say(mesh, f'../{c}_ph_09_zip_2.dat')
-    """
 
     #
     # With double split faces.
@@ -140,14 +138,16 @@ def case_02_self_intersections_elimination():
     """
 
     c = '../case_02_sie'
+    # Trivial case.
+    f = '../cases/pseudogrids/ex2.dat'
     # Light case.
     # f = '../cases/triangle_sphere_2.dat'
     # Medium case.
     # f = '../cases/sphere_2.dat'
     # Hard case.
     # f = '../cases/bunny_2.dat'
-    # Extra case.
-    f = '../cases/bugs/bug16.dat'
+    # Bunny leg case
+    # f = '../cases/fat_leg/fl_09.dat'
 
     # Load.
     mesh = msu.Mesh(f)
@@ -159,7 +159,7 @@ def case_02_self_intersections_elimination():
     mesh.self_intersections_elimination(is_debug=True, debug_file_name=c)
 
 
-def case_04_triangle_multisplit(cnt=10):
+def case_04_triangle_multisplit(cnt=8):
     """
     Case 04.
     Split face with multiple points.
@@ -207,6 +207,6 @@ def case_05_triangle_multisplit_and_reduce():
     print(f'{reduce_counter} edges reduced')
 
 if __name__ == '__main__':
-    # case_01_zip()
+    #case_01_zip()
     case_02_self_intersections_elimination()
-    # case_04_triangle_multisplit()
+    #case_04_triangle_multisplit()

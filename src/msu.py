@@ -7,7 +7,7 @@ from bisect import bisect_left
 
 # Count of valuable digits (after dot) in node coordinates.
 # If coordinates of nodes doesn't differ in valuable digits we consider them equal.
-from src.meshhealer import store_and_say
+from meshhealer import store_and_say
 
 NODE_COORDINATES_VALUABLE_DIGITS_COUNT = 10
 
@@ -758,9 +758,9 @@ class Mesh:
         """
 
         print('[MESH]')
-        print(f'Nodes ({len(self.nodes)}):\n  ', self.nodes)
-        print(f'Edges ({len(self.edges)}):\n  ', self.edges)
-        print(f'Faces ({len(self.faces)}):\n  ', self.faces)
+        print(f'Nodes ({len(self.nodes)}):\n  ')#, self.nodes)
+        print(f'Edges ({len(self.edges)}):\n  ')#, self.edges)
+        print(f'Faces ({len(self.faces)}):\n  ')#, self.faces)
 
         if print_edges_with_incident_faces:
             print('[EDGES WITH INCIDENT FACES]')
