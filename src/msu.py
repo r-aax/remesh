@@ -5,10 +5,6 @@ import geom
 import triangulator
 from bisect import bisect_left
 
-# Count of valuable digits (after dot) in node coordinates.
-# If coordinates of nodes doesn't differ in valuable digits we consider them equal.
-from meshhealer import store_and_say
-
 # --------------------------------------------------------------------------------------------------
 
 NODE_COORDINATES_VALUABLE_DIGITS_COUNT = 10
@@ -784,11 +780,6 @@ class Mesh:
     Mesh - consists of surface triangle faces.
     """
 
-    ColorCommon = 0
-    ColorToDelete = 1
-    ColorBorder = 2
-    ColorFree = 3
-
     # ----------------------------------------------------------------------------------------------
 
     def __init__(self, filename=None, is_merge_nodes=True):
@@ -1402,6 +1393,23 @@ class Mesh:
 
     # ----------------------------------------------------------------------------------------------
 
+    def set_faces_variables(self, variables):
+        """
+        Delete all faces variables and set new (with values 0.0).
+
+        Parameters
+        ----------
+        variables : [str]
+            List of variables names.
+        """
+
+        for f in self.faces:
+            f.data.clear()
+            for v in variables:
+                f[v] = 0.0
+
+    # ----------------------------------------------------------------------------------------------
+
     def store(self, filename):
         """
         Store mesh.
@@ -1951,81 +1959,55 @@ class Mesh:
 
     # ----------------------------------------------------------------------------------------------
 
-    def delete_self_intersected_faces(self):
+    def pairs_of_intersecting_triangles(self):
         """
-        Delete all self-intersected faces.
+        Get pairs of intersecting triangles.
 
-        We process the following marking:
-          0 - common face,
-          1 - face to delete,
-          2 - face, adjacent to deleted,
+        Returns
+        -------
+        [(Triangle, Triangle)]
         """
 
-        # Find self-intersected faces.
         tc = geom.TrianglesCloud(self.triangles_list())
-        pairs = tc.intersection_with_triangles_cloud(tc)
-        pairs = list(filter(lambda p: p[0].back_ref.glo_id < p[1].back_ref.glo_id, pairs))
+        ps = tc.intersection_with_triangles_cloud(tc)
+        ps = list(filter(lambda p: p[0].back_ref.glo_id < p[1].back_ref.glo_id, ps))
 
-        #
-        # Mark faces
-        #
-
-        # First all faces are common.
-        for f in self.faces:
-            f['M'] = Mesh.ColorCommon
-
-        # If face intersects any - mark it in 1.
-        for p in pairs:
-            for t in p:
-                t.back_ref['M'] = Mesh.ColorToDelete
-
-        # Neighbours of deleted faces are marked in 2.
-        for f in self.faces:
-            if f['M'] == Mesh.ColorCommon:
-                for n in f.nodes:
-                    for f1 in n.faces:
-                        if f1['M'] == Mesh.ColorToDelete:
-                            f['M'] = Mesh.ColorBorder
-
-        # Delete faces.
-        faces_to_delete = [f for f in self.faces if f['M'] == Mesh.ColorToDelete]
-        for f in faces_to_delete:
-            self.delete_face(f)
+        return ps
 
     # ----------------------------------------------------------------------------------------------
 
-    def reset_faces_colors(self):
+    def paint_faces(self, color):
         """
-        Reset colors.
-        """
-
-        for f in self.faces:
-            f['M'] = Mesh.ColorCommon
-
-    # ----------------------------------------------------------------------------------------------
-
-    def mark_self_intersected_faces(self, c):
-        """
-        Mark self intersected faces.
+        Paint faces.
 
         Parameters
         ----------
-        c : int
+        color : int
             Color.
         """
 
-        # Find self-intersected faces.
-        tc = geom.TrianglesCloud(self.triangles_list())
-        pairs = tc.intersection_with_triangles_cloud(tc)
-        pairs = list(filter(lambda p: p[0].back_ref.glo_id < p[1].back_ref.glo_id, pairs))
+        for f in self.faces:
+            f['M'] = color
 
-        # Reset colors.
-        self.reset_faces_colors()
+    # ----------------------------------------------------------------------------------------------
 
-        # If face intersects any - mark it in 1.
-        for p in pairs:
+    def mark_intersecting_faces(self, color):
+        """
+        Mark intersecting faces.
+
+        Parameters
+        ----------
+        color : int
+            Color.
+        """
+
+        assert color != 0, "intersecting faces can not be painted in color 0"
+
+        ps = self.pairs_of_intersecting_triangles()
+        self.paint_faces(0)
+        for p in ps:
             for t in p:
-                t.back_ref['M'] = c
+                t.back_ref['M'] = color
 
     # ----------------------------------------------------------------------------------------------
 
@@ -2105,60 +2087,66 @@ class Mesh:
 
     # ----------------------------------------------------------------------------------------------
 
-    def walk_until_border(self, start, mark_color):
+    def walk_until_color(self, start, color_stop, color_mark):
         """
-        Mark f into mark_color.
-        Mark all neighbours of f into mark_color.
-        And so on, while not reaching border.
+        Walk until stop color.
 
         Parameters
         ----------
         start : Face
-            Start face.
-        mark_color : int
-            Color for mark.
+            Face.
+        color_stop : int
+            Stop color.
+        color_mark : int
+            Mark color.
         """
 
         li = [start]
-
         while li:
             f = li.pop()
-            if f['M'] == mark_color:
+            if (f['M'] == color_stop) or (f['M'] == color_mark):
                 continue
-            f['M'] = mark_color
-            for n in f.nodes:
-                for f1 in n.faces:
-                    li.append(f1)
+            f['M'] = color_mark
+            for e in f.edges:
+                if len(e.faces) == 2:
+                    li.append(f.neighbour(e))
 
     # ----------------------------------------------------------------------------------------------
 
-    def walk_surface(self, start, mark_color, log = False):
+    def walk_by_outer_neighbor(self, start,
+                               color_good, color_bad):
         """
         Walk mesh surface.
+        When we meet more than 1 neighbor face we choose outer neighbor.
+
+                ^
+          flow  |  || outer
+          --->  |  ||       for delete
+        -----------++-----------
+                   ||
+                   || for delete
 
         Parameters
         ----------
         start : Face
             Start face.
-        mark_color : int
-            Mark color.
+        color_good : int
+            Color for good cells.
+        color_bad : int
+            Color for bad cell (to be deleted).
         log : Bool
             Logging intermediate states
         """
 
         for f in self.faces:
-            f['M'] = Mesh.ColorCommon
+            f['M'] = color_bad
 
         li = [start]
-        iter = 0
         while li:
-            iter += 1
-            if log and iter % 100 == 0:
-                store_and_say(self, f'../coloring_{iter}.dat')
             f = li.pop()
-            if f['M'] == mark_color:
+            if f['M'] == color_good:
                 continue
-            f['M'] = mark_color
+            f['M'] = color_good
             for e in f.edges:
                 neighbours_count = len(e.faces)
                 if neighbours_count == 2:
@@ -2167,10 +2155,6 @@ class Mesh:
                     on = f.outer_neighbour(e)
                     if on:
                         li.append(on)
-
-        for f in self.faces:
-            if f['M'] == Mesh.ColorCommon:
-                f['M'] = Mesh.ColorToDelete
 
     # ----------------------------------------------------------------------------------------------
 
@@ -2188,9 +2172,7 @@ class Mesh:
         for f in self.faces:
             f.int_points = []
 
-        tc = geom.TrianglesCloud(self.triangles_list())
-        pairs = tc.intersection_with_triangles_cloud(tc)
-        pairs = list(filter(lambda p: p[0].back_ref.glo_id < p[1].back_ref.glo_id, pairs))
+        pairs = self.pairs_of_intersecting_triangles()
 
         for pair in pairs:
             [t1, t2] = pair
@@ -2238,72 +2220,6 @@ class Mesh:
 
     # ----------------------------------------------------------------------------------------------
 
-    def has_thin_triangles(self):
-        """
-        Check if mesh has thin triangles.
-
-        Returns
-        -------
-        True - if mesh has thin triangles,
-        False - if mesh has not thin triangles.
-        """
-
-        return any(map(lambda f: f.is_thin(), self.faces))
-
-    # ----------------------------------------------------------------------------------------------
-
-    def has_pseudo_edges_faces(self):
-        """
-        Check if mesh has pseudo edges or faces.
-
-        Returns
-        -------
-        True - if mesh has pseudo objects,
-        False - if mesh has no pseudo objects.
-        """
-
-        has_edges = any(map(lambda e: e.is_pseudo(), self.edges))
-        has_faces = any(map(lambda f: f.is_pseudo(), self.faces))
-
-        return has_edges or has_faces
-
-    # ----------------------------------------------------------------------------------------------
-
-    def split_thin_faces(self):
-        """
-        Split thin triangles.
-        """
-
-        # Reset split points.
-        for e in self.edges:
-            e.split_points = []
-
-        # Find all thin triangles and mark to split their biggest edge.
-        for f in self.faces:
-            if f.is_thin():
-                e = f.big_edge()
-                e.split_points.append(f.third_node(e).p)
-
-        # Correct split points of edges.
-        edges_to_split = []
-        for e in self.edges:
-            l = len(e.split_points)
-            if l == 0:
-                pass
-            elif l == 1:
-                edges_to_split.append(e)
-            elif l == 2:
-                p = (e.split_points[0] + e.split_points[1]) / 2.0
-                e.split_points = [p]
-            else:
-                raise Exception(f'msu.Mesh : wrong count of edge split points ({l})')
-
-        # Split edges.
-        for e in edges_to_split:
-            self.split_edge(e, e.split_points[0])
-
-    # ----------------------------------------------------------------------------------------------
-
     def self_intersections_elimination(self, is_debug=False, debug_file_name='sie'):
         """
         Self-intersections elimination.
@@ -2323,17 +2239,16 @@ class Mesh:
             self.multisplit_by_intersection_points()
             if is_debug:
                 self.store(f'{debug_file_name}_ph_02_cut_{points_count}.dat')
-            break
             points_count = self.throw_intersection_points_to_faces()
             print(f'intersection points count = {points_count}')
 
 
         # Walk.
-        self.walk_surface(self.lo_face(0), Mesh.ColorFree)
+        self.walk_by_outer_neighbor(self.lo_face(0), color_good=0, color_bad=1)
         self.store(f'{debug_file_name}_ph_03_walk.dat')
 
         # Delete all inner triangles.
-        self.delete_faces(lambda f: f['M'] == Mesh.ColorToDelete)
+        self.delete_faces(lambda f: f['M'] == 1)
         self.store(f'{debug_file_name}_ph_04_del.dat')
 
     # ----------------------------------------------------------------------------------------------
