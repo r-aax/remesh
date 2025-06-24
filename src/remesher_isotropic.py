@@ -4,6 +4,7 @@ import numpy as np
 from numpy import linalg as LA
 from remesher import Remesher
 
+# --------------------------------------------------------------------------------------------------
 
 def time_to_icing_triangle_surface(a, ra, b, rb, c, rc, d):
     """
@@ -109,11 +110,14 @@ def time_to_icing_triangle_surface(a, ra, b, rb, c, rc, d):
 
     return max(alphas)
 
+# --------------------------------------------------------------------------------------------------
 
 class RemesherIsotropic(Remesher):
     """
     Isotropic remesher.
     """
+
+    # ----------------------------------------------------------------------------------------------
 
     def __init__(self):
         """
@@ -122,6 +126,8 @@ class RemesherIsotropic(Remesher):
 
         Remesher.__init__(self)
         self.name = 'isotropic'
+
+    # ----------------------------------------------------------------------------------------------
 
     def inner_remesh(self,
                      mesh,
@@ -186,3 +192,5 @@ class RemesherIsotropic(Remesher):
             mesh.calculate_faces_areas()
             mesh.calculate_faces_normals()
             mesh.calculate_nodes_normals()
+
+# --------------------------------------------------------------------------------------------------

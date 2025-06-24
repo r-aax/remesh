@@ -5,6 +5,8 @@ from numpy import linalg as LA
 from scipy import linalg as sLA
 from remesher import Remesher
 
+# --------------------------------------------------------------------------------------------------
+
 def node_calculate_A_and_b(node):
     """
     Calculate martrices for equation Ax=b for primary and null space calculation
@@ -18,6 +20,7 @@ def node_calculate_A_and_b(node):
     node.b = N.T @ W @ a
     node.A = N.T @ W @ N
 
+# --------------------------------------------------------------------------------------------------
 
 def face_calculate_p_u_vectors(face):
     """
@@ -38,6 +41,7 @@ def face_calculate_p_u_vectors(face):
 
     return p21, p31, u21, u31
 
+# --------------------------------------------------------------------------------------------------
 
 def face_calculate_jiao_coefs(face):
     """
@@ -48,6 +52,8 @@ def face_calculate_jiao_coefs(face):
     face.jiao_coef_a = c0 @ c0
     face.jiao_coef_b = c0 @ (np.cross(p21, u31) - np.cross(p31,u21))
     face.jiao_coef_c = c0 @ np.cross(u21, u31)
+
+# --------------------------------------------------------------------------------------------------
 
 def find_min_faces_ids(mesh, threshold):
     """
@@ -71,6 +77,7 @@ def find_min_faces_ids(mesh, threshold):
             min_faces_ids.append(f.glo_id)
     return min_faces_ids
 
+# --------------------------------------------------------------------------------------------------
 
 def face_calculate_v_coefs(face):
     """
@@ -89,9 +96,13 @@ def face_calculate_v_coefs(face):
     # If a > 0 then the face is contracting, otherwise diverging.
     face.is_contracting = face.v_coef_a > 0.0
 
+# --------------------------------------------------------------------------------------------------
+
 def calculate_all_v_coefs(mesh):
     for f in mesh.faces:
         face_calculate_v_coefs(f)
+
+# --------------------------------------------------------------------------------------------------
 
 def primary_and_null_space(A, threshold):
     """
@@ -125,6 +136,7 @@ def primary_and_null_space(A, threshold):
     null_space = eigen_vectors[:, k:]
     return primary_space, null_space, eigen_values, k
 
+# --------------------------------------------------------------------------------------------------
 
 def face_calculate_time_step_fraction_jiao(face):
     """
@@ -146,6 +158,7 @@ def face_calculate_time_step_fraction_jiao(face):
     # This is is to be exported.
     face['TsfJiao'] = face.tsf_jiao
 
+# --------------------------------------------------------------------------------------------------
 
 def face_calculate_time_step_fraction(face, time_step_fraction_k, time_step_fraction_jiao):
     """
@@ -175,11 +188,14 @@ def face_calculate_time_step_fraction(face, time_step_fraction_k, time_step_frac
     # This is is to be exported.
     face['Tsf'] = face.tsf
 
+# --------------------------------------------------------------------------------------------------
 
 class RemesherTong(Remesher):
     """
     Tong remesher.
     """
+
+    # ----------------------------------------------------------------------------------------------
 
     def __init__(self, tracking_evolution=False):
         """
@@ -189,6 +205,9 @@ class RemesherTong(Remesher):
         Remesher.__init__(self)
         self.name = 'tong'
         self.tracking_evolution = tracking_evolution
+
+    # ----------------------------------------------------------------------------------------------
+
     def inner_remesh(self,
                      mesh,
                      steps=40,
@@ -321,6 +340,8 @@ class RemesherTong(Remesher):
         self.final_volume_correction_step(mesh)
         mesh.add_additional_data_for_analysis()
 
+    # ----------------------------------------------------------------------------------------------
+
     def generate_accretion_rate(self, mesh):
         """
         Generate accretion rate.
@@ -336,6 +357,8 @@ class RemesherTong(Remesher):
 
         # Nothing to do.
         pass
+
+    # ----------------------------------------------------------------------------------------------
 
     def define_nodal_offset_direction(self, mesh, threshold):
         """
@@ -356,6 +379,8 @@ class RemesherTong(Remesher):
             for i in range(k):
                 normal += (primary_space[:, i] @ n.b) * primary_space[:, i] / eigen_values[i]
             n.normal = normal / np.linalg.norm(normal)
+
+    # ----------------------------------------------------------------------------------------------
 
     def normal_smoothing(self, mesh, normal_smoothing_steps, normal_smoothing_s, normal_smoothing_k):
         """
@@ -399,6 +424,8 @@ class RemesherTong(Remesher):
         for f in mesh.faces:
             face_calculate_v_coefs(f)
             face_calculate_jiao_coefs(f)
+
+    # ----------------------------------------------------------------------------------------------
 
     def time_step_fraction(self, mesh, is_simple_tsf, steps_left, time_step_fraction_k):
         """
@@ -452,6 +479,8 @@ class RemesherTong(Remesher):
 
         return tsf
 
+    # ----------------------------------------------------------------------------------------------
+
     def define_height_field(self, mesh):
         """
         Define height field.
@@ -496,6 +525,8 @@ class RemesherTong(Remesher):
                 maxH = f.h
         return maxH
 
+    # ----------------------------------------------------------------------------------------------
+
     def height_smoothing(self, mesh, maxH, ah, beta):
         """
         Height smoothing.
@@ -525,6 +556,8 @@ class RemesherTong(Remesher):
             dV = A * min(f1.h - f2.h, ah*maxH)
             f1.ice_chunk -= dV * beta
             f2.ice_chunk += dV * beta
+
+    # ----------------------------------------------------------------------------------------------
 
     def update_surface_nodal_positions(self, mesh):
         """
@@ -559,6 +592,8 @@ class RemesherTong(Remesher):
             n.old_p = n.p.copy()
             n.p += l * n.normal
 
+    # ----------------------------------------------------------------------------------------------
+
     def redistribute_remaining_volume(self, mesh):
         """
         Redistribute remaining volume.
@@ -592,6 +627,8 @@ class RemesherTong(Remesher):
                     f_max.target_ice = 0
                 f.target_ice = 0
 
+    # ----------------------------------------------------------------------------------------------
+
     def null_space_smoothing(self, mesh, threshold, safety_factor=0.2):
         """
         Null-space smoothing.
@@ -621,6 +658,8 @@ class RemesherTong(Remesher):
                 n.old_p = n.p.copy()
                 n.p += t
                 #logging.debug(f'dv =  {dv}; t = {t}')
+
+    # ----------------------------------------------------------------------------------------------
 
     def null_space_smoothing_accretion_volume_interpolation(self, mesh):
         """
@@ -654,6 +693,8 @@ class RemesherTong(Remesher):
             e.faces[1].ice_chunk += V_flux
             e.faces[0].ice_chunk -= V_flux
 
+    # ----------------------------------------------------------------------------------------------
+
     def final_volume_correction_step(self, mesh):
         """
         Final volume correction step.
@@ -665,3 +706,5 @@ class RemesherTong(Remesher):
         """
 
         self.null_space_smoothing_accretion_volume_interpolation(mesh)
+
+# --------------------------------------------------------------------------------------------------

@@ -4,6 +4,8 @@ import msu
 import logging
 from logging import StreamHandler, Formatter
 
+#---------------------------------------------------------------------------------------------------
+
 # Log.
 log = logging.getLogger(__name__)
 log.setLevel(logging.DEBUG)
@@ -11,11 +13,14 @@ handler = StreamHandler(stream=sys.stdout)
 handler.setFormatter(Formatter(fmt='[%(asctime)s: %(levelname)s] %(message)s'))
 log.addHandler(handler)
 
+#---------------------------------------------------------------------------------------------------
 
 class Remesher:
     """
     Main remesher class.
     """
+
+    # ----------------------------------------------------------------------------------------------
 
     def __init__(self):
         """
@@ -27,6 +32,8 @@ class Remesher:
 
         # Log.
         self.log = log
+
+    # ----------------------------------------------------------------------------------------------
 
     def remesh_prepare(self, mesh):
         """
@@ -42,6 +49,8 @@ class Remesher:
             f.target_ice = f.area * f['Hi']
 
         mesh.initial_target_ice = mesh.target_ice()
+
+    # ----------------------------------------------------------------------------------------------
 
     def remesh(self, name_in, name_out, steps=10, **kwargs):
         """
@@ -77,3 +86,5 @@ class Remesher:
 
         self.log.info(f'remesh_{self.name} end : time = {self.remesh_time:.5f} s, target_ice = {t_ice} ({t_perc}%)')
         return t_perc
+
+# --------------------------------------------------------------------------------------------------

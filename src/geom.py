@@ -4,6 +4,7 @@ import itertools
 import mth
 import random
 
+# --------------------------------------------------------------------------------------------------
 
 def points_dist(a, b):
     """
@@ -24,6 +25,7 @@ def points_dist(a, b):
 
     return la.norm(a - b)
 
+# --------------------------------------------------------------------------------------------------
 
 def points_sarea(a, b, c):
     """
@@ -46,6 +48,7 @@ def points_sarea(a, b, c):
 
     return np.cross(b - a, c - a)
 
+# --------------------------------------------------------------------------------------------------
 
 def points_area(a, b, c):
     """
@@ -68,6 +71,7 @@ def points_area(a, b, c):
 
     return 0.5 * la.norm(points_sarea(a, b, c))
 
+# --------------------------------------------------------------------------------------------------
 
 def is_ab_intersects_pq(a, b, p, q):
     """
@@ -99,6 +103,7 @@ def is_ab_intersects_pq(a, b, p, q):
 
     return (s1 < 0.0) and (s2 < 0.0)
 
+# --------------------------------------------------------------------------------------------------
 
 def if_ab_intersects_any_segment(a, b, ss):
     """
@@ -124,6 +129,7 @@ def if_ab_intersects_any_segment(a, b, ss):
 
     return any(map(lambda s: is_ab_intersects_pq(a, b, s[0], s[1]), ss))
 
+# --------------------------------------------------------------------------------------------------
 
 def is_points_near(a, b):
     """
@@ -144,6 +150,7 @@ def is_points_near(a, b):
 
     return points_dist(a, b) < mth.EPS
 
+# --------------------------------------------------------------------------------------------------
 
 def delete_near_points(ps):
     """
@@ -170,6 +177,7 @@ def delete_near_points(ps):
 
     return [ps[i] for i in range(l) if not delete_flags[i]]
 
+# --------------------------------------------------------------------------------------------------
 
 def rotation_matrix_from_vectors(vec1, vec2):
     """
@@ -203,6 +211,7 @@ def rotation_matrix_from_vectors(vec1, vec2):
     else:
         return np.eye(3)
 
+# --------------------------------------------------------------------------------------------------
 
 class Triangle:
     """
@@ -212,6 +221,8 @@ class Triangle:
                gamma >= 0
                beta + gamme <= 1
     """
+
+    # ----------------------------------------------------------------------------------------------
 
     def __init__(self, a, b, c, back_ref=None):
         """
@@ -234,6 +245,8 @@ class Triangle:
         # Back reference for linking with face.
         self.back_ref = back_ref
 
+    # ----------------------------------------------------------------------------------------------
+
     def __repr__(self):
         """
         String representation.
@@ -246,6 +259,8 @@ class Triangle:
 
         return f'Triangle ({self.points[0]}, {self.points[1]}, {self.points[2]})'
 
+    # ----------------------------------------------------------------------------------------------
+
     def center(self):
         """
         Get triangle center.
@@ -257,6 +272,8 @@ class Triangle:
         """
 
         return (self.points[0] + self.points[1] + self.points[2]) / 3.0
+
+    # ----------------------------------------------------------------------------------------------
 
     def random_point(self):
         """
@@ -273,6 +290,8 @@ class Triangle:
 
         return (ra * a + rb * b + rc * c) / (ra + rb + rc)
 
+    # ----------------------------------------------------------------------------------------------
+
     def area(self):
         """
         Area.
@@ -284,6 +303,8 @@ class Triangle:
         """
 
         return points_area(self.points[0], self.points[1], self.points[2])
+
+    # ----------------------------------------------------------------------------------------------
 
     def normal(self):
         """
@@ -300,6 +321,8 @@ class Triangle:
 
         return n
 
+    # ----------------------------------------------------------------------------------------------
+
     def min_height(self):
         """
         Min height.
@@ -315,6 +338,8 @@ class Triangle:
 
         return self.area() / (0.5 * bs)
 
+    # ----------------------------------------------------------------------------------------------
+
     def is_thin(self, local_eps=None):
         """
         Check if triangle thin.
@@ -326,6 +351,8 @@ class Triangle:
         """
 
         return self.min_height() < mth.EPS if local_eps is None else self.min_height() < local_eps
+
+    # ----------------------------------------------------------------------------------------------
 
     def areas_difference(self, p):
         """
@@ -346,6 +373,8 @@ class Triangle:
         a, b, c = self.points[0], self.points[1], self.points[2]
 
         return abs(self.area() - points_area(a, b, p) - points_area(b, c, p) - points_area(a, c, p))
+
+    # ----------------------------------------------------------------------------------------------
 
     def has_common_points_with(self, t):
         """
@@ -370,6 +399,8 @@ class Triangle:
 
         return False
 
+    # ----------------------------------------------------------------------------------------------
+
     @staticmethod
     def sorting_by_the_selected_axis(triangles_for_sorting, axis):
         """
@@ -391,6 +422,8 @@ class Triangle:
         triangles_for_sorting.sort(key=lambda tri: tri.center()[axis])
 
         return triangles_for_sorting
+
+    # ----------------------------------------------------------------------------------------------
 
     def is_intersect_with_segment(self, p, q):
         """
@@ -478,6 +511,8 @@ class Triangle:
             # TODO.
             # If det = 0.0 segment may lay in triangle plane.
             return False
+
+    # ----------------------------------------------------------------------------------------------
 
     def find_intersection_with_segment(self, p, q):
         """
@@ -569,6 +604,8 @@ class Triangle:
             # If det = 0.0 segment may lay in triangle plane.
             return []
 
+    # ----------------------------------------------------------------------------------------------
+
     def is_intersect_with_triangle(self, t):
         """
         Check if triangle intersects another triangle.
@@ -591,6 +628,8 @@ class Triangle:
                or t.is_intersect_with_segment(self.points[0], self.points[1]) \
                or t.is_intersect_with_segment(self.points[1], self.points[2]) \
                or t.is_intersect_with_segment(self.points[2], self.points[0])
+
+    # ----------------------------------------------------------------------------------------------
 
     def find_intersection_with_triangle(self, t):
         """
@@ -619,6 +658,7 @@ class Triangle:
 
         return points
 
+# --------------------------------------------------------------------------------------------------
 
 class Box:
     """
@@ -627,6 +667,8 @@ class Box:
           (MinY <= Y <= MaxY) and
           (MinZ <= Z <= MaxZ).
     """
+
+    # ----------------------------------------------------------------------------------------------
 
     def __init__(self, ps):
         """
@@ -648,6 +690,8 @@ class Box:
         # Hi point (MaxX, MaxY, MaxZ).
         self.hi = np.array([max(xs), max(ys), max(zs)])
 
+    # ----------------------------------------------------------------------------------------------
+
     @staticmethod
     def from_points(ps):
         """
@@ -665,6 +709,8 @@ class Box:
         """
 
         return Box(ps)
+
+    # ----------------------------------------------------------------------------------------------
 
     @staticmethod
     def from_triangles(ts):
@@ -688,6 +734,8 @@ class Box:
         # Merge lists and create box from merged points list.
         return Box([p for ps in pss for p in ps])
 
+    # ----------------------------------------------------------------------------------------------
+
     def __repr__(self):
         """
         String representation.
@@ -699,6 +747,8 @@ class Box:
         """
 
         return f'Box: X({self.lo[0]} - {self.hi[0]}), Y({self.lo[1]} - {self.hi[1]}), Z({self.lo[2]} - {self.hi[2]})'
+
+    # ----------------------------------------------------------------------------------------------
 
     def is_point_inside(self, p):
         """
@@ -718,6 +768,8 @@ class Box:
         return (self.lo[0] <= p[0] <= self.hi[0]) \
                and (self.lo[1] <= p[1] <= self.hi[1]) \
                and (self.lo[2] <= p[2] <= self.hi[2])
+
+    # ----------------------------------------------------------------------------------------------
 
     def is_intersect_with_box(self, other_box):
         """
@@ -742,6 +794,7 @@ class Box:
         else:
             return True
 
+# --------------------------------------------------------------------------------------------------
 
 class TrianglesCloud:
     """
@@ -770,8 +823,12 @@ class TrianglesCloud:
       TrianglesCloud([t1])    TrianglesCloud([t2])    TrianglesCloud([t3])    TrianglesCloud([t4])
     """
 
+    # ----------------------------------------------------------------------------------------------
+
     # Maximum count of triangles in list.
     max_list_triangles_count = 1
+
+    # ----------------------------------------------------------------------------------------------
 
     def __init__(self, triangles_list):
         """
@@ -795,6 +852,8 @@ class TrianglesCloud:
         # Build subclouds tree.
         self.build_subclouds_tree()
 
+    # ----------------------------------------------------------------------------------------------
+
     def print(self, level=0):
         """
         Print on screen.
@@ -814,6 +873,8 @@ class TrianglesCloud:
             for sc in self.subclouds:
                 sc.print(level + 1)
 
+    # ----------------------------------------------------------------------------------------------
+
     def build_subclouds_tree(self):
         """
         Build subclouds tree.
@@ -832,6 +893,8 @@ class TrianglesCloud:
             # Do nothings.
             # Triangles stay triangles.
             pass
+
+    # ----------------------------------------------------------------------------------------------
 
     def separate_triangles_list(self, triangles_list):
         """
@@ -865,6 +928,8 @@ class TrianglesCloud:
 
         return [triangles_list[:mid_of_list],  triangles_list[mid_of_list:]]
 
+    # ----------------------------------------------------------------------------------------------
+
     def is_list(self):
         """
         Check if cloud is list.
@@ -882,6 +947,8 @@ class TrianglesCloud:
             raise Exception('internal error')
 
         return is_triangles
+
+    # ----------------------------------------------------------------------------------------------
 
     def intersection_with_triangles_cloud(self, tc):
         """
@@ -915,6 +982,7 @@ class TrianglesCloud:
                     for t2 in tc.triangles
                     if (not t1.has_common_points_with(t2)) and t1.is_intersect_with_triangle(t2)]
 
+# --------------------------------------------------------------------------------------------------
 
 if __name__ == '__main__':
 
@@ -925,3 +993,5 @@ if __name__ == '__main__':
     t1 = Triangle(np.array([0.0, 0.0, 0.0]), np.array([1.0, 0.0, 0.0]), np.array([0.0, 1.0, 0.0]))
     t2 = Triangle(np.array([2.0, 0.0, 0.0]), np.array([2.0, 1.0, 0.0]), np.array([1.0, 1.0, 0.0]))
     assert not t1.is_intersect_with_triangle(t2)
+
+# --------------------------------------------------------------------------------------------------

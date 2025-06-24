@@ -9,16 +9,21 @@ from bisect import bisect_left
 # If coordinates of nodes doesn't differ in valuable digits we consider them equal.
 from meshhealer import store_and_say
 
+# --------------------------------------------------------------------------------------------------
+
 NODE_COORDINATES_VALUABLE_DIGITS_COUNT = 10
 
 # String of export.
 EXPORT_FORMAT_STRING = '{0:.18e}'
 
+# --------------------------------------------------------------------------------------------------
 
 class Node:
     """
     Node - container for coordinates.
     """
+
+    # ----------------------------------------------------------------------------------------------
 
     def __init__(self, p):
         """
@@ -43,6 +48,8 @@ class Node:
         # Direction for node moving (we call it normal).
         self.normal = None
 
+    # ----------------------------------------------------------------------------------------------
+
     def __repr__(self):
         """
         String representation.
@@ -54,6 +61,8 @@ class Node:
         """
 
         return f'Node {self.glo_id} ({self.p})'
+
+    # ----------------------------------------------------------------------------------------------
 
     def rounded_coordinates(self):
         """
@@ -67,6 +76,8 @@ class Node:
 
         return tuple(map(lambda x: round(x, NODE_COORDINATES_VALUABLE_DIGITS_COUNT), self.p))
 
+    # ----------------------------------------------------------------------------------------------
+
     def is_isolated(self):
         """
         Check if node is isolated.
@@ -78,6 +89,8 @@ class Node:
         """
 
         return len(self.edges) == 0
+
+    # ----------------------------------------------------------------------------------------------
 
     def neighbour(self, e):
         """
@@ -101,6 +114,8 @@ class Node:
         else:
             return None
 
+    # ----------------------------------------------------------------------------------------------
+
     def neighbourhood(self):
         """
         Get heighbourhood.
@@ -113,11 +128,14 @@ class Node:
 
         return [self.neighbour(e) for e in self.edges]
 
+# --------------------------------------------------------------------------------------------------
 
 class Edge:
     """
     Edge - border between two faces
     """
+
+    # ----------------------------------------------------------------------------------------------
 
     def __init__(self):
         """
@@ -129,6 +147,7 @@ class Edge:
         self.faces = []
         self.nodes = []
 
+    # ----------------------------------------------------------------------------------------------
 
     def __repr__(self):
         """
@@ -145,6 +164,8 @@ class Edge:
 
         return f'Edge{ps_str} {self.glo_id} ({id0} - {id1})'
 
+    # ----------------------------------------------------------------------------------------------
+
     def is_faces_free(self):
         """
         Check if edge is without incident faces.
@@ -156,6 +177,8 @@ class Edge:
         """
 
         return len(self.faces) == 0
+
+    # ----------------------------------------------------------------------------------------------
 
     def is_pseudo(self):
         """
@@ -169,6 +192,8 @@ class Edge:
 
         return self.nodes[0] == self.nodes[1]
 
+    # ----------------------------------------------------------------------------------------------
+
     def points(self):
         """
         Get points.
@@ -180,6 +205,8 @@ class Edge:
         """
         return self.nodes[0].p, self.nodes[1].p
 
+    # ----------------------------------------------------------------------------------------------
+
     def old_points(self):
         """
         Get old points.
@@ -190,6 +217,8 @@ class Edge:
             Old points.
         """
         return self.nodes[0].old_p, self.nodes[1].old_p
+
+    # ----------------------------------------------------------------------------------------------
 
     def length(self):
         """
@@ -203,6 +232,8 @@ class Edge:
 
         return LA.norm(self.nodes[0].p - self.nodes[1].p)
 
+    # ----------------------------------------------------------------------------------------------
+
     def center(self):
         """
         Center point.
@@ -214,6 +245,8 @@ class Edge:
         """
 
         return (self.nodes[0].p + self.nodes[1].p) / 2.0
+
+    # ----------------------------------------------------------------------------------------------
 
     def replace_face(self, f, new_f):
         """
@@ -234,6 +267,8 @@ class Edge:
         else:
             raise Exception('No such face')
 
+    # ----------------------------------------------------------------------------------------------
+
     def flip_nodes(self):
         """
         Flip nodes.
@@ -241,11 +276,14 @@ class Edge:
 
         self.nodes[0], self.nodes[1] = self.nodes[1], self.nodes[0]
 
+# --------------------------------------------------------------------------------------------------
 
 class Face:
     """
     Face - container for physical data.
     """
+
+    # ----------------------------------------------------------------------------------------------
 
     def __init__(self):
         """
@@ -292,6 +330,8 @@ class Face:
         # Diverging or contracting face.
         self.is_contracting = False
 
+    # ----------------------------------------------------------------------------------------------
+
     def set_data(self, variables, values):
         """
         Set data.
@@ -307,6 +347,8 @@ class Face:
 
         self.data = dict(zip(variables, values))
 
+    # ----------------------------------------------------------------------------------------------
+
     def copy_data_from(self, f):
         """
         Copy data from another face.
@@ -318,6 +360,8 @@ class Face:
         """
 
         self.set_data(f.data.keys(), f.data.values())
+
+    # ----------------------------------------------------------------------------------------------
 
     def __repr__(self):
         """
@@ -334,6 +378,8 @@ class Face:
         th_str = '/th' if self.is_thin() else ''
 
         return f'Face{ps_str}{th_str} {self.glo_id} ({id0}, {id1}, {id2})'
+
+    # ----------------------------------------------------------------------------------------------
 
     def __getitem__(self, item):
         """
@@ -352,6 +398,8 @@ class Face:
 
         return self.data.get(item, 0.0)
 
+    # ----------------------------------------------------------------------------------------------
+
     def __setitem__(self, key, value):
         """
         Set data element.
@@ -365,6 +413,8 @@ class Face:
         """
 
         self.data[key] = value
+
+    # ----------------------------------------------------------------------------------------------
 
     def is_pseudo(self):
         """
@@ -380,6 +430,8 @@ class Face:
 
         return (a == b) or (b == c) or (a == c)
 
+    # ----------------------------------------------------------------------------------------------
+
     def is_thin(self, local_eps=None):
         """
         Check face for thin.
@@ -391,6 +443,8 @@ class Face:
         """
 
         return (not self.is_pseudo()) and self.triangle().is_thin(local_eps)
+
+    # ----------------------------------------------------------------------------------------------
 
     def is_thin_with_border_big_edge(self):
         """
@@ -409,6 +463,8 @@ class Face:
 
         return len(s.faces) == 1
 
+    # ----------------------------------------------------------------------------------------------
+
     def points(self):
         """
         Get points.
@@ -420,6 +476,8 @@ class Face:
         """
 
         return self.nodes[0].p, self.nodes[1].p, self.nodes[2].p
+
+    # ----------------------------------------------------------------------------------------------
 
     def center(self):
         """
@@ -433,6 +491,8 @@ class Face:
 
         return (self.nodes[0].p + self.nodes[1].p + self.nodes[2].p) / 3.0
 
+    # ----------------------------------------------------------------------------------------------
+
     def big_edge(self):
         """
         Get biggestr edge.
@@ -444,6 +504,8 @@ class Face:
         """
 
         return self.edges[np.argmax([e.length() for e in self.edges])]
+
+    # ----------------------------------------------------------------------------------------------
 
     def neighbour(self, e):
         """
@@ -468,6 +530,8 @@ class Face:
             return e.faces[0]
         else:
             return None
+
+    # ----------------------------------------------------------------------------------------------
 
     def outer_neighbour(self, e):
         """
@@ -499,6 +563,8 @@ class Face:
 
         return pretenders[i]
 
+    # ----------------------------------------------------------------------------------------------
+
     def neighbourhood(self):
         """
         Get neighbourhood.
@@ -518,12 +584,16 @@ class Face:
 
         return nh
 
+    # ----------------------------------------------------------------------------------------------
+
     def reverse_normal(self):
         """
         Reverse normal.
         """
 
         self.nodes[0], self.nodes[1] = self.nodes[1], self.nodes[0]
+
+    # ----------------------------------------------------------------------------------------------
 
     def normals(self):
         """
@@ -537,6 +607,8 @@ class Face:
 
         return self.nodes[0].normal, self.nodes[1].normal, self.nodes[2].normal
 
+    # ----------------------------------------------------------------------------------------------
+
     def calculate_area(self):
         """
         Calculate area.
@@ -545,6 +617,8 @@ class Face:
         a, b, c = self.points()
 
         self.area = geom.points_area(a, b, c)
+
+    # ----------------------------------------------------------------------------------------------
 
     def calculate_normal(self):
         """
@@ -556,6 +630,8 @@ class Face:
         self.normal = np.cross(b - a, c - b)
         self.normal = self.normal / LA.norm(self.normal)
         self.smoothed_normal = self.normal.copy()
+
+    # ----------------------------------------------------------------------------------------------
 
     def inner_angle(self, n):
         """
@@ -578,6 +654,8 @@ class Face:
         # (a, b) = |a| * |b| * cos(alpha)
         return np.arccos(np.dot(v1, v2) / (LA.norm(v1) * LA.norm(v2)))
 
+    # ----------------------------------------------------------------------------------------------
+
     def triangle(self):
         """
         Create triangle.
@@ -589,6 +667,8 @@ class Face:
         """
 
         return geom.Triangle(self.nodes[0].p, self.nodes[1].p, self.nodes[2].p)
+
+    # ----------------------------------------------------------------------------------------------
 
     def third_node(self, e):
         """
@@ -612,11 +692,14 @@ class Face:
 
         return ns[0]
 
+# --------------------------------------------------------------------------------------------------
 
 class Zone:
     """
     Zone - set of faces.
     """
+
+    # ----------------------------------------------------------------------------------------------
 
     def __init__(self, name):
         """
@@ -631,6 +714,8 @@ class Zone:
         self.name = name
         self.nodes = []
         self.faces = []
+
+    # ----------------------------------------------------------------------------------------------
 
     @staticmethod
     def objects_slice_str(fun, obs):
@@ -653,6 +738,8 @@ class Zone:
 
         return ' '.join(map(lambda ob: EXPORT_FORMAT_STRING.format(fun(ob)), obs))
 
+    # ----------------------------------------------------------------------------------------------
+
     def nodes_coordinate_slice_str(self, i):
         """
         String, that contains i-th coordinate of all nodes.
@@ -671,6 +758,8 @@ class Zone:
 
         return Zone.objects_slice_str(lambda n: n.p[i], self.nodes)
 
+    # ----------------------------------------------------------------------------------------------
+
     def faces_data_element_slice_str(self, e):
         """
         String, that contains data element for all faces.
@@ -688,6 +777,7 @@ class Zone:
 
         return Zone.objects_slice_str(lambda f: f[e], self.faces)
 
+# --------------------------------------------------------------------------------------------------
 
 class Mesh:
     """
@@ -698,6 +788,8 @@ class Mesh:
     ColorToDelete = 1
     ColorBorder = 2
     ColorFree = 3
+
+    # ----------------------------------------------------------------------------------------------
 
     def __init__(self, filename=None, is_merge_nodes=True):
         """
@@ -730,6 +822,8 @@ class Mesh:
         if not filename is None:
             self.load(filename, is_merge_nodes=is_merge_nodes)
 
+    # ----------------------------------------------------------------------------------------------
+
     def clear(self):
         """
         Clear all.
@@ -742,6 +836,8 @@ class Mesh:
         self.faces.clear()
         self.zones.clear()
         self.rounded_coordinates_bag.clear()
+
+    # ----------------------------------------------------------------------------------------------
 
     def print(self,
               print_edges_with_incident_faces=False,
@@ -773,6 +869,8 @@ class Mesh:
                 nh = f.neighbourhood()
                 print(f'{f} --- [s = {f.triangle().area()}] --- {len(nh)}/{nh}')
 
+    # ----------------------------------------------------------------------------------------------
+
     def find_near_node(self, node):
         """
         Try to find node near to given node.
@@ -801,6 +899,8 @@ class Mesh:
 
         raise Exception('Internal error')
 
+    # ----------------------------------------------------------------------------------------------
+
     def find_edge(self, a, b, except_edge=None):
         """
         Find edge with two nodes.
@@ -825,6 +925,8 @@ class Mesh:
 
         # Not found.
         return None
+
+    # ----------------------------------------------------------------------------------------------
 
     def find_face(self, a, b, c):
         """
@@ -853,12 +955,16 @@ class Mesh:
 
         return None
 
+    # ----------------------------------------------------------------------------------------------
+
     def find_face_by_id(self, id):
         index = bisect_left(self.faces, id, key=lambda f:f.glo_id)
         if index != len(self.faces) and self.faces[index].glo_id == id:
             return self.faces[index]
         else:
             return None
+
+    # ----------------------------------------------------------------------------------------------
 
     def max_node_glo_id(self):
         """
@@ -877,6 +983,8 @@ class Mesh:
         else:
             return -1
 
+    # ----------------------------------------------------------------------------------------------
+
     def max_edge_glo_id(self):
         """
         Get maximum edge global id
@@ -894,6 +1002,8 @@ class Mesh:
         else:
             return -1
 
+    # ----------------------------------------------------------------------------------------------
+
     def max_face_glo_id(self):
         """
         Get maximum face global id
@@ -910,6 +1020,8 @@ class Mesh:
             return self.faces[-1].glo_id
         else:
             return -1
+
+    # ----------------------------------------------------------------------------------------------
 
     def add_node(self, p, zone, is_merge_nodes=True):
         """
@@ -952,6 +1064,8 @@ class Mesh:
 
         return node_to_zone
 
+    # ----------------------------------------------------------------------------------------------
+
     def add_edge(self, a, b):
         """
         Add edge or return already existing one.
@@ -979,6 +1093,8 @@ class Mesh:
             self.links([(a, e), (b, e)])
 
         return e
+
+    # ----------------------------------------------------------------------------------------------
 
     def add_face(self, a, b, c, zone):
         """
@@ -1009,6 +1125,8 @@ class Mesh:
             self.links([(a, f), (b, f), (c, f), (ab, f), (bc, f), (ac, f)])
 
         return f
+
+    # ----------------------------------------------------------------------------------------------
 
     def link(self, obj1, obj2):
         """
@@ -1044,6 +1162,8 @@ class Mesh:
         else:
             raise Exception(f'msu.Mesh : wrong object type in link ({obj1})')
 
+    # ----------------------------------------------------------------------------------------------
+
     def links(self, li):
         """
         Multiple links.
@@ -1056,6 +1176,8 @@ class Mesh:
 
         for obj1, obj2 in li:
             self.link(obj1, obj2)
+
+    # ----------------------------------------------------------------------------------------------
 
     def unlink(self, obj1, obj2):
         """
@@ -1087,6 +1209,8 @@ class Mesh:
         else:
             raise Exception(f'msu.Mesh : wrong object type in unlink ({obj1})')
 
+    # ----------------------------------------------------------------------------------------------
+
     def unlinks(self, li):
         """
         Multiple unlink.
@@ -1099,6 +1223,8 @@ class Mesh:
 
         for obj1, obj2 in li:
             self.unlink(obj1, obj2)
+
+    # ----------------------------------------------------------------------------------------------
 
     def replace_face_node_link(self, f, n, new_n):
         """
@@ -1119,6 +1245,8 @@ class Mesh:
         n.faces.remove(f)
         new_n.faces.append(f)
 
+    # ----------------------------------------------------------------------------------------------
+
     def replace_edge_face_link(self, e, f, new_f):
         """
         Replace node in face-node link.
@@ -1137,6 +1265,8 @@ class Mesh:
         e.faces[i] = new_f
         f.edges.remove(e)
         new_f.edges.append(e)
+
+    # ----------------------------------------------------------------------------------------------
 
     def create_edges(self):
         """
@@ -1157,6 +1287,8 @@ class Mesh:
             for first, second in [(a, b), (b, c), (a, c)]:
                 e = self.add_edge(first, second)
                 self.link(e, f)
+
+    # ----------------------------------------------------------------------------------------------
 
     def load(self, filename, is_merge_nodes=True):
         """
@@ -1268,6 +1400,8 @@ class Mesh:
             if len(n.faces) == 0:
                 self.nodes.remove(n)
 
+    # ----------------------------------------------------------------------------------------------
+
     def store(self, filename):
         """
         Store mesh.
@@ -1320,6 +1454,8 @@ class Mesh:
 
             f.close()
 
+    # ----------------------------------------------------------------------------------------------
+
     def calculate_faces_areas(self):
         """
         Calculate faces areas.
@@ -1328,6 +1464,8 @@ class Mesh:
         for f in self.faces:
             f.calculate_area()
 
+    # ----------------------------------------------------------------------------------------------
+
     def calculate_faces_normals(self):
         """
         Calculate faces normals.
@@ -1335,6 +1473,8 @@ class Mesh:
 
         for f in self.faces:
             f.calculate_normal()
+
+    # ----------------------------------------------------------------------------------------------
 
     def target_ice(self):
         """
@@ -1347,6 +1487,8 @@ class Mesh:
         """
 
         return sum(map(lambda f: f.target_ice, self.faces))
+
+    # ----------------------------------------------------------------------------------------------
 
     def add_additional_data_for_analysis(self):
         """
@@ -1388,6 +1530,8 @@ class Mesh:
                 f['N3Z'] = v[2]
                 f['N3Mod'] = LA.norm(v)
 
+    # ----------------------------------------------------------------------------------------------
+
     def calculate_nodes_normals(self):
         """
         Calculate nodes normals.
@@ -1395,6 +1539,8 @@ class Mesh:
 
         for n in self.nodes:
             n.normal = sum(map(lambda f: f.normal, n.faces)) / len(n.faces)
+
+    # ----------------------------------------------------------------------------------------------
 
     def delete_face(self, f, delete_isolated = True):
         """
@@ -1437,6 +1583,8 @@ class Mesh:
             for n in ns:
                 self.delete_node(n)
 
+    # ----------------------------------------------------------------------------------------------
+
     def delete_faces(self, p):
         """
         Delete faces with predicate.
@@ -1451,6 +1599,8 @@ class Mesh:
 
         for f in fs:
             self.delete_face(f)
+
+    # ----------------------------------------------------------------------------------------------
 
     def delete_edge(self, e, delete_isolated=True):
         """
@@ -1476,6 +1626,8 @@ class Mesh:
         if e in self.edges:
             self.edges.remove(e)
 
+    # ----------------------------------------------------------------------------------------------
+
     def delete_edges(self, p):
         """
         Delete all edges with predicate.
@@ -1490,6 +1642,8 @@ class Mesh:
 
         for e in es:
             self.delete_edge(e)
+
+    # ----------------------------------------------------------------------------------------------
 
     def delete_node(self, n, delete_isolated=True):
         """
@@ -1516,6 +1670,8 @@ class Mesh:
         if n in self.nodes:
             self.nodes.remove(n)
 
+    # ----------------------------------------------------------------------------------------------
+
     def delete_nodes(self, p):
         """
         Delete nodes with predicate.
@@ -1530,6 +1686,8 @@ class Mesh:
 
         for n in ns:
             self.delete_node(n)
+
+    # ----------------------------------------------------------------------------------------------
 
     def reduce_edge(self, e):
         """
@@ -1562,6 +1720,7 @@ class Mesh:
         self.delete_node(b)
         return ids
 
+    # ----------------------------------------------------------------------------------------------
 
     def split_edge(self, e, p=None):
         """
@@ -1611,6 +1770,8 @@ class Mesh:
         # Delete edge.
         self.delete_edge(e)
 
+    # ----------------------------------------------------------------------------------------------
+
     def split_face(self, f, p=None):
         """
         Split face with point.
@@ -1649,6 +1810,8 @@ class Mesh:
 
         # Delete old face.
         self.delete_face(f)
+
+    # ----------------------------------------------------------------------------------------------
 
     def multisplit_face(self, f, ps):
         """
@@ -1701,6 +1864,8 @@ class Mesh:
         # Finally delete the face.
         self.delete_face(f)
 
+    # ----------------------------------------------------------------------------------------------
+
     def bad_multisplit_face(self, f, ps):
         """
         Split with several points.
@@ -1733,6 +1898,8 @@ class Mesh:
         for i in range(3):
             self.bad_multisplit_face(fs[i], pps[i])
 
+    # ----------------------------------------------------------------------------------------------
+
     def parallel_move(self, v):
         """
         Parallel move all nodes.
@@ -1745,6 +1912,8 @@ class Mesh:
 
         for n in self.nodes:
             n.p += v
+
+    # ----------------------------------------------------------------------------------------------
 
     def unite_with(self, m):
         """
@@ -1766,6 +1935,8 @@ class Mesh:
         self.edges = self.edges + m.edges
         self.faces = self.faces + m.faces
 
+    # ----------------------------------------------------------------------------------------------
+
     def triangles_list(self):
         """
         Construct triangles list.
@@ -1777,6 +1948,8 @@ class Mesh:
         """
 
         return [geom.Triangle(f.nodes[0].p, f.nodes[1].p, f.nodes[2].p, f) for f in self.faces]
+
+    # ----------------------------------------------------------------------------------------------
 
     def delete_self_intersected_faces(self):
         """
@@ -1819,6 +1992,8 @@ class Mesh:
         for f in faces_to_delete:
             self.delete_face(f)
 
+    # ----------------------------------------------------------------------------------------------
+
     def reset_faces_colors(self):
         """
         Reset colors.
@@ -1826,6 +2001,8 @@ class Mesh:
 
         for f in self.faces:
             f['M'] = Mesh.ColorCommon
+
+    # ----------------------------------------------------------------------------------------------
 
     def mark_self_intersected_faces(self, c):
         """
@@ -1850,6 +2027,8 @@ class Mesh:
             for t in p:
                 t.back_ref['M'] = c
 
+    # ----------------------------------------------------------------------------------------------
+
     def refine_self_intersected_faces(self):
         """
         Refine facs.
@@ -1871,6 +2050,8 @@ class Mesh:
         self.multisplit_by_intersection_points()
 
         self.reset_faces_colors()
+
+    # ----------------------------------------------------------------------------------------------
 
     def lo_face(self, i):
         """
@@ -1896,6 +2077,8 @@ class Mesh:
 
         return tl[0].back_ref
 
+    # ----------------------------------------------------------------------------------------------
+
     def hi_face(self, i):
         """
         Max face.
@@ -1919,6 +2102,8 @@ class Mesh:
         tl = geom.Triangle.sorting_by_the_selected_axis(tl, i)
 
         return tl[-1].back_ref
+
+    # ----------------------------------------------------------------------------------------------
 
     def walk_until_border(self, start, mark_color):
         """
@@ -1944,6 +2129,8 @@ class Mesh:
             for n in f.nodes:
                 for f1 in n.faces:
                     li.append(f1)
+
+    # ----------------------------------------------------------------------------------------------
 
     def walk_surface(self, start, mark_color, log = False):
         """
@@ -1985,6 +2172,8 @@ class Mesh:
             if f['M'] == Mesh.ColorCommon:
                 f['M'] = Mesh.ColorToDelete
 
+    # ----------------------------------------------------------------------------------------------
+
     def throw_intersection_points_to_faces(self):
         """
         Find all self-intersections of the faces.
@@ -2013,6 +2202,8 @@ class Mesh:
             f.int_points = geom.delete_near_points(f.int_points)
 
         return sum([len(f.int_points) for f in self.faces])
+
+    # ----------------------------------------------------------------------------------------------
 
     def multisplit_by_intersection_points(self, is_collect_stat=False):
         """
@@ -2045,6 +2236,8 @@ class Mesh:
         if is_collect_stat:
             print(f'multisplit_by_intersection_points stat : {d}')
 
+    # ----------------------------------------------------------------------------------------------
+
     def has_thin_triangles(self):
         """
         Check if mesh has thin triangles.
@@ -2056,6 +2249,8 @@ class Mesh:
         """
 
         return any(map(lambda f: f.is_thin(), self.faces))
+
+    # ----------------------------------------------------------------------------------------------
 
     def has_pseudo_edges_faces(self):
         """
@@ -2071,6 +2266,8 @@ class Mesh:
         has_faces = any(map(lambda f: f.is_pseudo(), self.faces))
 
         return has_edges or has_faces
+
+    # ----------------------------------------------------------------------------------------------
 
     def split_thin_faces(self):
         """
@@ -2105,6 +2302,8 @@ class Mesh:
         for e in edges_to_split:
             self.split_edge(e, e.split_points[0])
 
+    # ----------------------------------------------------------------------------------------------
+
     def self_intersections_elimination(self, is_debug=False, debug_file_name='sie'):
         """
         Self-intersections elimination.
@@ -2137,6 +2336,8 @@ class Mesh:
         self.delete_faces(lambda f: f['M'] == Mesh.ColorToDelete)
         self.store(f'{debug_file_name}_ph_04_del.dat')
 
+    # ----------------------------------------------------------------------------------------------
+
     def check(self):
         """
         Check.
@@ -2144,6 +2345,9 @@ class Mesh:
 
         assert all([len(e.faces) == 2 for e in self.edges])
 
+# --------------------------------------------------------------------------------------------------
 
 if __name__ == '__main__':
     pass
+
+# --------------------------------------------------------------------------------------------------

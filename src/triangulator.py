@@ -4,11 +4,14 @@ import geom
 import geom2d
 import scipy
 
+# --------------------------------------------------------------------------------------------------
 
 class Triangulator:
     """
     Class triangulator.
     """
+
+    # ----------------------------------------------------------------------------------------------
 
     def __init__(self, ps):
         """
@@ -21,6 +24,8 @@ class Triangulator:
         """
 
         self.ps = ps
+
+    # ----------------------------------------------------------------------------------------------
 
     def delaunay_triangulation(self, ps2):
         """
@@ -43,6 +48,8 @@ class Triangulator:
 
         return [(s[0], s[1], s[2]) for s in simp]
 
+    # ----------------------------------------------------------------------------------------------
+
     def bruteforce_triangulation(self, ps2):
         """
         Bruteforce triangulation
@@ -61,6 +68,8 @@ class Triangulator:
         points = [geom2d.Vect(p[0], p[1]) for p in ps2]
 
         return geom2d.triangulation(points)
+
+    # ----------------------------------------------------------------------------------------------
 
     def find_triangulation_indices(self):
         """
@@ -89,6 +98,7 @@ class Triangulator:
         return self.delaunay_triangulation(ps2)
         # return self.bruteforce_triangulation(ps2)
 
+# --------------------------------------------------------------------------------------------------
 
 if __name__ == '__main__':
 
@@ -107,3 +117,5 @@ if __name__ == '__main__':
                        np.array([0.8, 0.2, 0]), np.array([1.2, 0.4, 0])])
     idx = tr.find_triangulation_indices()
     assert idx == [(1, 3, 0), (3, 2, 0), (2, 4, 1), (4, 3, 1), (3, 4, 2)]
+
+# --------------------------------------------------------------------------------------------------

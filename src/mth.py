@@ -2,9 +2,12 @@ import math
 import cmath
 import numpy as np
 
+#---------------------------------------------------------------------------------------------------
+
 # Small eps.
 EPS = 1.0e-10
 
+#---------------------------------------------------------------------------------------------------
 
 def intervals_intersect(a, b):
     """
@@ -28,6 +31,7 @@ def intervals_intersect(a, b):
 
     return not not_intersect
 
+#---------------------------------------------------------------------------------------------------
 
 def solve_linear_equation(a, b):
     """
@@ -67,6 +71,7 @@ def solve_linear_equation(a, b):
     else:
         return 0, []
 
+#---------------------------------------------------------------------------------------------------
 
 def solve_quadratic_equation(a, b, c):
     """
@@ -121,8 +126,9 @@ def solve_quadratic_equation(a, b, c):
     else:
         return solve_linear_equation(b, c)
 
+#---------------------------------------------------------------------------------------------------
 
-def quadratic_equation_smallest_positive_root(a, b, c) -> float | None:
+def quadratic_equation_smallest_positive_root(a, b, c) -> float:
     """
     Smallest positive root of equation ax^2 + bx + c = 0.
 
@@ -148,6 +154,7 @@ def quadratic_equation_smallest_positive_root(a, b, c) -> float | None:
     else:
         return min(roots)
 
+#---------------------------------------------------------------------------------------------------
 
 def solve_cubic_equation(a, b, c, d):
     """
@@ -215,6 +222,7 @@ def solve_cubic_equation(a, b, c, d):
     else:
         return solve_quadratic_equation(b, c, d)
 
+#---------------------------------------------------------------------------------------------------
 
 def tetrahedra_volume(a, b, c, d) -> float:
     """
@@ -239,6 +247,7 @@ def tetrahedra_volume(a, b, c, d) -> float:
 
     return abs(np.dot((a - d), np.cross(b - d, c - d))) / 6.0
 
+#---------------------------------------------------------------------------------------------------
 
 def pseudoprism_volume(a, b, c, na, nb, nc) -> float:
     """
@@ -271,6 +280,7 @@ def pseudoprism_volume(a, b, c, na, nb, nc) -> float:
 
     return volume
 
+#---------------------------------------------------------------------------------------------------
 
 def find_extremums_kx_qx2qxq(k_x, q_x2, q_x, q):
     """
@@ -313,6 +323,7 @@ def find_extremums_kx_qx2qxq(k_x, q_x2, q_x, q):
 
     return r_sq + list(filter(lambda x: (sq(x) > 0.0) and (abs(df(x)) <= EPS), r_df))
 
+#---------------------------------------------------------------------------------------------------
 
 if __name__ == '__main__':
 
@@ -327,7 +338,9 @@ if __name__ == '__main__':
     assert solve_quadratic_equation(1.0, 0.0, 1.0) == (0, [])
 
     # Cubic equation.
-    # print(solve_cubic_equation(1.0, -3.0, 3.0, -1.0))
-    # print(solve_cubic_equation(1.0, 0.0, 0.0, -1.0))
-    # print(solve_cubic_equation(1.0, 0.0, 0.0, 0.0))
-    # print(solve_cubic_equation(1.0, 1.0, -1.0, -1.0))
+    print(solve_cubic_equation(1.0, -3.0, 3.0, -1.0))
+    print(solve_cubic_equation(1.0, 0.0, 0.0, -1.0))
+    print(solve_cubic_equation(1.0, 0.0, 0.0, 0.0))
+    print(solve_cubic_equation(1.0, 1.0, -1.0, -1.0))
+
+#---------------------------------------------------------------------------------------------------
