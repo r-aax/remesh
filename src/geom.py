@@ -794,7 +794,7 @@ class Box:
         else:
             return True
 
-# --------------------------------------------------------------------------------------------------
+# ==================================================================================================
 
 class TrianglesCloud:
     """
@@ -882,7 +882,7 @@ class TrianglesCloud:
 
         if len(self.triangles) > TrianglesCloud.max_list_triangles_count:
 
-            # Separate triangles list and buld new subtrees.
+            # Separate triangles list and build new subtrees.
             # self.Triangles must be cleaned up.
             new_tri_lists = self.separate_triangles_list(self.triangles)
             self.triangles = []
@@ -942,9 +942,7 @@ class TrianglesCloud:
 
         is_triangles = (self.triangles != [])
         is_subclouds = (self.subclouds != [])
-
-        if is_triangles and is_subclouds:
-            raise Exception('internal error')
+        assert not (is_triangles and is_subclouds)
 
         return is_triangles
 
@@ -969,11 +967,13 @@ class TrianglesCloud:
         if not self.box.is_intersect_with_box(tc.box):
             return []
 
-        if self.subclouds != []:
-            return list(itertools.chain(*[a.intersection_with_triangles_cloud(tc) for a in self.subclouds]))
+        if self.subclouds:
+            return list(itertools.chain(*[a.intersection_with_triangles_cloud(tc)
+                                          for a in self.subclouds]))
 
-        elif tc.subclouds != []:
-            return list(itertools.chain(*[self.intersection_with_triangles_cloud(b) for b in tc.subclouds]))
+        elif tc.subclouds:
+            return list(itertools.chain(*[self.intersection_with_triangles_cloud(b)
+                                          for b in tc.subclouds]))
 
         else:
             # List triangles in intersected box potentially intersect.
@@ -982,7 +982,7 @@ class TrianglesCloud:
                     for t2 in tc.triangles
                     if (not t1.has_common_points_with(t2)) and t1.is_intersect_with_triangle(t2)]
 
-# --------------------------------------------------------------------------------------------------
+# ==================================================================================================
 
 if __name__ == '__main__':
 
