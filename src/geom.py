@@ -1,6 +1,9 @@
 import numpy as np
 import numpy.linalg as la
 import itertools
+
+from lxml.etree import ElementClassLookup
+
 import mth
 import random
 
@@ -658,7 +661,55 @@ class Triangle:
 
         return points
 
-# --------------------------------------------------------------------------------------------------
+    # ----------------------------------------------------------------------------------------------
+
+    def is_intersect_with_box(self, b):
+        """
+        Check intersection with box.
+
+          H +----------+ G
+           /|         /|
+        E +----------+ | F
+          | |        | |
+        D | +------- |-+ C
+          |/         |/
+        A +----------+ B
+
+        Parameters
+        ----------
+        b : Box.
+            Box.
+
+        Returns
+        -------
+        True - if there is intersection,
+        False - otherwise.
+        """
+
+        lo, hi = b.lo, b.hi
+        a = np.array([lo[0], lo[1], lo[2]])
+        b = np.array([hi[0], lo[1], lo[2]])
+        c = np.array([hi[0], hi[1], lo[2]])
+        d = np.array([lo[0], hi[1], lo[2]])
+        e = np.array([lo[0], lo[1], hi[2]])
+        f = np.array([hi[0], lo[1], hi[2]])
+        g = np.array([hi[0], hi[1], hi[2]])
+        h = np.array([lo[0], hi[1], hi[2]])
+
+        return self.is_intersect_with_triangle(Triangle(a, b, c)) \
+               or self.is_intersect_with_triangle(Triangle(a, d, c)) \
+               or self.is_intersect_with_triangle(Triangle(b, f, g)) \
+               or self.is_intersect_with_triangle(Triangle(b, c, g)) \
+               or self.is_intersect_with_triangle(Triangle(a, e, h)) \
+               or self.is_intersect_with_triangle(Triangle(a, d, h)) \
+               or self.is_intersect_with_triangle(Triangle(e, f, g)) \
+               or self.is_intersect_with_triangle(Triangle(e, h, g)) \
+               or self.is_intersect_with_triangle(Triangle(a, b, f)) \
+               or self.is_intersect_with_triangle(Triangle(a, e, f)) \
+               or self.is_intersect_with_triangle(Triangle(d, c, g)) \
+               or self.is_intersect_with_triangle(Triangle(d, h, g))
+
+# ==================================================================================================
 
 class Box:
     """
@@ -670,25 +721,20 @@ class Box:
 
     # ----------------------------------------------------------------------------------------------
 
-    def __init__(self, ps):
+    def __init__(self, lo, hi):
         """
         Constructor from points.
 
         Parameters
         ----------
-        ps : [Point]
-            Box.
+        lo : [float]
+            Array of lo bounds.
+        hi : [float]
+            Array of high bounds.
         """
 
-        xs = [p[0] for p in ps]
-        ys = [p[1] for p in ps]
-        zs = [p[2] for p in ps]
-
-        # Lo point (MinX, MinY, MinZ).
-        self.lo = np.array([min(xs), min(ys), min(zs)])
-
-        # Hi point (MaxX, MaxY, MaxZ).
-        self.hi = np.array([max(xs), max(ys), max(zs)])
+        self.lo = np.array(lo)
+        self.hi = np.array(hi)
 
     # ----------------------------------------------------------------------------------------------
 
@@ -708,7 +754,17 @@ class Box:
             Box created from points.
         """
 
-        return Box(ps)
+        xs = [p[0] for p in ps]
+        ys = [p[1] for p in ps]
+        zs = [p[2] for p in ps]
+
+        # Lo point (MinX, MinY, MinZ).
+        lo = np.array([min(xs), min(ys), min(zs)])
+
+        # Hi point (MaxX, MaxY, MaxZ).
+        hi = np.array([max(xs), max(ys), max(zs)])
+
+        return Box(lo, hi)
 
     # ----------------------------------------------------------------------------------------------
 
@@ -732,7 +788,46 @@ class Box:
         pss = [t.points for t in ts]
 
         # Merge lists and create box from merged points list.
-        return Box([p for ps in pss for p in ps])
+        return Box.from_points([p for ps in pss for p in ps])
+
+    # ----------------------------------------------------------------------------------------------
+
+    def delta_box(self, ds):
+        """
+        Create delta box.
+
+        Parameters
+        ----------
+        ds : [float]
+            Array of deltas.
+        """
+
+        return Box(self.lo - ds, self.hi + ds)
+
+    # ----------------------------------------------------------------------------------------------
+
+    def eights_subboxes(self):
+        """
+        Return array of 8 subboxes.
+
+        Returns
+        -------
+        [Box, Box, Box, Box, Box, Box, Box, Box]
+            Eight subboxes.
+        """
+
+        [xlo, ylo, zlo] = self.lo
+        [xhi, yhi, zhi] = self.hi
+        [xmd, ymd, zmd] = (self.lo + self.hi) / 2.0
+
+        return [Box([xlo, ylo, zlo], [xmd, ymd, zmd]),
+                Box([xmd, ylo, zlo], [xhi, ymd, zmd]),
+                Box([xlo, ymd, zlo], [xmd, yhi, zmd]),
+                Box([xmd, ymd, zlo], [xhi, yhi, zmd]),
+                Box([xlo, ylo, zmd], [xmd, ymd, zhi]),
+                Box([xmd, ylo, zmd], [xhi, ymd, zhi]),
+                Box([xlo, ymd, zmd], [xmd, yhi, zhi]),
+                Box([xmd, ymd, zmd], [xhi, yhi, zhi])]
 
     # ----------------------------------------------------------------------------------------------
 
@@ -746,7 +841,23 @@ class Box:
             String.
         """
 
-        return f'Box: X({self.lo[0]} - {self.hi[0]}), Y({self.lo[1]} - {self.hi[1]}), Z({self.lo[2]} - {self.hi[2]})'
+        return f'Box: X({self.lo[0]} - {self.hi[0]}), '\
+               f'Y({self.lo[1]} - {self.hi[1]}), '\
+               f'Z({self.lo[2]} - {self.hi[2]})'
+
+    # ----------------------------------------------------------------------------------------------
+
+    def volume(self):
+        """
+        Get volume.
+
+        Returns
+        -------
+        float
+            Volume.
+        """
+
+        return (self.hi - self.lo).prod()
 
     # ----------------------------------------------------------------------------------------------
 
@@ -793,6 +904,27 @@ class Box:
             return False
         else:
             return True
+
+    # ----------------------------------------------------------------------------------------------
+
+    def fstore_points_coordinates(self, f):
+        """
+        Store to file points coordinates.
+
+        Parameters
+        ----------
+        f : file
+            File.
+        """
+
+        f.write(f'{self.lo[0]} {self.lo[1]} {self.lo[2]}\n')
+        f.write(f'{self.hi[0]} {self.lo[1]} {self.lo[2]}\n')
+        f.write(f'{self.hi[0]} {self.hi[1]} {self.lo[2]}\n')
+        f.write(f'{self.lo[0]} {self.hi[1]} {self.lo[2]}\n')
+        f.write(f'{self.lo[0]} {self.lo[1]} {self.hi[2]}\n')
+        f.write(f'{self.hi[0]} {self.lo[1]} {self.hi[2]}\n')
+        f.write(f'{self.hi[0]} {self.hi[1]} {self.hi[2]}\n')
+        f.write(f'{self.lo[0]} {self.hi[1]} {self.hi[2]}\n')
 
 # ==================================================================================================
 
@@ -982,6 +1114,198 @@ class TrianglesCloud:
                     for t2 in tc.triangles
                     if (not t1.has_common_points_with(t2)) and t1.is_intersect_with_triangle(t2)]
 
+    # ----------------------------------------------------------------------------------------------
+
+    def is_any_triangle_intersects_with_box(self, b):
+        """
+        If any triangle has intersection with box.
+
+        Parameters
+        ----------
+        b : Box
+            Box.
+
+        Returns
+        -------
+        True - if any triangle has intersection with box,
+        False - otherwise.
+        """
+
+        if self.is_list():
+
+            # The list holds only one triangle.
+            assert TrianglesCloud.max_list_triangles_count == 1
+            return self.triangles[0].is_intersect_with_box(b)
+
+        else:
+
+            # Check all subclouds.
+            for s in self.subclouds:
+                if s.is_any_triangle_intersects_with_box(b):
+                    return True
+            return False
+
+# ==================================================================================================
+
+class EnclosingParallelepipedsTree:
+    """
+    Tree of parallelepipeds, enclosing some figure.
+    Each node in tree can contain children (up to 8).
+    """
+
+    # ----------------------------------------------------------------------------------------------
+
+    # Small epsilon for boxes overlapping.
+    epsilon = 1.0e-8
+
+    # ----------------------------------------------------------------------------------------------
+
+    def __init__(self, box):
+        """
+        Default constructor.
+
+        Parameters
+        ----------
+        box : Box
+            Boxx.
+        """
+
+        self.box = box
+
+        # Empty children.
+        self.children = []
+
+    # ----------------------------------------------------------------------------------------------
+
+    @staticmethod
+    def from_triangles_cloud(tc, min_box_volume):
+        """
+        Create from triangles cloud.
+
+        Parameters
+        ----------
+        tc : TrianglesCloud
+            Triangles cloud.
+        min_box_volume : float
+            Box volume limit.
+
+        Returns
+        -------
+        EnclosingParallelepipedsTree
+            Result tree.
+        """
+
+        return EnclosingParallelepipedsTree.from_triangles_cloud_inner(tc, tc.box, min_box_volume)
+
+    # ----------------------------------------------------------------------------------------------
+
+    @staticmethod
+    def from_triangles_cloud_inner(tc, box, min_box_volume):
+        """
+        Create parallelepipeds tree from triangles cloud and box.
+
+        Parameters
+        ----------
+        tc : TrianglesCloud
+            Triangles cloud.
+        box : Box
+              Box.
+        min_box_volume : float
+            Box volume limit.
+
+        Returns
+        -------
+        EnclosingParallelepipedsTree
+            Result tree.
+        """
+
+        # Too small box.
+        if box.volume() < min_box_volume:
+            return None
+
+        # Create only if any triangle intersects the box.
+        if not tc.is_any_triangle_intersects_with_box(box):
+            return None
+
+        # Create box for tree.
+        tree = EnclosingParallelepipedsTree(box)
+
+        # Process subtrees.
+        sbs = box.eights_subboxes()
+        tree.children = []
+        for sb in sbs:
+            child = EnclosingParallelepipedsTree.from_triangles_cloud_inner(tc, sb, min_box_volume)
+            if not child is None:
+                tree.children.append(child)
+
+        return tree
+
+    # ----------------------------------------------------------------------------------------------
+
+    def parallelepipeds_count(self):
+        """
+        Count of parallelepipeds.
+
+        Returns
+        -------
+        int
+            Count of parallelepipeds.
+        """
+
+        return 1 + np.array([ch.parallelepipeds_count() for ch in self.children], dtype=int).sum()
+
+    # ----------------------------------------------------------------------------------------------
+
+    def print(self):
+        """
+        Print information.
+        """
+
+        print(f'EnclosingParallelepipedsTree : {self.box}, '
+              f'{EnclosingParallelepipedsTree.epsilon}')
+
+    # ----------------------------------------------------------------------------------------------
+
+    def store(self, filename):
+        """
+        Store to file.
+
+        Parameters
+        ----------
+        filename : str
+            Name of file.
+        """
+
+        pp_count = self.parallelepipeds_count()
+        points_count = pp_count * 8
+
+        with open(filename, 'w', newline='\n') as f:
+            f.write('TITLE="EnclosingParallelepipedsTree"\n')
+            f.write('VARIABLES="X", "Y", "Z"\n')
+            f.write(f'ZONE NODES={points_count}, ELEMENTS={pp_count}, '
+                    f'DATAPACKING=POINT, ZONETYPE=FEBRICK\n')
+            self.fstore_box_points_coordinates(f)
+            for i in range(pp_count):
+                s = i * 8
+                f.write(f'{s + 1} {s + 2} {s + 3} {s + 4} {s + 5} {s + 6} {s + 7} {s + 8}\n')
+            f.close()
+
+    # ----------------------------------------------------------------------------------------------
+
+    def fstore_box_points_coordinates(self, f):
+        """
+        Store box points coordinates to file.
+
+        Parameters
+        ----------
+        f : file
+            File.
+        """
+
+        self.box.fstore_points_coordinates(f)
+        for ch in self.children:
+            ch.fstore_box_points_coordinates(f)
+
 # ==================================================================================================
 
 if __name__ == '__main__':
@@ -994,4 +1318,4 @@ if __name__ == '__main__':
     t2 = Triangle(np.array([2.0, 0.0, 0.0]), np.array([2.0, 1.0, 0.0]), np.array([1.0, 1.0, 0.0]))
     assert not t1.is_intersect_with_triangle(t2)
 
-# --------------------------------------------------------------------------------------------------
+# ==================================================================================================
