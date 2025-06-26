@@ -663,51 +663,66 @@ class Triangle:
 
     # ----------------------------------------------------------------------------------------------
 
-    def is_intersect_with_box(self, b):
+    def is_intersect_with_box(self, box):
         """
         Check intersection with box.
 
-          H +----------+ G
-           /|         /|
-        E +----------+ | F
-          | |        | |
-        D | +------- |-+ C
-          |/         |/
-        A +----------+ B
-
         Parameters
         ----------
-        b : Box.
+        b : Box
             Box.
 
         Returns
         -------
-        True - if there is intersection,
+        True - is there is intersection,
         False - otherwise.
         """
 
-        lo, hi = b.lo, b.hi
-        a = np.array([lo[0], lo[1], lo[2]])
-        b = np.array([hi[0], lo[1], lo[2]])
-        c = np.array([hi[0], hi[1], lo[2]])
-        d = np.array([lo[0], hi[1], lo[2]])
-        e = np.array([lo[0], lo[1], hi[2]])
-        f = np.array([hi[0], lo[1], hi[2]])
-        g = np.array([hi[0], hi[1], hi[2]])
-        h = np.array([lo[0], hi[1], hi[2]])
+        def upgrade(lohi, f0, f1):
+            if f0 > 0.0:
+                lohi[1] = min(lohi[1], -f1 / f0)
+            elif f0 < 0.0:
+                lohi[0] = max(lohi[0], -f1 / f0)
+            else:
+                return f1 <= 0.0
+            return lohi[0] <= lohi[1]
 
-        return self.is_intersect_with_triangle(Triangle(a, b, c)) \
-               or self.is_intersect_with_triangle(Triangle(a, d, c)) \
-               or self.is_intersect_with_triangle(Triangle(b, f, g)) \
-               or self.is_intersect_with_triangle(Triangle(b, c, g)) \
-               or self.is_intersect_with_triangle(Triangle(a, e, h)) \
-               or self.is_intersect_with_triangle(Triangle(a, d, h)) \
-               or self.is_intersect_with_triangle(Triangle(e, f, g)) \
-               or self.is_intersect_with_triangle(Triangle(e, h, g)) \
-               or self.is_intersect_with_triangle(Triangle(a, b, f)) \
-               or self.is_intersect_with_triangle(Triangle(a, e, f)) \
-               or self.is_intersect_with_triangle(Triangle(d, c, g)) \
-               or self.is_intersect_with_triangle(Triangle(d, h, g))
+        [a, b, c] = self.points
+        xa, ya, za = a[0], a[1], a[2]
+        xb, yb, zb = b[0], b[1], b[2]
+        xc, yc, zc = c[0], c[1], c[2]
+        xl, yl, zl = box.lo[0], box.lo[1], box.lo[2]
+        xh, yh, zh = box.hi[0], box.hi[1], box.hi[2]
+
+        lohi = [0.0, 1.0]
+
+        basic_eqns_count = 9
+        b = [[  xb - xa ,   xc - xa , -(xh - xa)],
+             [-(xb - xa), -(xc - xa),   xl - xa ],
+             [  yb - ya ,   yc - ya , -(yh - ya)],
+             [-(yb - ya), -(yc - ya),   yl - ya ],
+             [  zb - za ,   zc - za , -(zh - za)],
+             [-(zb - za), -(zc - za),   zl - za ],
+             [      -1.0,       0.0,        0.0 ],
+             [       0.0,      -1.0,        0.0 ],
+             [       1.0,       1.0,       -1.0 ]]
+
+        for i in range(basic_eqns_count):
+            bi0 = b[i][0]
+            if bi0 == 0.0:
+                if not upgrade(lohi, b[i][1], b[i][2]):
+                    return False
+            else:
+                for j in range(i + 1, basic_eqns_count):
+                    if bi0 * b[j][0] < 0.0:
+                        f0 = bi0 * b[j][1] - b[j][0] * b[i][1]
+                        f1 = bi0 * b[j][2] - b[j][0] * b[i][2]
+                        if bi0 < 0.0:
+                            f0 = -f0
+                            f1 = -f1
+                        if not upgrade(lohi, f0, f1):
+                            return False
+        return True
 
 # ==================================================================================================
 
@@ -735,6 +750,30 @@ class Box:
 
         self.lo = np.array(lo)
         self.hi = np.array(hi)
+
+    # ----------------------------------------------------------------------------------------------
+
+    @staticmethod
+    def from_intervals(xint, yint, zint):
+        """
+        Create from intervals.
+
+        Parameters
+        ----------
+        xint : [float, float]
+            X interval.
+        yint : [float, float]
+            Y interval.
+        zint : [float, float]
+            Z interval.
+
+        Returns
+        -------
+        Box
+            Box created from intervals.
+        """
+
+        return Box([xint[0], yint[0], zint[0]], [xint[1], yint[1], zint[1]])
 
     # ----------------------------------------------------------------------------------------------
 
@@ -1242,6 +1281,21 @@ class EnclosingParallelepipedsTree:
 
     # ----------------------------------------------------------------------------------------------
 
+    def is_leaf(self):
+        """
+        Check if leaf.
+
+        Returns
+        -------
+        bool
+            True - if it is leaf,
+            False - otherwise.
+        """
+
+        return not self.children
+
+    # ----------------------------------------------------------------------------------------------
+
     def parallelepipeds_count(self):
         """
         Count of parallelepipeds.
@@ -1256,6 +1310,24 @@ class EnclosingParallelepipedsTree:
 
     # ----------------------------------------------------------------------------------------------
 
+    def leaf_parallelepiped_count(self):
+        """
+        Count of leaf parallelepipeds.
+
+        Returns
+        -------
+        int
+            Count of leaf parallelepipeds.
+        """
+
+        if self.is_leaf():
+            return 1
+        else:
+            return np.array([ch.leaf_parallelepiped_count()
+                             for ch in self.children], dtype=int).sum()
+
+    # ----------------------------------------------------------------------------------------------
+
     def print(self):
         """
         Print information.
@@ -1266,7 +1338,7 @@ class EnclosingParallelepipedsTree:
 
     # ----------------------------------------------------------------------------------------------
 
-    def store(self, filename):
+    def store(self, filename, is_store_only_leafs=True):
         """
         Store to file.
 
@@ -1274,9 +1346,15 @@ class EnclosingParallelepipedsTree:
         ----------
         filename : str
             Name of file.
+        is_store_only_leafs : bool
+            Flag for storing only leafs.
         """
 
-        pp_count = self.parallelepipeds_count()
+        pp_count = 0
+        if is_store_only_leafs:
+            pp_count = self.leaf_parallelepiped_count()
+        else:
+            pp_count = self.parallelepipeds_count()
         points_count = pp_count * 8
 
         with open(filename, 'w', newline='\n') as f:
@@ -1284,7 +1362,7 @@ class EnclosingParallelepipedsTree:
             f.write('VARIABLES="X", "Y", "Z"\n')
             f.write(f'ZONE NODES={points_count}, ELEMENTS={pp_count}, '
                     f'DATAPACKING=POINT, ZONETYPE=FEBRICK\n')
-            self.fstore_box_points_coordinates(f)
+            self.fstore_box_points_coordinates(f, is_store_only_leafs)
             for i in range(pp_count):
                 s = i * 8
                 f.write(f'{s + 1} {s + 2} {s + 3} {s + 4} {s + 5} {s + 6} {s + 7} {s + 8}\n')
@@ -1292,7 +1370,7 @@ class EnclosingParallelepipedsTree:
 
     # ----------------------------------------------------------------------------------------------
 
-    def fstore_box_points_coordinates(self, f):
+    def fstore_box_points_coordinates(self, f, is_store_only_leafs):
         """
         Store box points coordinates to file.
 
@@ -1300,11 +1378,15 @@ class EnclosingParallelepipedsTree:
         ----------
         f : file
             File.
+        is_store_only_leafs : bool
+            Flag for storing only leafs.
         """
 
-        self.box.fstore_points_coordinates(f)
+        if not is_store_only_leafs or self.is_leaf():
+            self.box.fstore_points_coordinates(f)
+
         for ch in self.children:
-            ch.fstore_box_points_coordinates(f)
+            ch.fstore_box_points_coordinates(f, is_store_only_leafs)
 
 # ==================================================================================================
 
