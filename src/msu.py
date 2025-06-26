@@ -81,10 +81,25 @@ class Node:
         Returns
         -------
         True - if node is isolated,
-        False - if node is not isolated.
+        False - otherwise.
         """
 
         return len(self.edges) == 0
+
+    # ----------------------------------------------------------------------------------------------
+
+    def is_border(self):
+        """
+        Check if node is border.
+
+        Returns
+        -------
+        bool
+            True - if node is border,
+            False - otherwise.
+        """
+
+        return any(e.is_border() for e in self.edges)
 
     # ----------------------------------------------------------------------------------------------
 
@@ -173,6 +188,21 @@ class Edge:
         """
 
         return len(self.faces) == 0
+
+    # ----------------------------------------------------------------------------------------------
+
+    def is_border(self):
+        """
+        Check if edge is border.
+
+        Returns
+        -------
+        bool
+            True - if edge is border,
+            False - otherwise.
+        """
+
+        return len(self.faces) == 1
 
     # ----------------------------------------------------------------------------------------------
 
@@ -1885,6 +1915,7 @@ class Mesh:
         Returns
         -------
         [(Triangle, Triangle)]
+            Pairs of triangles.
         """
 
         tc = geom.TrianglesCloud(self.triangles_list())
@@ -1910,7 +1941,7 @@ class Mesh:
 
     # ----------------------------------------------------------------------------------------------
 
-    def mark_intersecting_faces(self, color):
+    def paint_intersecting_faces(self, color):
         """
         Mark intersecting faces.
 
@@ -1918,15 +1949,23 @@ class Mesh:
         ----------
         color : int
             Color.
+
+        Returns
+        -------
+        int
+            Count of painted faces.
         """
 
-        assert color != 0, "intersecting faces can not be painted in color 0"
+        cnt = 0
 
         ps = self.pairs_of_intersecting_triangles()
-        self.paint_faces(0)
+
         for p in ps:
             for t in p:
                 t.back_ref['M'] = color
+                cnt = cnt + 1
+
+        return cnt
 
     # ----------------------------------------------------------------------------------------------
 

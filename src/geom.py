@@ -845,6 +845,22 @@ class Box:
 
     # ----------------------------------------------------------------------------------------------
 
+    def cube(self):
+        """
+        Get containing cube.
+
+        Returns
+        -------
+        Box
+            Containing cube.
+        """
+
+        h = 0.5 * max(self.hi - self.lo)
+        m = 0.5 * (self.lo + self.hi)
+        return Box(m - h, m + h)
+
+    # ----------------------------------------------------------------------------------------------
+
     def eights_subboxes(self):
         """
         Return array of 8 subboxes.
@@ -1184,6 +1200,25 @@ class TrianglesCloud:
                     return True
             return False
 
+# --------------------------------------------------------------------------------------------------
+
+    def paint_triangles_intersects_with_box(self, b, color):
+        """
+        """
+
+        if self.is_list():
+
+            # The list holds only one triangle.
+            assert TrianglesCloud.max_list_triangles_count == 1
+            if self.triangles[0].is_intersect_with_box(b):
+                self.triangles[0].back_ref['M'] = color
+
+        else:
+
+            # Check all subclouds.
+            for s in self.subclouds:
+                s.paint_triangles_intersects_with_box(b, color)
+
 # ==================================================================================================
 
 class EnclosingParallelepipedsTree:
@@ -1210,6 +1245,7 @@ class EnclosingParallelepipedsTree:
         """
 
         self.box = box
+        self.active = True
 
         # Empty children.
         self.children = []
@@ -1234,7 +1270,11 @@ class EnclosingParallelepipedsTree:
             Result tree.
         """
 
-        return EnclosingParallelepipedsTree.from_triangles_cloud_inner(tc, tc.box, min_box_volume)
+        # Take cube box overlapped the surface with delta 10%.
+        c = tc.box.cube()
+        b = c.delta_box((c.hi - c.lo)[0] / 10.0)
+
+        return EnclosingParallelepipedsTree.from_triangles_cloud_inner(tc, b, min_box_volume)
 
     # ----------------------------------------------------------------------------------------------
 
@@ -1296,6 +1336,23 @@ class EnclosingParallelepipedsTree:
 
     # ----------------------------------------------------------------------------------------------
 
+    def depth(self):
+        """
+        Depth - count of levels.
+
+        Returns
+        -------
+        int
+            Depth.
+        """
+
+        if not self.children:
+            return 1
+        else:
+            return 1 + max(np.array([ch.depth() for ch in self.children], dtype=int))
+
+    # ----------------------------------------------------------------------------------------------
+
     def parallelepipeds_count(self):
         """
         Count of parallelepipeds.
@@ -1310,7 +1367,7 @@ class EnclosingParallelepipedsTree:
 
     # ----------------------------------------------------------------------------------------------
 
-    def leaf_parallelepiped_count(self):
+    def active_leaf_parallelepipeds_count(self):
         """
         Count of leaf parallelepipeds.
 
@@ -1321,9 +1378,12 @@ class EnclosingParallelepipedsTree:
         """
 
         if self.is_leaf():
-            return 1
+            if self.active:
+                return 1
+            else:
+                return 0
         else:
-            return np.array([ch.leaf_parallelepiped_count()
+            return np.array([ch.active_leaf_parallelepipeds_count()
                              for ch in self.children], dtype=int).sum()
 
     # ----------------------------------------------------------------------------------------------
@@ -1352,7 +1412,7 @@ class EnclosingParallelepipedsTree:
 
         pp_count = 0
         if is_store_only_leafs:
-            pp_count = self.leaf_parallelepiped_count()
+            pp_count = self.active_leaf_parallelepipeds_count()
         else:
             pp_count = self.parallelepipeds_count()
         points_count = pp_count * 8
@@ -1382,7 +1442,7 @@ class EnclosingParallelepipedsTree:
             Flag for storing only leafs.
         """
 
-        if not is_store_only_leafs or self.is_leaf():
+        if not is_store_only_leafs or (self.is_leaf() and self.active):
             self.box.fstore_points_coordinates(f)
 
         for ch in self.children:
