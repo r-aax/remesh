@@ -1,3 +1,5 @@
+from venv import create
+
 import msu
 import geom
 import numpy as np
@@ -24,27 +26,36 @@ def make_cloud_structures(mesh, glob_i):
         Structures.
     """
 
-    mesh.store(f'glob_i_{glob_i}_original.dat')
+    mesh.store(f'glob_i_{glob_i}_ph_01_original.dat')
     min_box_volume = 1.0e-9 # constant
     tc = geom.TrianglesCloud(mesh.triangles_list())
     pt = geom.EnclosingParallelepipedsTree.from_triangles_cloud(tc, min_box_volume=min_box_volume)
+    pt.store(f'glob_i_{glob_i}_ph_02_pt_all.dat', is_store_only_leafs=False)
+    pt.store(f'glob_i_{glob_i}_ph_03_pt_active.dat', is_store_only_leafs=True)
 
     return tc, pt
 
 # --------------------------------------------------------------------------------------------------
 
-def reduce_with_underlying_mesh_step(mesh, glob_i):
+def create_map(d, glob_i):
+    """
+    Create map of parallelepipeds.
 
-    tc, pt = make_cloud_structures(mesh, glob_i)
+    Parameters
+    ----------
+    d : int
+        Tree level.
+    glob_i : int
+        Global iteration.
 
-    # Parallelepipeds tree.
-    print(glob_i, f'parallelepipeds tree count {pt.active_leaf_parallelepipeds_count()}')
-    pt.store(f'{glob_i}_pt.dat', is_store_only_leafs=False)
-    d = pt.depth()
-    print(glob_i, f'depth {d}')
+    Returns
+    -------
+    ([[[object]]], int)
+        Map and its side.
+    """
 
-    # Map.
-    print(glob_i, 'map')
+    print(f'Glob I {glob_i} : create map')
+
     s = 2**(d - 1)
     m = []
     for i in range(s):
@@ -54,19 +65,51 @@ def reduce_with_underlying_mesh_step(mesh, glob_i):
             for k in range(s):
                 m[i][j].append(None)
 
-    # Fill map.
-    print(glob_i, 'fill map')
-    main_box = pt.box
-    def reg(t, b, m):
+    return m, s
+
+# --------------------------------------------------------------------------------------------------
+
+def fill_map(m, pt, glob_i):
+    """
+    Fill map with leafs.
+
+    Parameters
+    ----------
+    m : [[[any]]]
+        Map.
+    pt : geom.EnclosingParallelepipedsTree
+        Tree.
+    glob_i : int
+        Global iteration.
+    """
+
+    print(f'Glob I {glob_i} : fill map')
+
+    def reg(t, b):
         if t.is_leaf():
             r = 0.5 * (t.box.hi + t.box.lo) - b.lo
-            r = r / ((b.hi - b.lo) / 2**(d - 1))
+            r = r / ((b.hi - b.lo) / len(m))
             i, j, k = int(r[0]), int(r[1]), int(r[2])
             m[i][j][k] = t
         else:
             for ch in t.children:
-                reg(ch, b, m)
-    reg(pt, main_box, m)
+                reg(ch, b)
+
+    reg(pt, pt.box)
+
+# --------------------------------------------------------------------------------------------------
+
+def reduce_with_underlying_mesh_step(mesh, glob_i):
+
+    # Make structures.
+    tc, pt = make_cloud_structures(mesh, glob_i)
+    d = pt.depth()
+    print(f'Glob I {glob_i} : active parallelepipeds {pt.active_leaf_parallelepipeds_count()}')
+    print(f'Glob I {glob_i} : depth {d}')
+
+    # Create map.
+    m, s = create_map(d, glob_i)
+    fill_map(m, pt, glob_i)
 
     # Walk outer cells.
     for k in range(s):
