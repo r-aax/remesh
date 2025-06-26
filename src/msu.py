@@ -1493,8 +1493,10 @@ class Mesh:
             n.normal = sum(map(lambda f: f.normal, n.faces)) / len(n.faces)
 
     # ----------------------------------------------------------------------------------------------
+    # Delete elements.
+    # ----------------------------------------------------------------------------------------------
 
-    def delete_face(self, f, delete_isolated = True):
+    def delete_face(self, f):
         """
         Delete face.
 
@@ -1502,13 +1504,7 @@ class Mesh:
         ----------
         f : Face
             Face to delete.
-        delete_isolated : Bool
-            delete_isolated nodes or not
         """
-
-        # Copy old links.
-        ns = [n for n in f.nodes]
-        es = [e for e in f.edges]
 
         # Unlink from nodes.
         while f.nodes:
@@ -1525,15 +1521,6 @@ class Mesh:
 
         # Remove from mesh.
         self.faces.remove(f)
-
-        # Delete faces_free edges and isolated nodes.
-        es = [e for e in es if e.is_faces_free()]
-        for e in es:
-            self.delete_edge(e)
-        if delete_isolated:
-            ns = [n for n in ns if n.is_isolated()]
-            for n in ns:
-                self.delete_node(n)
 
     # ----------------------------------------------------------------------------------------------
 
@@ -1554,7 +1541,7 @@ class Mesh:
 
     # ----------------------------------------------------------------------------------------------
 
-    def delete_edge(self, e, delete_isolated=True):
+    def delete_edge(self, e):
         """
         Delete edge.
 
@@ -1562,13 +1549,11 @@ class Mesh:
         ----------
         e : Edge
             Edge to delete.
-        delete_isolated : Bool
-            delete_isolated nodes or not
         """
 
         # First we must to delete incident faces.
         while e.faces:
-            self.delete_face(e.faces[0], delete_isolated=delete_isolated)
+            self.delete_face(e.faces[0])
 
         # Unlink edge from nodes.
         while e.nodes:
@@ -1597,6 +1582,15 @@ class Mesh:
 
     # ----------------------------------------------------------------------------------------------
 
+    def delete_faces_free_edges(self):
+        """
+        Delete faces free edges.
+        """
+
+        self.delete_edges(lambda e: e.is_faces_free())
+
+    # ----------------------------------------------------------------------------------------------
+
     def delete_node(self, n, delete_isolated=True):
         """
         Delete node.
@@ -1611,7 +1605,7 @@ class Mesh:
 
         # First we must delete all adjacent edges
         while n.edges:
-            self.delete_edge(n.edges[0], delete_isolated=delete_isolated)
+            self.delete_edge(n.edges[0])
 
         # Remove node from zones.
         for z in self.zones:
@@ -1641,6 +1635,17 @@ class Mesh:
 
     # ----------------------------------------------------------------------------------------------
 
+    def delete_isolated_nodes(self):
+        """
+        Delete isolated nodes.
+        """
+
+        self.delete_nodes(lambda n: n.is_isolated())
+
+    # ----------------------------------------------------------------------------------------------
+    # Reduce.
+    # ----------------------------------------------------------------------------------------------
+
     def reduce_edge(self, e):
         """
         Reduce edge.
@@ -1658,6 +1663,9 @@ class Mesh:
         # Delete edge e
         self.delete_edge(e)
 
+        # Correct coordinate.
+        a.p = 0.5 * (a.p + b.p)
+
         # For all faces incident to node b create twin for node a.
         for f in b.faces:
             ns = [f.nodes[0], f.nodes[1], f.nodes[2]] # create new list of nodes
@@ -1667,6 +1675,11 @@ class Mesh:
 
         # Delete extra node b.
         self.delete_node(b)
+
+        # TODO.
+        # Delete bad objects (this is extra code, can be simplified).
+        self.delete_faces_free_edges()
+        self.delete_isolated_nodes()
 
     # ----------------------------------------------------------------------------------------------
 

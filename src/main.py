@@ -6,8 +6,8 @@ import random
 #---------------------------------------------------------------------------------------------------
 
 if __name__ == '__main__':
-    m = msu.Mesh('../cases/blender/small_sphere.dat')
-    i = 100
+    m = msu.Mesh('../cases/bunny/bunny.dat')
+    i = 10000
     m.store(f'res_{i}.dat')
     while m.edges:
         i = i + 1
