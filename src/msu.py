@@ -5,14 +5,14 @@ import geom
 import triangulator
 from bisect import bisect_left
 
-# --------------------------------------------------------------------------------------------------
+# ==================================================================================================
 
 NODE_COORDINATES_VALUABLE_DIGITS_COUNT = 10
 
 # String of export.
 EXPORT_FORMAT_STRING = '{0:.18e}'
 
-# --------------------------------------------------------------------------------------------------
+# ==================================================================================================
 
 class Node:
     """
@@ -124,7 +124,7 @@ class Node:
 
         return [self.neighbour(e) for e in self.edges]
 
-# --------------------------------------------------------------------------------------------------
+# ==================================================================================================
 
 class Edge:
     """
@@ -244,27 +244,6 @@ class Edge:
 
     # ----------------------------------------------------------------------------------------------
 
-    def replace_face(self, f, new_f):
-        """
-        Replace face with new face.
-
-        Parameters
-        ----------
-        f : Face
-            Old face.
-        new_f : Face
-            New face.
-        """
-
-        if self.faces[0] == f:
-            self.faces[0] = new_f
-        elif self.faces[1] == f:
-            self.faces[1] = new_f
-        else:
-            raise Exception('No such face')
-
-    # ----------------------------------------------------------------------------------------------
-
     def flip_nodes(self):
         """
         Flip nodes.
@@ -272,7 +251,7 @@ class Edge:
 
         self.nodes[0], self.nodes[1] = self.nodes[1], self.nodes[0]
 
-# --------------------------------------------------------------------------------------------------
+# ==================================================================================================
 
 class Face:
     """
@@ -289,7 +268,7 @@ class Face:
         # Global identifier.
         self.glo_id = -1
 
-        self.data = None
+        self.data = dict()
         self.nodes = []
         self.edges = []
         self.zone = None
@@ -688,7 +667,7 @@ class Face:
 
         return ns[0]
 
-# --------------------------------------------------------------------------------------------------
+# ==================================================================================================
 
 class Zone:
     """
@@ -773,7 +752,7 @@ class Zone:
 
         return Zone.objects_slice_str(lambda f: f[e], self.faces)
 
-# --------------------------------------------------------------------------------------------------
+# ==================================================================================================
 
 class Mesh:
     """
@@ -903,7 +882,8 @@ class Mesh:
         b : Node.
             Second node.
         except_edge: Edge
-        parameter for searching double edges
+            parameter for searching double edges
+
         Returns
         -------
         Edge | None
@@ -1105,15 +1085,17 @@ class Mesh:
 
         f = self.find_face(a, b, c)
 
-        if f is None:
-            f = Face()
-            max_glo_id = self.max_face_glo_id()
-            f.glo_id = max_glo_id + 1
-            self.faces.append(f)
-            zone.faces.append(f)
-            f.zone = zone
-            ab, bc, ac = self.add_edge(a, b), self.add_edge(b, c), self.add_edge(a, c)
-            self.links([(a, f), (b, f), (c, f), (ab, f), (bc, f), (ac, f)])
+        if not f is None:
+            return f
+
+        f = Face()
+        max_glo_id = self.max_face_glo_id()
+        f.glo_id = max_glo_id + 1
+        self.faces.append(f)
+        zone.faces.append(f)
+        f.zone = zone
+        ab, bc, ac = self.add_edge(a, b), self.add_edge(b, c), self.add_edge(a, c)
+        self.links([(a, f), (b, f), (c, f), (ab, f), (bc, f), (ac, f)])
 
         return f
 
@@ -1214,48 +1196,6 @@ class Mesh:
 
         for obj1, obj2 in li:
             self.unlink(obj1, obj2)
-
-    # ----------------------------------------------------------------------------------------------
-
-    def replace_face_node_link(self, f, n, new_n):
-        """
-        Replace node in face-node link.
-
-        Parameters
-        ----------
-        f : Face
-            Face.
-        n : Node
-            Old node.
-        new_n : Node
-            New node.
-        """
-
-        i = f.nodes.index(n)
-        f.nodes[i] = new_n
-        n.faces.remove(f)
-        new_n.faces.append(f)
-
-    # ----------------------------------------------------------------------------------------------
-
-    def replace_edge_face_link(self, e, f, new_f):
-        """
-        Replace node in face-node link.
-
-        Parameters
-        ----------
-        e : Edge
-            Edge.
-        f : Face
-            Old Face.
-        new_f : Face
-            New Face.
-        """
-
-        i = e.faces.index(f)
-        e.faces[i] = new_f
-        f.edges.remove(e)
-        new_f.edges.append(e)
 
     # ----------------------------------------------------------------------------------------------
 
@@ -1419,6 +1359,10 @@ class Mesh:
         filename : str
             Name of file.
         """
+
+        if not self.faces:
+            print('store : empty mesh')
+            return
 
         # Save faces glo_id.
         for f in self.faces:
@@ -1704,29 +1648,25 @@ class Mesh:
         Parameters
         ----------
         e : Edge
-        Edge.
-
-        Returns
-        -------
-        all deleted faces ids
+            Edge.
         """
-        a, b = e.nodes[0], e.nodes[1]
-        a.p = 0.5 * (a.p + b.p)
-        ids = []
-        tuples_set = set()
-        for f in b.faces:
-            ids.append(f.glo_id)
-            nodes = [n if n!=b else a for n in f.nodes]
-            point_tuple = tuple(sorted([n.glo_id for n in nodes]))
-            if nodes.count(a) == 1 and point_tuple not in tuples_set:
-                nf = self.add_face(nodes[0], nodes[1], nodes[2], f.zone)
-                nf.copy_data_from(f)
-                nf.calculate_area()
-                nf.calculate_normal()
-                tuples_set.add(point_tuple)
 
+        # Get all objects needed to process.
+        [a, b] = e.nodes
+        assert a != b
+
+        # Delete edge e
+        self.delete_edge(e)
+
+        # For all faces incident to node b create twin for node a.
+        for f in b.faces:
+            ns = [f.nodes[0], f.nodes[1], f.nodes[2]] # create new list of nodes
+            ns[ns.index(b)] = a
+            # Force add to keep closed surface.
+            r = self.add_face(ns[0], ns[1], ns[2], f.zone)
+
+        # Delete extra node b.
         self.delete_node(b)
-        return ids
 
     # ----------------------------------------------------------------------------------------------
 
@@ -1871,40 +1811,6 @@ class Mesh:
 
         # Finally delete the face.
         self.delete_face(f)
-
-    # ----------------------------------------------------------------------------------------------
-
-    def bad_multisplit_face(self, f, ps):
-        """
-        Split with several points.
-
-        Parameters
-        ----------
-        f : Face
-            Face to be splitted.
-        ps : [Point]
-            Points list.
-        """
-
-        if not ps:
-            return
-
-        hps, tps = ps[0], ps[1:]
-
-        # Split face with first point.
-        self.split_face(f, hps)
-        # Now split with other points recursively.
-        fs = self.faces[-3:]
-        ts = [f.triangle() for f in fs]
-
-        # Distribute rest points between last three faces.
-        pps = [[], [], []]
-        for p in tps:
-            areas_diffs = [t.areas_difference(p) for t in ts]
-            i = np.argmin(areas_diffs)
-            pps[i].append(p)
-        for i in range(3):
-            self.bad_multisplit_face(fs[i], pps[i])
 
     # ----------------------------------------------------------------------------------------------
 
@@ -2253,16 +2159,22 @@ class Mesh:
 
     # ----------------------------------------------------------------------------------------------
 
-    def check(self):
+    def check_mesh_is_closed(self):
         """
-        Check.
+        Check mesh is closed.
+
+        Returns
+        -------
+        bool
+            True - if mesh is closed,
+            False - otherwise.
         """
 
         assert all([len(e.faces) == 2 for e in self.edges])
 
-# --------------------------------------------------------------------------------------------------
+# ==================================================================================================
 
 if __name__ == '__main__':
     pass
 
-# --------------------------------------------------------------------------------------------------
+# ==================================================================================================

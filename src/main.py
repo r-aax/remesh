@@ -1,16 +1,18 @@
 import msu
 import geom
 import numpy as np
+import random
 
 #---------------------------------------------------------------------------------------------------
 
 if __name__ == '__main__':
-    m = msu.Mesh('../cases/cylinder/cyl_100.dat')
-    tl = m.triangles_list()
-    tc = geom.TrianglesCloud(tl)
-    et = geom.EnclosingParallelepipedsTree.from_triangles_cloud(tc, 1.0e-8)
-    et.store('tree.dat')
-    et.print()
-    print(f'enc par tree with {et.leaf_parallelepiped_count()} constructed')
+    m = msu.Mesh('../cases/blender/small_sphere.dat')
+    i = 100
+    m.store(f'res_{i}.dat')
+    while m.edges:
+        i = i + 1
+        m.reduce_edge(m.edges[-1])
+        print(f'ready to store {i} | {len(m.nodes)} {len(m.edges)} {len(m.faces)}')
+        m.store(f'res_{i}.dat')
 
 #---------------------------------------------------------------------------------------------------
