@@ -9,7 +9,7 @@ from src.geom import EnclosingParallelepipedsTree
 
 # ==================================================================================================
 
-def make_cloud_structures(mesh, glob_i):
+def make_cloud_structures(mesh, min_box_volume, glob_i):
     """
     Make triangles cloud and parallelelipeds tree.
 
@@ -17,6 +17,8 @@ def make_cloud_structures(mesh, glob_i):
     ----------
     mesh : msu.Mesh
         Mesh.
+    min_box_volume : float
+        Min box volume.
     glob_i : int
         Global iteration.
 
@@ -27,11 +29,13 @@ def make_cloud_structures(mesh, glob_i):
     """
 
     mesh.store(f'glob_i_{glob_i}_ph_01_original.dat')
-    min_box_volume = 1.0e-9 # constant
     tc = geom.TrianglesCloud(mesh.triangles_list())
-    pt = geom.EnclosingParallelepipedsTree.from_triangles_cloud(tc, min_box_volume=min_box_volume)
+    pt = geom.EnclosingParallelepipedsTree.from_triangles_cloud(tc, min_box_volume)
     pt.store(f'glob_i_{glob_i}_ph_02_pt_all.dat', is_store_only_leafs=False)
-    pt.store(f'glob_i_{glob_i}_ph_03_pt_active.dat', is_store_only_leafs=True)
+    pt.store(f'glob_i_{glob_i}_ph_03_pt_leafs.dat', is_store_only_leafs=True)
+    print(f'Glob I {glob_i} : active parallelepipeds {pt.active_leaf_parallelepipeds_count()}')
+    d = pt.depth()
+    print(f'Glob I {glob_i} : depth {d}')
 
     return tc, pt
 
@@ -50,8 +54,8 @@ def create_map(d, glob_i):
 
     Returns
     -------
-    ([[[object]]], int)
-        Map and its side.
+    [[[any]]]
+        Map.
     """
 
     print(f'Glob I {glob_i} : create map')
@@ -65,7 +69,7 @@ def create_map(d, glob_i):
             for k in range(s):
                 m[i][j].append(None)
 
-    return m, s
+    return m
 
 # --------------------------------------------------------------------------------------------------
 
@@ -99,19 +103,26 @@ def fill_map(m, pt, glob_i):
 
 # --------------------------------------------------------------------------------------------------
 
-def reduce_with_underlying_mesh_step(mesh, glob_i):
+def walk_map_from_outer_border(m, glob_i):
+    """
+    Walk map from outer border.
 
-    # Make structures.
-    tc, pt = make_cloud_structures(mesh, glob_i)
-    d = pt.depth()
-    print(f'Glob I {glob_i} : active parallelepipeds {pt.active_leaf_parallelepipeds_count()}')
-    print(f'Glob I {glob_i} : depth {d}')
+    After this walk map contains the following values:
+    - 1 - outer space,
+    - object - enclosing parallelepipeds tree,
+    - None - the rest.
 
-    # Create map.
-    m, s = create_map(d, glob_i)
-    fill_map(m, pt, glob_i)
+    Parameters
+    ----------
+    m : [[[any]]]
+        Map.
+    glob_i : int
+        GLobal iteration.
+    """
 
-    # Walk outer cells.
+    print(f'Glob I {glob_i} : walk map')
+    s = len(m)
+
     for k in range(s):
         q = deque()
         for i in range(s):
@@ -143,8 +154,25 @@ def reduce_with_underlying_mesh_step(mesh, glob_i):
                     m[i][j + 1][k] = 1
                     q.append([i, j + 1])
 
-    # Mark boxes.
-    print(glob_i, 'mark boxes')
+# --------------------------------------------------------------------------------------------------
+
+def mark_active_parallelepipeds(m, pt, glob_i):
+    """
+    Mark active parallelepipeds.
+
+    Parameters
+    ----------
+    m : [[[any]]]
+        Map.
+    pt : geom.EnclosingParallelepipedsTree
+        Parallelepipeds tree.
+    glob_i : int
+        Global iteration.
+    """
+
+    print(f'Glob I {glob_i} : mark parallelepipeds')
+
+    s = len(m)
     for i in range(1, s - 1):
         for j in range(1, s - 1):
             for k in range(1, s - 1):
@@ -155,25 +183,95 @@ def reduce_with_underlying_mesh_step(mesh, glob_i):
                            or (m[i - 1][j + 1][k] == 1) or (m[i + 1][j + 1][k] == 1)
                     if not good:
                         m[i][j][k].active = False
-    pt.store(f'{glob_i}_pt_filter.dat', is_store_only_leafs=True)
+    pt.store(f'glob_i_{glob_i}_ph_04_pt_active.dat', is_store_only_leafs=True)
 
-    # Classify cells.
-    print(glob_i, 'classify cells')
-    mesh.paint_faces(-1)
+# --------------------------------------------------------------------------------------------------
+
+def classify_faces(m, tc, glob_i):
+    """
+    Classity faces.
+
+    Classification:
+    -1 - unreachable face
+     0 - good face
+     1 - intersect face
+
+    Parameters
+    ----------
+    m : [[[any]]]
+        Map.
+    tc : geom.TrianglesCloud
+        Cloud of triangles.
+    glob_i : int
+        Global iteration.
+
+    Returns
+    -------
+    bool
+        True - it it is needed to continue,
+        False - we may stop calculations.
+    """
+
+    print(f'Glob I {glob_i} : classify faces')
+
+    mesh.paint_faces(-1) # color for bad faces
+    s = len(m)
+
     for i in range(s):
         for j in range(s):
             for k in range(s):
                 if isinstance(m[i][j][k], geom.EnclosingParallelepipedsTree):
                     if m[i][j][k].active:
-                        tc.paint_triangles_intersects_with_box(m[i][j][k].box, 0)
-    interse = mesh.paint_intersecting_faces(1)
-    print(glob_i, f'interse {interse}')
-    if interse == 0:
-        return False
-    mesh.store(f'{glob_i}_mesh_class.dat')
+                        tc.paint_triangles_intersects_with_box(m[i][j][k].box, 0) # good face
 
-    # Reduce
-    i = 100
+    intersect_cnt = mesh.paint_intersecting_faces(1) # intersect face
+
+    print(f'Glob I {glob_i} : intersect faces count {intersect_cnt}')
+
+    if intersect_cnt == 0:
+        return False
+
+    mesh.store(f'glob_i_{glob_i}_ph_05_faces_class.dat')
+
+    return True
+
+# --------------------------------------------------------------------------------------------------
+
+def reduce_with_underlying_mesh_step(mesh, min_box_volume, glob_i):
+    """
+    Step of reduce with underlying mesh.
+
+    Parameters
+    ----------
+    mesh : msu.Mesh
+        Mesh.
+    min_box_volume : float
+        Min box volume.
+    glob_i : int
+        Global iteration.
+
+    Returns
+    -------
+    bool
+        True - if calculations have to be continued,
+        False - we may stop.
+    """
+
+    # Make structures.
+    tc, pt = make_cloud_structures(mesh, min_box_volume, glob_i)
+
+    # Create map.
+    m = create_map(pt.depth(), glob_i)
+    fill_map(m, pt, glob_i)
+    walk_map_from_outer_border(m, glob_i)
+    mark_active_parallelepipeds(m, pt, glob_i)
+
+    # Classify faces.
+    if not classify_faces(m, tc, glob_i):
+        return False
+
+    # Main loop - reduce.
+    loc_i = 100
     while True:
         es = []
         for e in mesh.edges:
@@ -181,19 +279,20 @@ def reduce_with_underlying_mesh_step(mesh, glob_i):
                 if any((f['M'] == -1) or (f['M'] == 1) for f in e.faces):
                     es.append(e)
         es.sort(key=lambda e: e.length())
-        print(f'{len(es)} painted border edges')
+        print(f'Glob I {glob_i} : loc i {loc_i} : {len(es)} border edges of color -1 & 1')
         if len(es) == 0:
             break
         for e in es:
             if e in mesh.edges:
                 mesh.reduce_edge(e)
-        mesh.store(f'{glob_i}_{i}_reduce.dat')
-        i = i + 1
+        mesh.store(f'glob_i_{glob_i}_ph_06_loc_i_{loc_i}_reduce.dat')
+        loc_i = loc_i + 1
 
     return True
+
 # --------------------------------------------------------------------------------------------------
 
-def reduce_with_underlying_mesh(mesh):
+def reduce_with_underlying_mesh(mesh, min_box_volume):
     """
     Reduce with underlying mesh.
 
@@ -201,10 +300,12 @@ def reduce_with_underlying_mesh(mesh):
     ----------
     mesh : msu.Mesh
         Mesh.
+    min_box_volume : float
+        Min box volume.
     """
 
     glob_i = 100
-    while reduce_with_underlying_mesh_step(mesh, glob_i):
+    while reduce_with_underlying_mesh_step(mesh, min_box_volume, glob_i):
         glob_i = glob_i + 1
 
 # ==================================================================================================
@@ -212,7 +313,7 @@ def reduce_with_underlying_mesh(mesh):
 if __name__ == '__main__':
     mesh = msu.Mesh('../cases/cylinder/cyl_100.dat')
 
-    reduce_with_underlying_mesh(mesh)
+    reduce_with_underlying_mesh(mesh, min_box_volume=1.0e-11)
 
     # Restore cavern.
     #i = 100
