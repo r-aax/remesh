@@ -7,20 +7,44 @@ from src.geom import EnclosingParallelepipedsTree
 
 # ==================================================================================================
 
-def reduce_with_underlying_mesh_step(mesh, I):
+def make_cloud_structures(mesh, glob_i):
+    """
+    Make triangles cloud and parallelelipeds tree.
 
+    Parameters
+    ----------
+    mesh : msu.Mesh
+        Mesh.
+    glob_i : int
+        Global iteration.
+
+    Returns
+    -------
+    (geom.TrianglesCloud, geom.EnclosingParallelepipedsTree)
+        Structures.
+    """
+
+    mesh.store(f'glob_i_{glob_i}_original.dat')
+    min_box_volume = 1.0e-9 # constant
     tc = geom.TrianglesCloud(mesh.triangles_list())
-    pt = geom.EnclosingParallelepipedsTree.from_triangles_cloud(tc, 1.0e-9)
-    mesh.store(f'{I}_original.dat')
+    pt = geom.EnclosingParallelepipedsTree.from_triangles_cloud(tc, min_box_volume=min_box_volume)
+
+    return tc, pt
+
+# --------------------------------------------------------------------------------------------------
+
+def reduce_with_underlying_mesh_step(mesh, glob_i):
+
+    tc, pt = make_cloud_structures(mesh, glob_i)
 
     # Parallelepipeds tree.
-    print(I, f'parallelepipeds tree count {pt.active_leaf_parallelepipeds_count()}')
-    pt.store(f'{I}_pt.dat', is_store_only_leafs=False)
+    print(glob_i, f'parallelepipeds tree count {pt.active_leaf_parallelepipeds_count()}')
+    pt.store(f'{glob_i}_pt.dat', is_store_only_leafs=False)
     d = pt.depth()
-    print(I, f'depth {d}')
+    print(glob_i, f'depth {d}')
 
     # Map.
-    print(I, 'map')
+    print(glob_i, 'map')
     s = 2**(d - 1)
     m = []
     for i in range(s):
@@ -31,7 +55,7 @@ def reduce_with_underlying_mesh_step(mesh, I):
                 m[i][j].append(None)
 
     # Fill map.
-    print(I, 'fill map')
+    print(glob_i, 'fill map')
     main_box = pt.box
     def reg(t, b, m):
         if t.is_leaf():
@@ -77,7 +101,7 @@ def reduce_with_underlying_mesh_step(mesh, I):
                     q.append([i, j + 1])
 
     # Mark boxes.
-    print(I, 'mark boxes')
+    print(glob_i, 'mark boxes')
     for i in range(1, s - 1):
         for j in range(1, s - 1):
             for k in range(1, s - 1):
@@ -88,10 +112,10 @@ def reduce_with_underlying_mesh_step(mesh, I):
                            or (m[i - 1][j + 1][k] == 1) or (m[i + 1][j + 1][k] == 1)
                     if not good:
                         m[i][j][k].active = False
-    pt.store(f'{I}_pt_filter.dat', is_store_only_leafs=True)
+    pt.store(f'{glob_i}_pt_filter.dat', is_store_only_leafs=True)
 
     # Classify cells.
-    print(I, 'classify cells')
+    print(glob_i, 'classify cells')
     mesh.paint_faces(-1)
     for i in range(s):
         for j in range(s):
@@ -100,10 +124,10 @@ def reduce_with_underlying_mesh_step(mesh, I):
                     if m[i][j][k].active:
                         tc.paint_triangles_intersects_with_box(m[i][j][k].box, 0)
     interse = mesh.paint_intersecting_faces(1)
-    print(I, f'interse {interse}')
+    print(glob_i, f'interse {interse}')
     if interse == 0:
         return False
-    mesh.store(f'{I}_mesh_class.dat')
+    mesh.store(f'{glob_i}_mesh_class.dat')
 
     # Reduce
     i = 100
@@ -120,7 +144,7 @@ def reduce_with_underlying_mesh_step(mesh, I):
         for e in es:
             if e in mesh.edges:
                 mesh.reduce_edge(e)
-        mesh.store(f'{I}_{i}_reduce.dat')
+        mesh.store(f'{glob_i}_{i}_reduce.dat')
         i = i + 1
 
     return True
@@ -144,7 +168,6 @@ def reduce_with_underlying_mesh(mesh):
 
 if __name__ == '__main__':
     mesh = msu.Mesh('../cases/cylinder/cyl_100.dat')
-    mesh.store('ph_0_original.dat')
 
     reduce_with_underlying_mesh(mesh)
 
